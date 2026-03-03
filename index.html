@@ -51,6 +51,8 @@
   /* Enhanced Logo Container */
   .splash-logo-container {
     text-align: center;
+    position: relative;
+    z-index: 2;
     z-index: 10;
     animation: slideUp 1s ease-out;
   }
@@ -205,6 +207,13 @@
 
   .landing-logo {
     font-size: 18px;
+    background: rgba(255, 255, 255, 0.15);
+    backdrop-filter: blur(8px);
+    -webkit-backdrop-filter: blur(8px);
+    border: 1px solid rgba(255, 255, 255, 0.25);
+    border-radius: 10px;
+    padding: 12px 20px;
+    display: inline-block;
     font-weight: 800;
     color: #1e3a8a;
     line-height: 1.1;
@@ -318,6 +327,13 @@
   .hero-left p {
     max-width: 56ch;
     font-size: 18px;
+    background: rgba(255, 255, 255, 0.15);
+    backdrop-filter: blur(8px);
+    -webkit-backdrop-filter: blur(8px);
+    border: 1px solid rgba(255, 255, 255, 0.25);
+    border-radius: 10px;
+    padding: 12px 20px;
+    display: inline-block;
     color: rgba(255,255,255,0.9);
     line-height: 1.7;
     margin: 0;
@@ -325,7 +341,9 @@
   }
 
   .hero-right { 
-    text-align: center; 
+    text-align: center;
+    position: relative;
+    z-index: 2; 
     color: white;
   }
 
@@ -347,6 +365,8 @@
   /* ====== Footer ====== */
   .landing-footer {
     text-align: center;
+    position: relative;
+    z-index: 2;
     padding: 18px 16px;
     font-size: 14px;
     color: #4b5563;
@@ -364,25 +384,55 @@
   /* ====== Features Section ====== */
   .features-section {
     padding: 60px 20px;
-    background: white;
+    background-image: url("assets/images/aup-campus-bt.jpg");
+    background-size: cover;
+    background-position: center;
+    background-repeat: no-repeat;
+    background-attachment: fixed;
+    position: relative;
+  }
+
+  .features-section::before {
+    content: `'`;
+    position: absolute;
+    inset: 0;
+    background: rgba(255, 255, 255, 0.92);
+    pointer-events: none;
+    z-index: 1;
   }
 
   .features-container {
     max-width: 1200px;
     margin: 0 auto;
     text-align: center;
+    position: relative;
+    z-index: 2;
   }
 
   .features-title {
     font-size: 32px;
+    background: rgba(255, 255, 255, 0.2);
+    backdrop-filter: blur(10px);
+    -webkit-backdrop-filter: blur(10px);
+    border: 1px solid rgba(255, 255, 255, 0.3);
+    border-radius: 12px;
+    padding: 15px 25px;
+    display: inline-block;
     font-weight: 900;
-    color: #0f2e7a;
+    color: #1a1a1a;
     margin-bottom: 16px;
   }
 
   .features-subtitle {
     font-size: 18px;
-    color: #64748b;
+    background: rgba(255, 255, 255, 0.15);
+    backdrop-filter: blur(8px);
+    -webkit-backdrop-filter: blur(8px);
+    border: 1px solid rgba(255, 255, 255, 0.25);
+    border-radius: 10px;
+    padding: 12px 20px;
+    display: inline-block;
+    color: #2d2d2d;
     margin-bottom: 50px;
     max-width: 600px;
     margin-left: auto;
@@ -397,10 +447,12 @@
   }
 
   .feature-card {
-    background: #f8fafc;
+    background: rgba(255, 255, 255, 0.25);
     padding: 30px;
     border-radius: 16px;
-    border: 1px solid #e2e8f0;
+    border: 1px solid rgba(255, 255, 255, 0.3);
+    backdrop-filter: blur(10px);
+    -webkit-backdrop-filter: blur(10px);
     transition: all 0.3s ease;
     text-align: left;
   }
@@ -408,7 +460,8 @@
   .feature-card:hover {
     transform: translateY(-5px);
     box-shadow: 0 20px 40px rgba(15, 23, 42, 0.1);
-    border-color: #2563eb;
+    border-color: rgba(255, 255, 255, 0.5);
+    background: rgba(255, 255, 255, 0.35);
   }
 
   .feature-icon {
@@ -426,12 +479,12 @@
   .feature-title {
     font-size: 20px;
     font-weight: 800;
-    color: #0f2e7a;
+    color: #1a1a1a;
     margin-bottom: 12px;
   }
 
   .feature-description {
-    color: #64748b;
+    color: #2d2d2d;
     line-height: 1.6;
   }
 
@@ -449,10 +502,14 @@
     grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
     gap: 40px;
     text-align: center;
+    position: relative;
+    z-index: 2;
   }
 
   .stat-item {
     text-align: center;
+    position: relative;
+    z-index: 2;
   }
 
   .stat-number {
@@ -474,7 +531,9 @@
   @media (max-width: 900px) {
     .hero-card { 
       grid-template-columns: 1fr; 
-      text-align: center; 
+      text-align: center;
+    position: relative;
+    z-index: 2; 
       margin: 0 20px;
       padding: 40px 30px;
       gap: 30px;
@@ -546,7 +605,7 @@
       <img src="assets/images/university-logo.png" alt="University Logo">
       <div class="landing-logo">
         FYP Management System
-        <small>University Portal • Projects • Supervision</small>
+        <small>University Portal � Projects � Supervision</small>
       </div>
     </div>
 
@@ -569,7 +628,7 @@
 
       <div class="hero-right">
         <img src="assets/images/university-logo.png" alt="University Logo">
-        <div class="meta">🎓 Students • 👨‍🏫 Supervisors • 🧑‍💼 Administration</div>
+        <div class="meta">?? Students � ????? Supervisors � ????? Administration</div>
       </div>
     </div>
   </main>
@@ -582,37 +641,37 @@
       
       <div class="features-grid">
         <div class="feature-card">
-          <div class="feature-icon">📊</div>
+          <div class="feature-icon">??</div>
           <h3 class="feature-title">Progress Tracking</h3>
           <p class="feature-description">Real-time monitoring of project milestones, deadlines, and academic progress with visual analytics.</p>
         </div>
         
         <div class="feature-card">
-          <div class="feature-icon">👥</div>
+          <div class="feature-icon">??</div>
           <h3 class="feature-title">Role-Based Access</h3>
           <p class="feature-description">Secure, role-specific dashboards for students, supervisors, and administrators with tailored functionalities.</p>
         </div>
         
         <div class="feature-card">
-          <div class="feature-icon">📁</div>
+          <div class="feature-icon">??</div>
           <h3 class="feature-title">Document Management</h3>
           <p class="feature-description">Centralized repository for proposals, reports, and project files with version control and sharing capabilities.</p>
         </div>
         
         <div class="feature-card">
-          <div class="feature-icon">📅</div>
+          <div class="feature-icon">??</div>
           <h3 class="feature-title">Meeting Scheduling</h3>
           <p class="feature-description">Efficient coordination of meetings, viva schedules, and deadline management with automated notifications.</p>
         </div>
         
         <div class="feature-card">
-          <div class="feature-icon">💬</div>
+          <div class="feature-icon">??</div>
           <h3 class="feature-title">Real-time Communication</h3>
           <p class="feature-description">Seamless collaboration between students and supervisors with integrated messaging and feedback system.</p>
         </div>
         
         <div class="feature-card">
-          <div class="feature-icon">🔔</div>
+          <div class="feature-icon">??</div>
           <h3 class="feature-title">Smart Notifications</h3>
           <p class="feature-description">Automated alerts for deadlines, meetings, and important updates to keep everyone informed and on track.</p>
         </div>
@@ -643,7 +702,7 @@
   </section>
 
   <footer class="landing-footer">
-    &copy; 2026 Agriculture University — FYP Management System |
+    &copy; 2026 Agriculture University � FYP Management System |
     <a href="https://www.aup.edu.pk/" target="_blank" rel="noopener">University Website</a> |
     <a href="mailto:support@aup.edu.pk">Contact Support</a>
   </footer>
