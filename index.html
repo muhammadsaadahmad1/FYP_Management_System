@@ -2,70 +2,179 @@
 <html lang="en">
 <head>
 <meta charset="UTF-8">
-<title>FYP Management System</title>
+<title>FYP Management System | Agriculture University</title>
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 
 <link rel="stylesheet" href="css/style.css">
 
 <style>
-  body { margin: 0; }
-
-  /* ====== Main Page Wrapper ====== */
- .landing-page {
-  min-height: 100vh;
-  display: flex;
-  flex-direction: column;
-  font-family: "Segoe UI", Roboto, Arial, sans-serif;
-}
-  /* ====== Splash (Logo Only) ====== */
-  /* ===== Splash (Logo Only – Navy Background) ===== */
-.splash {
-  position: fixed;
-  inset: 0;
-  background: #0b2c5f;   /* Navy Blue */
-  display: flex;
-  justify-content: center;
-  align-items: center;
-  z-index: 9999;
-}
-
-/* Square Logo Container */
-.logo-box {
-  width: 333px;
-  height: 333px;
-  background: #ffffff;        /* White background for logo */
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  border-radius: 0;           /* Square edges */
-  box-shadow: 0 20px 40px rgba(0,0,0,0.35);
-  opacity: 0;
-  transform: scale(0.95);
-  animation: fadeIn 600ms ease forwards;
-}
-
-/* Logo inside square */
-.logo-box img {
-  max-width: 75%;
-  height: auto;
-}
-
-  .splash img {
-    width: 300px;
-    height: auto;
-    opacity: 0;
-    transform: scale(0.98);
-    animation: fadeIn 600ms ease forwards;
+  * {
+    margin: 0;
+    padding: 0;
+    box-sizing: border-box;
   }
 
-  @keyframes fadeIn {
-    to { opacity: 1; transform: scale(1); }
+  body {
+    font-family: "Segoe UI", Roboto, Arial, sans-serif;
+    overflow-x: hidden;
+  }
+
+  /* ====== Enhanced Splash Screen ====== */
+  .splash {
+    position: fixed;
+    inset: 0;
+    background: linear-gradient(135deg, #0b2c5f 0%, #1e3a8a 50%, #2563eb 100%);
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    align-items: center;
+    z-index: 9999;
+    overflow: hidden;
+  }
+
+  /* Animated background particles */
+  .splash::before {
+    content: '';
+    position: absolute;
+    width: 200%;
+    height: 200%;
+    background: url('data:image/svg+xml,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100"><defs><pattern id="grain" width="100" height="100" patternUnits="userSpaceOnUse"><circle cx="25" cy="25" r="1" fill="white" opacity="0.1"/><circle cx="75" cy="75" r="1" fill="white" opacity="0.1"/><circle cx="50" cy="10" r="0.5" fill="white" opacity="0.15"/><circle cx="10" cy="50" r="0.5" fill="white" opacity="0.15"/><circle cx="90" cy="90" r="0.5" fill="white" opacity="0.15"/></pattern></defs><rect width="100" height="100" fill="url(%23grain)"/></svg>');
+    animation: float 20s infinite linear;
+    opacity: 0.3;
+  }
+
+  @keyframes float {
+    0% { transform: translate(-50%, -50%) rotate(0deg); }
+    100% { transform: translate(-50%, -50%) rotate(360deg); }
+  }
+
+  /* Enhanced Logo Container */
+  .splash-logo-container {
+    text-align: center;
+    z-index: 10;
+    animation: slideUp 1s ease-out;
+  }
+
+  .logo-box {
+    width: 200px;
+    height: 200px;
+    background: linear-gradient(145deg, #ffffff, #f8fafc);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border-radius: 24px;
+    box-shadow: 0 25px 50px rgba(0,0,0,0.3), 0 0 0 1px rgba(255,255,255,0.1);
+    margin: 0 auto 30px;
+    position: relative;
+    overflow: hidden;
+  }
+
+  .logo-box::before {
+    content: '';
+    position: absolute;
+    top: -50%;
+    left: -50%;
+    width: 200%;
+    height: 200%;
+    background: linear-gradient(45deg, transparent, rgba(255,255,255,0.1), transparent);
+    animation: shine 3s infinite;
+  }
+
+  @keyframes shine {
+    0% { transform: translateX(-100%) translateY(-100%) rotate(45deg); }
+    100% { transform: translateX(100%) translateY(100%) rotate(45deg); }
+  }
+
+  .logo-box img {
+    width: 120px;
+    height: auto;
+    z-index: 2;
+    position: relative;
+  }
+
+  .splash-title {
+    color: white;
+    font-size: 28px;
+    font-weight: 900;
+    margin-bottom: 8px;
+    text-shadow: 0 4px 8px rgba(0,0,0,0.3);
+    letter-spacing: -0.5px;
+  }
+
+  .splash-subtitle {
+    color: rgba(255,255,255,0.8);
+    font-size: 16px;
+    font-weight: 600;
+    margin-bottom: 40px;
+  }
+
+  /* Splash Action Buttons */
+  .splash-actions {
+    display: flex;
+    gap: 16px;
+    z-index: 10;
+  }
+
+  .splash-btn {
+    padding: 14px 28px;
+    border-radius: 12px;
+    font-size: 15px;
+    font-weight: 700;
+    text-decoration: none;
+    transition: all 0.3s ease;
+    cursor: pointer;
+    border: none;
+    position: relative;
+    overflow: hidden;
+  }
+
+  .splash-btn.primary {
+    background: linear-gradient(135deg, #2563eb, #1e40af);
+    color: white;
+    box-shadow: 0 8px 24px rgba(37,99,235,0.4);
+  }
+
+  .splash-btn.primary:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 12px 32px rgba(37,99,235,0.5);
+  }
+
+  .splash-btn.secondary {
+    background: rgba(255,255,255,0.15);
+    color: white;
+    border: 2px solid rgba(255,255,255,0.3);
+    backdrop-filter: blur(10px);
+  }
+
+  .splash-btn.secondary:hover {
+    background: rgba(255,255,255,0.25);
+    border-color: rgba(255,255,255,0.5);
+    transform: translateY(-2px);
+  }
+
+  @keyframes slideUp {
+    from {
+      opacity: 0;
+      transform: translateY(40px);
+    }
+    to {
+      opacity: 1;
+      transform: translateY(0);
+    }
   }
 
   .hide {
     opacity: 0;
     pointer-events: none;
-    transition: opacity 450ms ease;
+    transition: opacity 600ms ease;
+  }
+
+  /* ====== Enhanced Landing Page ====== */
+  .landing-page {
+    min-height: 100vh;
+    display: flex;
+    flex-direction: column;
+    background: linear-gradient(135deg, #f8fafc 0%, #e2e8f0 100%);
   }
 
   /* ====== Header ====== */
@@ -154,54 +263,85 @@
     display: flex;
     justify-content: center;
     align-items: center;
-    padding: 42px 20px;
+    padding: 0;
+    min-height: 100vh;
+    background-image: url("assets/images/aup-campus-bg.jpg");
+    background-size: cover;
+    background-position: center;
+    background-repeat: no-repeat;
+    background-attachment: fixed;
+    position: relative;
+  }
+
+  .landing-hero::before {
+    content: '';
+    position: absolute;
+    inset: 0;
+    background: rgba(0, 0, 0, 0.4);
+    pointer-events: none;
+    z-index: 1;
   }
 
   .hero-card {
-    width: min(980px, 100%);
-    background: rgba(255,255,255,0.92);
-    border: 1px solid rgba(148,163,184,0.35);
-    border-radius: 18px;
-    box-shadow: 0 18px 40px rgba(15, 23, 42, 0.10);
-    padding: 34px 26px;
+    width: 100%;
+    max-width: 1000px;
+    margin: 0 40px;
+    background: rgba(255,255,255,0.15);
+    backdrop-filter: blur(20px);
+    border: 1px solid rgba(255,255,255,0.2);
+    border-radius: 24px;
+    box-shadow: 0 25px 50px rgba(0,0,0,0.2), 0 0 0 1px rgba(255,255,255,0.1);
+    padding: 40px 30px;
     display: grid;
-    grid-template-columns: 1.2fr 0.8fr;
-    gap: 26px;
+    grid-template-columns: 1.3fr 1fr;
+    gap: 40px;
     align-items: center;
+    position: relative;
+    z-index: 2;
   }
 
-  .hero-left { text-align: left; }
+  .hero-left { 
+    text-align: left; 
+    color: white;
+  }
 
   .hero-left h1 {
-    font-size: clamp(30px, 4vw, 44px);
+    font-size: clamp(32px, 4vw, 48px);
     font-weight: 900;
-    color: #0f2e7a;
-    margin: 0 0 12px;
-    line-height: 1.15;
-    letter-spacing: -0.3px;
+    color: white;
+    margin: 0 0 16px;
+    line-height: 1.1;
+    letter-spacing: -0.5px;
+    text-shadow: 0 4px 12px rgba(0,0,0,0.3);
   }
 
   .hero-left p {
     max-width: 56ch;
-    font-size: 17px;
-    color: #374151;
-    line-height: 1.75;
+    font-size: 18px;
+    color: rgba(255,255,255,0.9);
+    line-height: 1.7;
     margin: 0;
+    text-shadow: 0 2px 8px rgba(0,0,0,0.2);
   }
 
-  .hero-right { text-align: center; }
+  .hero-right { 
+    text-align: center; 
+    color: white;
+  }
 
   .hero-right img {
-    width: 120px;
+    width: 140px;
     height: auto;
-    margin-bottom: 14px;
+    margin-bottom: 16px;
+    filter: drop-shadow(0 8px 16px rgba(0,0,0,0.3));
   }
 
   .hero-right .meta {
-    color: #475569;
+    color: rgba(255,255,255,0.8);
     font-weight: 700;
-    font-size: 13px;
-    line-height: 1.4;
+    font-size: 14px;
+    line-height: 1.5;
+    text-shadow: 0 2px 6px rgba(0,0,0,0.3);
   }
 
   /* ====== Footer ====== */
@@ -221,24 +361,184 @@
 
   .landing-footer a:hover { text-decoration: underline; }
 
+  /* ====== Features Section ====== */
+  .features-section {
+    padding: 60px 20px;
+    background: white;
+  }
+
+  .features-container {
+    max-width: 1200px;
+    margin: 0 auto;
+    text-align: center;
+  }
+
+  .features-title {
+    font-size: 32px;
+    font-weight: 900;
+    color: #0f2e7a;
+    margin-bottom: 16px;
+  }
+
+  .features-subtitle {
+    font-size: 18px;
+    color: #64748b;
+    margin-bottom: 50px;
+    max-width: 600px;
+    margin-left: auto;
+    margin-right: auto;
+  }
+
+  .features-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+    gap: 30px;
+    margin-bottom: 60px;
+  }
+
+  .feature-card {
+    background: #f8fafc;
+    padding: 30px;
+    border-radius: 16px;
+    border: 1px solid #e2e8f0;
+    transition: all 0.3s ease;
+    text-align: left;
+  }
+
+  .feature-card:hover {
+    transform: translateY(-5px);
+    box-shadow: 0 20px 40px rgba(15, 23, 42, 0.1);
+    border-color: #2563eb;
+  }
+
+  .feature-icon {
+    width: 50px;
+    height: 50px;
+    background: linear-gradient(135deg, #2563eb, #1e40af);
+    border-radius: 12px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 24px;
+    margin-bottom: 20px;
+  }
+
+  .feature-title {
+    font-size: 20px;
+    font-weight: 800;
+    color: #0f2e7a;
+    margin-bottom: 12px;
+  }
+
+  .feature-description {
+    color: #64748b;
+    line-height: 1.6;
+  }
+
+  /* ====== Stats Section ====== */
+  .stats-section {
+    background: linear-gradient(135deg, #0b2c5f, #1e3a8a);
+    padding: 60px 20px;
+    color: white;
+  }
+
+  .stats-container {
+    max-width: 1000px;
+    margin: 0 auto;
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+    gap: 40px;
+    text-align: center;
+  }
+
+  .stat-item {
+    text-align: center;
+  }
+
+  .stat-number {
+    font-size: 48px;
+    font-weight: 900;
+    margin-bottom: 8px;
+    background: linear-gradient(135deg, #60a5fa, #3b82f6);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    background-clip: text;
+  }
+
+  .stat-label {
+    font-size: 16px;
+    opacity: 0.9;
+    font-weight: 600;
+  }
+
   @media (max-width: 900px) {
-    .hero-card { grid-template-columns: 1fr; text-align: center; }
+    .hero-card { 
+      grid-template-columns: 1fr; 
+      text-align: center; 
+      margin: 0 20px;
+      padding: 40px 30px;
+      gap: 30px;
+    }
     .hero-left { text-align: center; }
     .hero-left p { margin-left: auto; margin-right: auto; }
+    
+    .splash-actions {
+      flex-direction: column;
+      gap: 12px;
+    }
+    
+    .splash-btn {
+      width: 200px;
+    }
   }
 
   @media (max-width: 768px) {
     .landing-header { padding: 14px 18px; }
+    
+    .hero-card {
+      margin: 0 20px;
+      padding: 30px 20px;
+    }
+    
+    .hero-left h1 {
+      font-size: clamp(28px, 6vw, 36px);
+    }
+    
+    .hero-left p {
+      font-size: 16px;
+    }
+    
+    .features-title {
+      font-size: 28px;
+    }
+    
+    .features-grid {
+      grid-template-columns: 1fr;
+      gap: 20px;
+    }
+    
+    .stats-container {
+      grid-template-columns: repeat(2, 1fr);
+      gap: 30px;
+    }
   }
 </style>
 </head>
 
 <body>
 
-<!-- ===== Splash Screen (Logo only, auto disappears) ===== -->
+<!-- ===== Enhanced Splash Screen ===== -->
 <div class="splash" id="splash">
-  <div class="logo-box">
-    <img src="assets/images/university-logo.png" alt="University Logo">
+  <div class="splash-logo-container">
+    <div class="logo-box">
+      <img src="assets/images/university-logo.png" alt="University Logo">
+    </div>
+    <h1 class="splash-title">FYP Management System</h1>
+    <p class="splash-subtitle">Agriculture University Portal</p>
+    <div class="splash-actions">
+      <a href="login.html" class="splash-btn primary">Sign In</a>
+      <a href="register.html" class="splash-btn secondary">Register</a>
+    </div>
   </div>
 </div>
 
@@ -278,8 +578,76 @@
     </div>
   </main>
 
+  <!-- ===== Features Section ===== -->
+  <section class="features-section">
+    <div class="features-container">
+      <h2 class="features-title">Powerful Features for Academic Excellence</h2>
+      <p class="features-subtitle">Streamline FYP management with our comprehensive platform designed for modern education</p>
+      
+      <div class="features-grid">
+        <div class="feature-card">
+          <div class="feature-icon">📊</div>
+          <h3 class="feature-title">Progress Tracking</h3>
+          <p class="feature-description">Real-time monitoring of project milestones, deadlines, and academic progress with visual analytics.</p>
+        </div>
+        
+        <div class="feature-card">
+          <div class="feature-icon">👥</div>
+          <h3 class="feature-title">Role-Based Access</h3>
+          <p class="feature-description">Secure, role-specific dashboards for students, supervisors, and administrators with tailored functionalities.</p>
+        </div>
+        
+        <div class="feature-card">
+          <div class="feature-icon">📁</div>
+          <h3 class="feature-title">Document Management</h3>
+          <p class="feature-description">Centralized repository for proposals, reports, and project files with version control and sharing capabilities.</p>
+        </div>
+        
+        <div class="feature-card">
+          <div class="feature-icon">📅</div>
+          <h3 class="feature-title">Meeting Scheduling</h3>
+          <p class="feature-description">Efficient coordination of meetings, viva schedules, and deadline management with automated notifications.</p>
+        </div>
+        
+        <div class="feature-card">
+          <div class="feature-icon">💬</div>
+          <h3 class="feature-title">Real-time Communication</h3>
+          <p class="feature-description">Seamless collaboration between students and supervisors with integrated messaging and feedback system.</p>
+        </div>
+        
+        <div class="feature-card">
+          <div class="feature-icon">🔔</div>
+          <h3 class="feature-title">Smart Notifications</h3>
+          <p class="feature-description">Automated alerts for deadlines, meetings, and important updates to keep everyone informed and on track.</p>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ===== Stats Section ===== -->
+  <section class="stats-section">
+    <div class="stats-container">
+      <div class="stat-item">
+        <div class="stat-number">500+</div>
+        <div class="stat-label">Active Projects</div>
+      </div>
+      <div class="stat-item">
+        <div class="stat-number">50+</div>
+        <div class="stat-label">Expert Supervisors</div>
+      </div>
+      <div class="stat-item">
+        <div class="stat-number">95%</div>
+        <div class="stat-label">Success Rate</div>
+      </div>
+      <div class="stat-item">
+        <div class="stat-number">24/7</div>
+        <div class="stat-label">System Availability</div>
+      </div>
+    </div>
+  </section>
+
   <footer class="landing-footer">
-    ©️ 2026 Agriculture University — FYP Management System |
+    &copy; 2026 Agriculture University — FYP Management System |
     <a href="https://www.aup.edu.pk/" target="_blank" rel="noopener">University Website</a> |
     <a href="mailto:support@aup.edu.pk">Contact Support</a>
   </footer>
