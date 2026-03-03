@@ -1,0 +1,1 @@
+if (localStorage.getItem("role") !== "supervisor") location.href = "login.html";

@@ -1,0 +1,237 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <title>Supervisor Dashboard | FYP Management System</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+
+  <link rel="stylesheet" href="css/style.css" />
+
+  <style>
+    .tabs { display: flex; gap: 12px; margin-bottom: 25px; flex-wrap: wrap; }
+
+    .tab-btn {
+      padding: 10px 18px;
+      border: 1px solid rgba(148,163,184,0.5);
+      background: #0f0000;
+      border-radius: 10px;
+      cursor: pointer;
+      font-weight: 700;
+      transition: transform 0.2s ease, box-shadow 0.2s ease, background 0.2s ease;
+    }
+
+    .tab-btn:hover {
+      box-shadow: 0 10px 18px rgba(15,23,42,0.08);
+      transform: translateY(-1px);
+      background: #000306;
+    }
+
+    .tab-btn.active { background: #2563eb; color: #0c0000; border-color: #2563eb; }
+
+    .section {
+      display: none;
+      background: #ffffff;
+      padding: 20px;
+      border-radius: 14px;
+      border: 1px solid rgba(148,163,184,0.35);
+      box-shadow: 0 10px 22px rgba(15,23,42,0.08);
+    }
+    .section.active { display: block; }
+
+    table { width: 100%; border-collapse: collapse; }
+
+    th, td { padding: 12px; border-bottom: 1px solid #e5e7eb; text-align: left; }
+
+    th { background: #f5f8ff; color: #1e3a8a; }
+
+    button {
+      padding: 7px 12px;
+      border: none;
+      border-radius: 10px;
+      cursor: pointer;
+      font-weight: 800;
+      transition: transform 0.2s ease, box-shadow 0.2s ease, opacity 0.2s ease;
+    }
+
+    button:hover { transform: translateY(-1px); box-shadow: 0 10px 16px rgba(15,23,42,0.10); }
+
+    .accept { background: #16a34a; color: #fff; }
+    .reject { background: #dc2626; color: #fff; }
+    .save { background: #2563eb; color: #fff; }
+
+    input, textarea {
+      width: 100%;
+      padding: 10px 12px;
+      margin-top: 6px;
+      border-radius: 10px;
+      border: 1px solid #cbd5e1;
+    }
+
+    textarea { resize: vertical; }
+
+    .student-card { border-bottom: 1px solid #e5e7eb; padding: 15px 0; }
+  </style>
+</head>
+
+<body>
+
+  <aside class="sidebar">
+    <h2>Supervisor</h2>
+    <ul>
+      <li class="active">Dashboard</li>
+      <li onclick="logout()">Logout</li>
+    </ul>
+  </aside>
+
+  <main class="main-content">
+
+    <header class="top-bar">
+      <h1>Supervisor Dashboard</h1>
+      <p>Manage proposals, students, meetings and feedback</p>
+    </header>
+
+    <div class="tabs">
+      <button class="tab-btn active" onclick="showSection('proposals', this)">Proposals</button>
+      <button class="tab-btn" onclick="showSection('students', this)">Students</button>
+      <button class="tab-btn" onclick="showSection('feedback', this)">Weekly Feedback</button>
+    </div>
+
+    <section id="proposals" class="section active">
+      <h2>Assigned Proposals</h2>
+
+      <table>
+        <thead>
+          <tr>
+            <th>Student</th>
+            <th>Project Title</th>
+            <th>Action</th>
+          </tr>
+        </thead>
+        <tbody id="proposalTable"></tbody>
+      </table>
+    </section>
+
+    <section id="students" class="section">
+      <h2>Accepted Students</h2>
+      <div id="studentList"></div>
+    </section>
+
+    <section id="feedback" class="section">
+      <h2>Weekly Student Feedback (Sent to Admin)</h2>
+      <div id="feedbackList"></div>
+    </section>
+
+  </main>
+
+  <script>
+    if (localStorage.getItem("role") !== "supervisor") {
+      window.location.href = "login.html";
+    }
+
+    let proposals = [
+      { student: "Ali Raza", project: "Smart Attendance System", status: "Pending" },
+      { student: "Sara Khan", project: "Health Monitoring App", status: "Pending" }
+    ];
+
+    let acceptedStudents = [];
+
+    function showSection(id, btn) {
+      document.querySelectorAll(".section").forEach(s => s.classList.remove("active"));
+      document.querySelectorAll(".tab-btn").forEach(b => b.classList.remove("active"));
+
+      document.getElementById(id).classList.add("active");
+      btn.classList.add("active");
+    }
+
+    function loadProposals() {
+      const table = document.getElementById("proposalTable");
+      table.innerHTML = "";
+
+      proposals.forEach((p, i) => {
+        const row = document.createElement("tr");
+
+        row.innerHTML = `
+          <td>${p.student}</td>
+          <td>${p.project}</td>
+          <td>
+            <button class="accept" onclick="acceptProposal(${i})">Accept</button>
+            <button class="reject" onclick="rejectProposal(${i})">Reject</button>
+          </td>
+        `;
+        table.appendChild(row);
+      });
+    }
+
+    function acceptProposal(index) {
+      acceptedStudents.push({
+        student: proposals[index].student,
+        project: proposals[index].project,
+        meeting: "",
+        viva: ""
+      });
+      proposals.splice(index, 1);
+      loadProposals();
+      loadStudents();
+      loadFeedback();
+    }
+
+    function rejectProposal(index) {
+      proposals.splice(index, 1);
+      loadProposals();
+    }
+
+    function loadStudents() {
+      const container = document.getElementById("studentList");
+      container.innerHTML = "";
+
+      acceptedStudents.forEach((s, i) => {
+        const div = document.createElement("div");
+        div.className = "student-card";
+
+        div.innerHTML = `
+          <h3>${s.student}</h3>
+          <p><strong>Project:</strong> ${s.project}</p>
+
+          <label>Meeting Date</label>
+          <input type="date" onchange="acceptedStudents[${i}].meeting=this.value">
+
+          <label>Viva Date</label>
+          <input type="date" onchange="acceptedStudents[${i}].viva=this.value">
+        `;
+        container.appendChild(div);
+      });
+    }
+
+    function loadFeedback() {
+      const container = document.getElementById("feedbackList");
+      container.innerHTML = "";
+
+      acceptedStudents.forEach((s, i) => {
+        const div = document.createElement("div");
+        div.className = "student-card";
+
+        div.innerHTML = `
+          <h3>${s.student}</h3>
+          <textarea placeholder="Weekly feedback for admin"></textarea>
+          <button class="save" onclick="submitFeedback('${s.student}')">
+            Submit Feedback
+          </button>
+        `;
+        container.appendChild(div);
+      });
+    }
+
+    function submitFeedback(student) {
+      alert("Feedback submitted for " + student + " and forwarded to Admin.");
+    }
+
+    function logout() {
+      localStorage.clear();
+      window.location.href = "login.html";
+    }
+
+    loadProposals();
+  </script>
+
+</body>
+</html>

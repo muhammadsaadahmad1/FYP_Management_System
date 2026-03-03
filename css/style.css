@@ -1,0 +1,191 @@
+:root {
+  --primary: #1e3a8a;
+  --secondary: #2563eb;
+  --card: #ffffff;
+  --text-dark: #1f2937;
+  --text-light: #4b5563;
+}
+
+/* =========================
+   GLOBAL BASE
+========================= */
+body {
+  margin: 0;
+  font-family: "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+  color: var(--text-dark);
+  line-height: 1.6;
+}
+
+/* =========================
+   AUP BACKGROUND (Index/Login/Register ONLY)
+   Use a class on body: login-page / register-page
+   Use .landing-page wrapper on index
+========================= */
+
+/* IMPORTANT:
+   style.css is inside /css/
+   so image path must be ../assets/...
+*/
+.login-page,
+.register-page,
+.landing-page {
+  min-height: 100vh;
+  background-image: url("../assets/images/aup-campus-bg.jpg");
+  background-size: cover;
+  background-position: center;
+  background-repeat: no-repeat;
+  background-attachment: fixed;
+  position: relative;
+}
+
+/* Dark overlay for readability */
+.login-page::before,
+.register-page::before,
+.landing-page::before {
+  content: "";
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.45);
+  pointer-events: none;
+  z-index: 0;
+}
+
+/* Ensure all content stays above overlay */
+.login-page > *,
+.register-page > *,
+.landing-page > * {
+  position: relative;
+  z-index: 1;
+}
+
+/* =========================
+   DASHBOARD LAYOUT (NO BACKGROUND IMAGE)
+========================= */
+.sidebar {
+  width: 240px;
+  background: linear-gradient(to bottom, #1e3a8a, #2563eb);
+  color: white;
+  min-height: 100vh;
+  padding: 25px 20px;
+  position: fixed;
+}
+
+.sidebar h2 {
+  margin-bottom: 30px;
+  font-size: 22px;
+  text-align: center;
+  letter-spacing: 1px;
+}
+
+.sidebar ul {
+  list-style: none;
+  padding: 0;
+}
+
+.sidebar ul li {
+  padding: 12px 15px;
+  margin-bottom: 10px;
+  border-radius: 8px;
+  cursor: pointer;
+  transition: background 0.3s;
+}
+
+.sidebar ul li:hover,
+.sidebar ul li.active {
+  background: rgba(255, 255, 255, 0.2);
+}
+
+.main-content {
+  margin-left: 260px;
+  padding: 30px;
+}
+
+/* Dashboard top bar */
+.top-bar {
+  background: var(--card);
+  padding: 20px 25px;
+  border-radius: 14px;
+  margin-bottom: 30px;
+  box-shadow: 0 4px 14px rgba(0,0,0,0.06);
+}
+
+.top-bar h1 {
+  margin: 0;
+  font-size: 26px;
+}
+
+.top-bar p {
+  margin-top: 5px;
+  color: var(--text-light);
+}
+
+/* Cards */
+.card {
+  background: var(--card);
+  padding: 20px 22px;
+  border-radius: 14px;
+  margin-bottom: 18px;
+  box-shadow: 0 6px 18px rgba(0,0,0,0.06);
+  transition: transform 0.2s;
+}
+
+.card:hover {
+  transform: translateY(-3px);
+}
+
+/* Progress */
+.progress-bar {
+  background: #e5e7eb;
+  border-radius: 12px;
+  height: 14px;
+  overflow: hidden;
+}
+
+.progress-fill {
+  background: linear-gradient(to right, #2563eb, #1e40af);
+  height: 100%;
+  transition: width 0.6s ease;
+}
+
+/* Buttons (general) */
+button {
+  padding: 8px 15px;
+  background: #1e3a8a;
+  color: white;
+  border: none;
+  border-radius: 8px;
+}
+
+button.danger {
+  background: #dc2626;
+}
+
+/* Status chips */
+.status {
+  padding: 6px 12px;
+  border-radius: 20px;
+  font-size: 13px;
+  font-weight: 700;
+}
+
+.approved {
+  background: #dcfce7;
+  color: #166534;
+}
+
+.pending {
+  background: #fef3c7;
+  color: #92400e;
+}
+
+.rejected {
+  background: #fee2e2;
+  color: #991b1b;
+}
+
+/* Shared image sizing */
+.landing-logo-img {
+  width: 110px;
+  height: auto;
+  margin-bottom: 20px;
+}
