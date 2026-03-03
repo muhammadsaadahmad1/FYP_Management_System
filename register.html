@@ -173,13 +173,12 @@
         <option value="admin">Admin</option>
       </select>
 
-      <input type="text" placeholder="Full Name">
-      <input type="text" placeholder="Username / Registration No">
-      <input type="email" placeholder="Email Address">
-      <input type="password" placeholder="Password">
-      <input type="password" placeholder="Confirm Password">
+      <input type="text" id="displayName" placeholder="Full Name" required>
+      <input type="email" id="email" placeholder="Email Address" required>
+      <input type="password" id="password" placeholder="Password (min 6 characters)" required>
+      <input type="password" id="confirmPassword" placeholder="Confirm Password" required>
 
-      <button onclick="register()">Register</button>
+      <button class="register-btn" onclick="register()">Register</button>
 
       <div class="register-note">
         Already have an account?
@@ -191,22 +190,16 @@
 
   <!-- Footer -->
   <footer class="register-footer">
-    ©️ 2026 Agriculture University — FYP Management System
+    2026 Agriculture University — FYP Management System
   </footer>
 
-<script>
-  function register() {
-    const role = document.getElementById("role").value;
-
-    if (!role) {
-      alert("Please select a role");
-      return;
-    }
-
-    alert("Registration successful! (Frontend demo)");
-    window.location.href = "login.html";
-  }
-</script>
+<script src="https://www.gstatic.com/firebasejs/9.22.1/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/9.22.1/firebase-auth-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/9.22.1/firebase-firestore-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/9.22.1/firebase-storage-compat.js"></script>
+<script src="js/firebase-config.js"></script>
+<script src="js/firebase-auth.js"></script>
+<script src="js/auth.js"></script>
 
 </body>
 </html>

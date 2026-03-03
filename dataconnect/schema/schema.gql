@@ -1,0 +1,44 @@
+type User @table {
+  authId: String!
+  role: String!
+  displayName: String!
+  email: String
+  department: String
+}
+
+type Project @table {
+  title: String!
+  description: String!
+  status: String!
+  createdAt: Timestamp!
+  startDate: Date
+  endDate: Date
+  proposingStudent: User
+  creatingSupervisor: User
+  assignedSupervisor: User
+  assignedStudent: User
+}
+
+type ProjectProposal @table {
+  project: Project!
+  student: User!
+  proposalDate: Date!
+  preferredSupervisor: User
+  status: String
+}
+
+type Submission @table {
+  project: Project!
+  student: User!
+  type: String!
+  submissionDate: Timestamp!
+  filePath: String
+  grade: String
+  feedback: String
+}
+
+type Milestone @table {
+  name: String!
+  deadline: Timestamp!
+  description: String
+}
