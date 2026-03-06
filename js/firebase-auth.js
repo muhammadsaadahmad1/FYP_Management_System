@@ -62,13 +62,18 @@ class FirebaseAuth {
       const userDoc = await this.db.collection('users').doc(user.uid).get();
       const userData = userDoc.data();
 
-      if (userData && userData.isActive) {
+      console.log('User data from Firestore:', userData);
+      console.log('isActive value:', userData?.isActive);
+
+      // Check if user exists and is active (or if isActive field doesn't exist, assume active for backward compatibility)
+      if (userData && (userData.isActive !== false)) {
         // Store role in localStorage for easy access
         localStorage.setItem('role', userData.role);
         
         console.log('User signed in successfully!');
         return { success: true, user, role: userData.role };
       } else {
+        console.log('Account not active or user data missing');
         await this.auth.signOut();
         return { success: false, error: 'Account is not active' };
       }

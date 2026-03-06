@@ -5,7 +5,7 @@
 <title>Register | FYP Management System</title>
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 
-<link rel="stylesheet" href="css/style.css">
+<link rel="stylesheet" href="css/style.css?v=1.0.1">
 
 <!-- REGISTER PAGE ONLY STYLES -->
 <style>
@@ -144,6 +144,701 @@
     font-size: 14px;
     color: #4b5563;
   }
+
+  /* Progress Indicator */
+  .progress-indicator {
+    display: flex;
+    justify-content: space-between;
+    margin-bottom: 24px;
+    padding: 0 20px;
+  }
+
+  .step {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    flex: 1;
+    position: relative;
+  }
+
+  .step:not(:last-child)::after {
+    content: '';
+    position: absolute;
+    top: 20px;
+    right: -50%;
+    width: 100%;
+    height: 2px;
+    background: #e2e8f0;
+    z-index: 1;
+  }
+
+  .step.active:not(:last-child)::after {
+    background: #2563eb;
+  }
+
+  .step.completed:not(:last-child)::after {
+    background: #10b981;
+  }
+
+  .step-number {
+    width: 40px;
+    height: 40px;
+    border-radius: 50%;
+    background: #e2e8f0;
+    color: #64748b;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-weight: 700;
+    font-size: 14px;
+    margin-bottom: 8px;
+    position: relative;
+    z-index: 2;
+    transition: all 0.3s ease;
+  }
+
+  .step.active .step-number {
+    background: #2563eb;
+    color: white;
+    box-shadow: 0 0 0 4px rgba(37, 99, 235, 0.1);
+  }
+
+  .step.completed .step-number {
+    background: #10b981;
+    color: white;
+  }
+
+  .step-label {
+    font-size: 12px;
+    color: #64748b;
+    font-weight: 600;
+  }
+
+  .step.active .step-label,
+  .step.completed .step-label {
+    color: #1e293b;
+  }
+
+  /* Role Description */
+  .role-description {
+    background: #f1f5f9;
+    border-radius: 8px;
+    padding: 12px;
+    margin-top: 12px;
+    text-align: left;
+  }
+
+  .role-description p {
+    margin: 0;
+    font-size: 13px;
+    color: #475569;
+    line-height: 1.5;
+  }
+
+  /* Password Strength Indicator */
+  .password-container {
+    position: relative;
+    margin-bottom: 14px;
+  }
+
+  .password-strength {
+    margin-top: 8px;
+  }
+
+  .strength-bar {
+    height: 4px;
+    background: #e2e8f0;
+    border-radius: 2px;
+    margin-bottom: 4px;
+    transition: background 0.3s ease;
+  }
+
+  .strength-bar.weak {
+    background: #ef4444;
+    width: 33%;
+  }
+
+  .strength-bar.medium {
+    background: #f59e0b;
+    width: 66%;
+  }
+
+  .strength-bar.strong {
+    background: #10b981;
+    width: 100%;
+  }
+
+  .strength-text {
+    font-size: 11px;
+    color: #64748b;
+    font-weight: 600;
+  }
+
+  .strength-text.weak {
+    color: #ef4444;
+  }
+
+  .strength-text.medium {
+    color: #f59e0b;
+  }
+
+  .strength-text.strong {
+    color: #10b981;
+  }
+
+  /* Field Validation */
+  .field-valid {
+    border-color: #10b981 !important;
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='16' height='16' viewBox='0 0 16 16'%3E%3Cpath fill='%2310b981' d='M13.854 3.646a.5.5 0 0 1 0 .708l-7 7a.5.5 0 0 1-.708 0l-3.5-3.5a.5.5 0 1 1 .708-.708L6.5 10.293l6.646-6.647a.5.5 0 0 1 .708 0z'/%3E%3C/svg%3E");
+    background-repeat: no-repeat;
+    background-position: right 12px center;
+    padding-right: 36px;
+  }
+
+  .field-invalid {
+    border-color: #ef4444 !important;
+    background-color: #fef2f2 !important;
+  }
+
+  .field-invalid-highlight {
+    border-color: #dc2626 !important;
+    background-color: #fee2e2 !important;
+    box-shadow: 0 0 0 3px rgba(220, 38, 38, 0.2) !important;
+    animation: fieldPulse 1s ease-in-out infinite;
+  }
+
+  @keyframes fieldPulse {
+    0%, 100% {
+      transform: scale(1);
+      box-shadow: 0 0 0 3px rgba(220, 38, 38, 0.2);
+    }
+    50% {
+      transform: scale(1.02);
+      box-shadow: 0 0 0 5px rgba(220, 38, 38, 0.3);
+    }
+  }
+
+  .field-invalid {
+    border-color: #ef4444 !important;
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='16' height='16' viewBox='0 0 16 16'%3E%3Cpath fill='%23ef4444' d='M4.646 4.646a.5.5 0 0 1 .708 0L8 7.293l2.646-2.647a.5.5 0 0 1 .708.708L8.707 8l2.647 2.646a.5.5 0 0 1-.708.708L8 8.707l-2.646 2.647a.5.5 0 0 1-.708-.708L7.293 8 4.646 5.354a.5.5 0 0 1 0-.708z'/%3E%3C/svg%3E");
+    background-repeat: no-repeat;
+    background-position: right 12px center;
+    padding-right: 36px;
+  }
+
+  /* Navigation Buttons */
+  .nav-buttons {
+    display: flex;
+    gap: 10px;
+    margin-top: 16px;
+  }
+
+  .nav-btn {
+    flex: 1;
+    padding: 10px;
+    border: 1px solid #cbd5e1;
+    border-radius: 8px;
+    background: white;
+    color: #64748b;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.2s ease;
+  }
+
+  .nav-btn:hover:not(:disabled) {
+    background: #f8fafc;
+    border-color: #94a3b8;
+  }
+
+  .nav-btn:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+  }
+
+  .nav-btn.primary {
+    background: #2563eb;
+    color: white;
+    border-color: #2563eb;
+  }
+
+  .nav-btn.primary:hover:not(:disabled) {
+    background: #1d4ed8;
+  }
+
+  /* Welcome Message */
+  .welcome-message {
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    color: white;
+    padding: 20px;
+    border-radius: 12px;
+    margin-bottom: 24px;
+    text-align: center;
+  }
+
+  .welcome-message h3 {
+    margin: 0 0 8px 0;
+    font-size: 18px;
+    font-weight: 700;
+  }
+
+  .welcome-message p {
+    margin: 0;
+    font-size: 14px;
+    line-height: 1.5;
+    opacity: 0.9;
+  }
+
+  /* Social Login */
+  .social-login {
+    margin-bottom: 20px;
+  }
+
+  .social-divider {
+    text-align: center;
+    margin: 20px 0 16px;
+    position: relative;
+  }
+
+  .social-divider::before {
+    content: '';
+    position: absolute;
+    top: 50%;
+    left: 0;
+    right: 0;
+    height: 1px;
+    background: #e2e8f0;
+  }
+
+  .social-divider span {
+    background: rgba(255,255,255,0.95);
+    padding: 0 16px;
+    color: #64748b;
+    font-size: 13px;
+    font-weight: 600;
+    position: relative;
+  }
+
+  .social-buttons {
+    display: flex;
+    gap: 10px;
+  }
+
+  .social-btn {
+    flex: 1;
+    padding: 10px;
+    border: 1px solid #e2e8f0;
+    border-radius: 8px;
+    background: white;
+    color: #374151;
+    font-weight: 600;
+    font-size: 14px;
+    cursor: pointer;
+    transition: all 0.2s ease;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+  }
+
+  .social-btn:hover {
+    background: #f8fafc;
+    border-color: #cbd5e1;
+    transform: translateY(-1px);
+  }
+
+  .social-btn.google:hover {
+    border-color: #4285f4;
+    color: #4285f4;
+  }
+
+  .social-btn.microsoft:hover {
+    border-color: #00a4ef;
+    color: #00a4ef;
+  }
+
+  /* Profile Upload */
+  .profile-upload {
+    margin-bottom: 16px;
+  }
+
+  .upload-container {
+    width: 120px;
+    height: 120px;
+    margin: 0 auto;
+    border: 2px dashed #cbd5e1;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    transition: all 0.3s ease;
+    position: relative;
+    overflow: hidden;
+  }
+
+  .upload-container:hover {
+    border-color: #2563eb;
+    background: #f8fafc;
+  }
+
+  .upload-placeholder {
+    text-align: center;
+    color: #64748b;
+  }
+
+  .upload-placeholder svg {
+    margin-bottom: 8px;
+  }
+
+  .upload-placeholder span {
+    font-size: 11px;
+    font-weight: 600;
+  }
+
+  .profile-preview {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    border-radius: 50%;
+  }
+
+  /* Department Suggest */
+  .department-suggest {
+    position: relative;
+    margin-bottom: 14px;
+  }
+
+  .dropdown {
+    position: absolute;
+    top: 100%;
+    left: 0;
+    right: 0;
+    background: white;
+    border: 1px solid #e2e8f0;
+    border-radius: 8px;
+    box-shadow: 0 4px 12px rgba(0,0,0,0.1);
+    max-height: 200px;
+    overflow-y: auto;
+    z-index: 10;
+  }
+
+  .dropdown-item {
+    padding: 10px 12px;
+    cursor: pointer;
+    transition: background 0.2s ease;
+    font-size: 14px;
+  }
+
+  .dropdown-item:hover {
+    background: #f8fafc;
+  }
+
+  /* Phone Input */
+  .phone-input {
+    display: flex;
+    gap: 8px;
+    margin-bottom: 14px;
+  }
+
+  .country-code {
+    width: 60px !important;
+    padding: 2px !important;
+    border-radius: 10px;
+    border: 1px solid #cbd5e1;
+    font-size: 10px !important;
+    outline: none;
+    transition: border 0.2s ease, box-shadow 0.2s ease;
+    flex-shrink: 0;
+    box-sizing: border-box;
+    height: 44px;
+  }
+
+  .country-code:focus {
+    border-color: #2563eb;
+    box-shadow: 0 0 0 4px rgba(37,99,235,0.12);
+  }
+
+  .phone-input input {
+    flex: 1;
+    min-width: 0;
+  }
+
+  /* Two-Factor Authentication */
+  .two-factor-section {
+    margin-bottom: 16px;
+    text-align: left;
+  }
+
+  .checkbox-container {
+    display: flex;
+    align-items: flex-start;
+    gap: 8px;
+    cursor: pointer;
+    font-size: 14px;
+    color: #374151;
+    margin-bottom: 12px;
+  }
+
+  .checkbox-container input[type="checkbox"] {
+    display: none;
+  }
+
+  .checkmark {
+    width: 18px;
+    height: 18px;
+    border: 2px solid #cbd5e1;
+    border-radius: 4px;
+    flex-shrink: 0;
+    margin-top: 2px;
+    position: relative;
+    transition: all 0.2s ease;
+  }
+
+  .checkbox-container input[type="checkbox"]:checked + .checkmark {
+    background: #2563eb;
+    border-color: #2563eb;
+  }
+
+  .checkbox-container input[type="checkbox"]:checked + .checkmark::after {
+    content: '';
+    position: absolute;
+    left: 4px;
+    top: 1px;
+    width: 5px;
+    height: 8px;
+    border: solid white;
+    border-width: 0 2px 2px 0;
+    transform: rotate(45deg);
+  }
+
+  .two-fa-setup {
+    background: #f8fafc;
+    padding: 12px;
+    border-radius: 8px;
+    margin-top: 8px;
+  }
+
+  .two-fa-methods {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+  }
+
+  .radio-container {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    cursor: pointer;
+    font-size: 14px;
+    color: #374151;
+  }
+
+  .radio-container input[type="radio"] {
+    display: none;
+  }
+
+  .radio-checkmark {
+    width: 16px;
+    height: 16px;
+    border: 2px solid #cbd5e1;
+    border-radius: 50%;
+    position: relative;
+    transition: all 0.2s ease;
+  }
+
+  .radio-container input[type="radio"]:checked + .radio-checkmark {
+    border-color: #2563eb;
+  }
+
+  .radio-container input[type="radio"]:checked + .radio-checkmark::after {
+    content: '';
+    position: absolute;
+    top: 3px;
+    left: 3px;
+    width: 6px;
+    height: 6px;
+    background: #2563eb;
+    border-radius: 50%;
+  }
+
+  /* Terms Section */
+  .terms-section {
+    margin-bottom: 16px;
+    text-align: left;
+  }
+
+  .terms-section a {
+    color: #2563eb;
+    text-decoration: none;
+    font-weight: 600;
+  }
+
+  .terms-section a:hover {
+    text-decoration: underline;
+  }
+
+  /* Verification Section */
+  .verification-message {
+    text-align: center;
+    margin-bottom: 24px;
+  }
+
+  .verification-message h3 {
+    color: #0f2e7a;
+    margin-bottom: 8px;
+  }
+
+  .verification-message p {
+    color: #64748b;
+    font-size: 14px;
+    line-height: 1.5;
+  }
+
+  .verification-code {
+    display: flex;
+    gap: 8px;
+    justify-content: center;
+    margin-bottom: 20px;
+  }
+
+  .code-input {
+    width: 40px;
+    height: 40px;
+    text-align: center;
+    font-size: 18px;
+    font-weight: 700;
+    border: 2px solid #e2e8f0;
+    border-radius: 8px;
+    outline: none;
+    transition: all 0.2s ease;
+  }
+
+  .code-input:focus {
+    border-color: #2563eb;
+    box-shadow: 0 0 0 4px rgba(37,99,235,0.12);
+  }
+
+  .resend-btn {
+    background: transparent;
+    color: #2563eb;
+    border: none;
+    font-size: 14px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: color 0.2s ease;
+  }
+
+  .resend-btn:hover {
+    color: #1d4ed8;
+    text-decoration: underline;
+  }
+
+  /* Success Animation */
+  @keyframes successPulse {
+    0% { transform: scale(1); }
+    50% { transform: scale(1.05); }
+    100% { transform: scale(1); }
+  }
+
+  .success-animation {
+    animation: successPulse 0.6s ease-in-out;
+  }
+
+  /* Modal Styles */
+  .modal {
+    display: none;
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background: rgba(0,0,0,0.5);
+    z-index: 1000;
+    justify-content: center;
+    align-items: center;
+  }
+
+  .modal-content {
+    background: white;
+    padding: 24px;
+    border-radius: 12px;
+    max-width: 500px;
+    width: 90%;
+    max-height: 80vh;
+    overflow-y: auto;
+  }
+
+  .modal-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 16px;
+  }
+
+  .modal-title {
+    font-size: 18px;
+    font-weight: 700;
+    color: #0f2e7a;
+  }
+
+  .modal-close {
+    background: none;
+    border: none;
+    font-size: 24px;
+    color: #64748b;
+    cursor: pointer;
+    padding: 0;
+    width: 24px;
+    height: 24px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+  }
+
+  .modal-close:hover {
+    color: #374151;
+  }
+
+  .modal-body {
+    color: #374151;
+    line-height: 1.6;
+  }
+
+  .modal-body h4 {
+    color: #0f2e7a;
+    margin: 16px 0 8px 0;
+  }
+
+  .modal-body ul {
+    margin: 8px 0 16px 20px;
+  }
+
+  .modal-body li {
+    margin-bottom: 4px;
+  }
+
+  /* Group Registration Styles */
+  .group-member {
+    border: 2px solid #e2e8f0;
+    border-radius: 12px;
+    padding: 20px;
+    margin-bottom: 20px;
+    background: #f8fafc;
+  }
+
+  .group-member h4 {
+    color: #0f2e7a;
+    margin-bottom: 16px;
+    font-size: 16px;
+    font-weight: 600;
+    border-bottom: 2px solid #2563eb;
+    padding-bottom: 8px;
+  }
+
+  .group-member:first-child h4 {
+    color: #2563eb;
+    border-bottom-color: #1d4ed8;
+  }
 </style>
 </head>
 
@@ -162,23 +857,286 @@
   <div class="register-container">
     <div class="register-box">
 
+      <!-- Welcome Message -->
+      <div class="welcome-message">
+        <h3>Welcome to FYP Management System</h3>
+        <p>Your comprehensive platform for managing Final Year Projects from proposal to completion. Join our academic community and streamline your project journey.</p>
+      </div>
+
+      <!-- Progress Indicator -->
+      <div class="progress-indicator">
+        <div class="step active" id="step1">
+          <span class="step-number">1</span>
+          <span class="step-label">Role</span>
+        </div>
+        <div class="step" id="step2">
+          <span class="step-number">2</span>
+          <span class="step-label">Details</span>
+        </div>
+        <div class="step" id="step3">
+          <span class="step-number">3</span>
+          <span class="step-label">Account</span>
+        </div>
+      </div>
+
       <img src="assets/images/university-logo.png" alt="University Logo">
 
       <h2>Create Account</h2>
 
-      <select id="role">
-        <option value="">Select Role</option>
-        <option value="student">Student</option>
-        <option value="supervisor">Supervisor</option>
-        <option value="admin">Admin</option>
-      </select>
+      <!-- Role Selection Section -->
+      <div id="roleSection">
+        <select id="role" onchange="handleRoleChange()">
+          <option value="">Select Role</option>
+          <option value="student">Student (Group Registration)</option>
+          <option value="supervisor">Supervisor</option>
+          <option value="admin">Admin</option>
+        </select>
+        
+        <!-- Group Size Selection (shown only for students) -->
+        <div id="groupSizeSection" style="display: none;">
+          <select id="groupSize" onchange="handleGroupSizeChange()">
+            <option value="">Select Group Size</option>
+            <option value="2">2 Students</option>
+            <option value="3">3 Students</option>
+          </select>
+        </div>
+        
+        <!-- Role Description -->
+        <div id="roleDescription" class="role-description" style="display: none;">
+          <p id="roleText"></p>
+        </div>
+      </div>
 
-      <input type="text" id="displayName" placeholder="Full Name" required>
-      <input type="email" id="email" placeholder="Email Address" required>
-      <input type="password" id="password" placeholder="Password (min 6 characters)" required>
-      <input type="password" id="confirmPassword" placeholder="Confirm Password" required>
+      <!-- Details Section (Role-specific) -->
+      <div id="detailsSection" style="display: none;">
+        <!-- Student Fields -->
+        <div id="studentFields" class="role-fields" style="display: none;">
+          <!-- Group Member 1 -->
+          <div class="group-member" id="member1">
+            <h4>Student 1 (Group Leader)</h4>
+            <input type="text" id="studentId1" placeholder="Registration Number (e.g., 202_-Agr-U-_____)" oninput="validateField(this)">
+            <input type="text" id="fullName1" placeholder="Full Name" oninput="validateField(this)">
+            <input type="email" id="email1" placeholder="Email Address" oninput="validateField(this)">
+            
+            <div class="department-suggest">
+              <input type="text" id="department1" placeholder="Medium" oninput="validateField(this); suggestDepartments(this.value)">
+              <div id="departmentDropdown1" class="dropdown" style="display: none;"></div>
+            </div>
+            
+            <select id="batch1" onchange="validateField(this)">
+              <option value="">Select Batch/Year</option>
+              <option value="2026">2026</option>
+              <option value="2025">2025</option>
+              <option value="2024">2024</option>
+              <option value="2023">2023</option>
+              <option value="2022">2022</option>
+            </select>
+            
+            <input type="text" id="classNumber1" placeholder="Class Number" oninput="validateField(this)">
+            <select id="section1" onchange="validateField(this)">
+              <option value="">Select Section</option>
+              <option value="A">Section A</option>
+              <option value="B">Section B</option>
+              <option value="C">Section C</option>
+              <option value="D">Section D</option>
+              <option value="E">Section E</option>
+              <option value="F">Section F</option>
+            </select>
+            
+            <div class="phone-input">
+              <select id="countryCode1" class="country-code">
+                <option value="+92">🇵🇰 +92</option>
+                <option value="+1">🇺🇸 +1</option>
+                <option value="+44">🇬🇧 +44</option>
+                <option value="+91">🇮🇳 +91</option>
+                <option value="+971">🇦🇪 +971</option>
+              </select>
+              <input type="tel" id="phone1" placeholder="Phone Number" oninput="validateField(this)">
+            </div>
+          </div>
+          
+          <!-- Group Member 2 (Initially Hidden) -->
+          <div class="group-member" id="member2" style="display: none;">
+            <h4>Student 2</h4>
+            <input type="text" id="studentId2" placeholder="Registration Number (e.g., 202_-Agr-U-_____)" oninput="validateField(this)">
+            <input type="text" id="fullName2" placeholder="Full Name" oninput="validateField(this)">
+            <input type="email" id="email2" placeholder="Email Address" oninput="validateField(this)">
+            
+            <div class="department-suggest">
+              <input type="text" id="department2" placeholder="Medium" oninput="validateField(this); suggestDepartments(this.value)">
+              <div id="departmentDropdown2" class="dropdown" style="display: none;"></div>
+            </div>
+            
+            <select id="batch2" onchange="validateField(this)">
+              <option value="">Select Batch/Year</option>
+              <option value="2026">2026</option>
+              <option value="2025">2025</option>
+              <option value="2024">2024</option>
+              <option value="2023">2023</option>
+              <option value="2022">2022</option>
+            </select>
+            
+            <input type="text" id="classNumber2" placeholder="Class Number" oninput="validateField(this)">
+            <select id="section2" onchange="validateField(this)">
+              <option value="">Select Section</option>
+              <option value="A">Section A</option>
+              <option value="B">Section B</option>
+              <option value="C">Section C</option>
+              <option value="D">Section D</option>
+              <option value="E">Section E</option>
+              <option value="F">Section F</option>
+            </select>
+            
+            <div class="phone-input">
+              <select id="countryCode2" class="country-code">
+                <option value="+92">🇵🇰 +92</option>
+                <option value="+1">🇺🇸 +1</option>
+                <option value="+44">🇬🇧 +44</option>
+                <option value="+91">🇮🇳 +91</option>
+                <option value="+971">🇦🇪 +971</option>
+              </select>
+              <input type="tel" id="phone2" placeholder="Phone Number" oninput="validateField(this)">
+            </div>
+          </div>
+          
+          <!-- Group Member 3 (Initially Hidden) -->
+          <div class="group-member" id="member3" style="display: none;">
+            <h4>Student 3</h4>
+            <input type="text" id="studentId3" placeholder="Registration Number (e.g., 202_-Agr-U-_____)" oninput="validateField(this)">
+            <input type="text" id="fullName3" placeholder="Full Name" oninput="validateField(this)">
+            <input type="email" id="email3" placeholder="Email Address" oninput="validateField(this)">
+            
+            <div class="department-suggest">
+              <input type="text" id="department3" placeholder="Medium" oninput="validateField(this); suggestDepartments(this.value)">
+              <div id="departmentDropdown3" class="dropdown" style="display: none;"></div>
+            </div>
+            
+            <select id="batch3" onchange="validateField(this)">
+              <option value="">Select Batch/Year</option>
+              <option value="2026">2026</option>
+              <option value="2025">2025</option>
+              <option value="2024">2024</option>
+              <option value="2023">2023</option>
+              <option value="2022">2022</option>
+            </select>
+            
+            <input type="text" id="classNumber3" placeholder="Class Number" oninput="validateField(this)">
+            <select id="section3" onchange="validateField(this)">
+              <option value="">Select Section</option>
+              <option value="A">Section A</option>
+              <option value="B">Section B</option>
+              <option value="C">Section C</option>
+              <option value="D">Section D</option>
+              <option value="E">Section E</option>
+              <option value="F">Section F</option>
+            </select>
+            
+            <div class="phone-input">
+              <select id="countryCode3" class="country-code">
+                <option value="+92">🇵🇰 +92</option>
+                <option value="+1">🇺🇸 +1</option>
+                <option value="+44">🇬🇧 +44</option>
+                <option value="+91">🇮🇳 +91</option>
+                <option value="+971">🇦🇪 +971</option>
+              </select>
+              <input type="tel" id="phone3" placeholder="Phone Number" oninput="validateField(this)">
+            </div>
+          </div>
+        </div>
+        
+        <!-- Supervisor Fields -->
+        <div id="supervisorFields" class="role-fields" style="display: none;">
+          <input type="text" id="employeeId" placeholder="Employee ID" oninput="validateField(this)">
+          
+          <div class="department-suggest">
+            <input type="text" id="departmentSup" placeholder="Medium" oninput="validateField(this); suggestDepartments(this.value)">
+            <div id="departmentDropdownSup" class="dropdown" style="display: none;"></div>
+          </div>
+          
+          <input type="text" id="designation" placeholder="Designation" oninput="validateField(this)">
+          
+          <div class="phone-input">
+            <select id="countryCodeSup" class="country-code">
+              <option value="+92">🇵🇰 +92</option>
+              <option value="+1">🇺🇸 +1</option>
+              <option value="+44">🇬🇧 +44</option>
+              <option value="+91">🇮🇳 +91</option>
+              <option value="+971">🇦🇪 +971</option>
+            </select>
+            <input type="tel" id="phoneSup" placeholder="Phone Number" oninput="validateField(this)">
+          </div>
+        </div>
+        
+        <!-- Admin Fields -->
+        <div id="adminFields" class="role-fields" style="display: none;">
+          <input type="text" id="adminId" placeholder="Admin ID" oninput="validateField(this)">
+          <input type="text" id="office" placeholder="Office Location" oninput="validateField(this)">
+          
+          <div class="phone-input">
+            <select id="countryCodeAdmin" class="country-code">
+              <option value="+92">🇵🇰 +92</option>
+              <option value="+1">🇺🇸 +1</option>
+              <option value="+44">🇬🇧 +44</option>
+              <option value="+91">🇮🇳 +91</option>
+              <option value="+971">🇦🇪 +971</option>
+            </select>
+            <input type="tel" id="phoneAdmin" placeholder="Phone Number" oninput="validateField(this)">
+          </div>
+        </div>
+      </div>
 
-      <button class="register-btn" onclick="register()">Register</button>
+      <!-- Account Section -->
+      <div id="accountSection" style="display: none;">
+        <h4>Group Account Setup</h4>
+        <p>All group members will use their Registration number for login. Set a common password for the group.</p>
+        
+        <!-- Password with Strength Indicator -->
+        <div class="password-container">
+          <input type="password" id="password" placeholder="Set Group Password (min 6 characters)" oninput="checkPasswordStrength(this.value)">
+          <div class="password-strength" id="passwordStrength">
+            <div class="strength-bar" id="strengthBar"></div>
+            <span class="strength-text" id="strengthText">Enter password</span>
+          </div>
+        </div>
+        
+        <input type="password" id="confirmPassword" placeholder="Confirm Group Password" oninput="validateField(this)">
+        
+        <!-- Terms & Conditions -->
+        <div class="terms-section">
+          <label class="checkbox-container">
+            <input type="checkbox" id="termsAccepted" onchange="validateField(this)">
+            <span class="checkmark"></span>
+            I agree to <a href="#" onclick="showTermsModal(); return false;">Terms & Conditions</a> and <a href="#" onclick="showPrivacyModal(); return false;">Privacy Policy</a>
+          </label>
+        </div>
+      </div>
+
+      <!-- Verification Section -->
+      <div id="verificationSection" style="display: none;">
+        <div class="verification-message">
+          <h3>Verify Your Email</h3>
+          <p>We've sent a verification code to your email address. Please enter it below to complete your registration.</p>
+        </div>
+        
+        <div class="verification-code">
+          <input type="text" maxlength="1" class="code-input" oninput="moveToNext(this, 1)">
+          <input type="text" maxlength="1" class="code-input" oninput="moveToNext(this, 2)">
+          <input type="text" maxlength="1" class="code-input" oninput="moveToNext(this, 3)">
+          <input type="text" maxlength="1" class="code-input" oninput="moveToNext(this, 4)">
+          <input type="text" maxlength="1" class="code-input" oninput="moveToNext(this, 5)">
+          <input type="text" maxlength="1" class="code-input" oninput="moveToNext(this, 6)">
+        </div>
+        
+        <button type="button" class="resend-btn" onclick="resendVerificationCode()">Resend Code</button>
+      </div>
+
+      <!-- Navigation Buttons -->
+      <div class="nav-buttons" id="navButtons">
+        <button type="button" class="nav-btn" id="prevBtn" onclick="prevStep()" disabled>Previous</button>
+        <button type="button" class="nav-btn primary" id="nextBtn" onclick="nextStep()">Next</button>
+      </div>
+
+      <button class="register-btn" onclick="register()" style="display: none;" id="registerBtn">Register</button>
 
       <div class="register-note">
         Already have an account?
@@ -193,6 +1151,79 @@
     2026 Agriculture University — FYP Management System
   </footer>
 
+  <!-- Terms & Conditions Modal -->
+  <div id="termsModal" class="modal">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h3 class="modal-title">Terms & Conditions</h3>
+        <button class="modal-close" onclick="closeModal('termsModal')">&times;</button>
+      </div>
+      <div class="modal-body">
+        <p>Welcome to the FYP Management System. By using our platform, you agree to the following terms:</p>
+        
+        <h4>1. Account Registration</h4>
+        <p>You must provide accurate information when creating your account. You are responsible for maintaining the confidentiality of your account credentials.</p>
+        
+        <h4>2. Acceptable Use</h4>
+        <p>You agree to use the platform only for legitimate academic purposes related to Final Year Project management.</p>
+        
+        <h4>3. Data Privacy</h4>
+        <p>We respect your privacy and handle your data in accordance with our Privacy Policy. Your academic information is used solely for educational purposes.</p>
+        
+        <h4>4. Intellectual Property</h4>
+        <p>You retain ownership of your project work. By using the platform, you grant us permission to store and display your work for academic evaluation.</p>
+        
+        <h4>5. System Availability</h4>
+        <p>While we strive to maintain 24/7 availability, we cannot guarantee uninterrupted service. We are not liable for temporary system outages.</p>
+        
+        <h4>6. Academic Integrity</h4>
+        <p>All users must maintain academic honesty. Plagiarism or any form of academic misconduct is strictly prohibited.</p>
+        
+        <p><strong>Last updated:</strong> March 2026</p>
+      </div>
+    </div>
+  </div>
+
+  <!-- Privacy Policy Modal -->
+  <div id="privacyModal" class="modal">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h3 class="modal-title">Privacy Policy</h3>
+        <button class="modal-close" onclick="closeModal('privacyModal')">&times;</button>
+      </div>
+      <div class="modal-body">
+        <p>Your privacy is important to us. This policy explains how we collect, use, and protect your information.</p>
+        
+        <h4>Information We Collect</h4>
+        <ul>
+          <li>Personal information (name, email, phone number)</li>
+          <li>Academic information (student ID, department, batch)</li>
+          <li>Project-related data (proposals, reports, progress updates)</li>
+          <li>System usage data (login times, page visits)</li>
+        </ul>
+        
+        <h4>How We Use Your Information</h4>
+        <ul>
+          <li>To provide and maintain the FYP Management System</li>
+          <li>To facilitate communication between students and supervisors</li>
+          <li>To track project progress and generate reports</li>
+          <li>To improve our services and user experience</li>
+        </ul>
+        
+        <h4>Data Protection</h4>
+        <p>We implement appropriate security measures to protect your data, including encryption and secure authentication protocols.</p>
+        
+        <h4>Data Sharing</h4>
+        <p>Your information is shared only with authorized university personnel for academic purposes. We do not sell or rent your personal data to third parties.</p>
+        
+        <h4>Your Rights</h4>
+        <p>You have the right to access, update, or delete your personal information. Contact us for any data-related requests.</p>
+        
+        <p><strong>Last updated:</strong> March 2026</p>
+      </div>
+    </div>
+  </div>
+
 <script src="https://www.gstatic.com/firebasejs/9.22.1/firebase-app-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/9.22.1/firebase-auth-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/9.22.1/firebase-firestore-compat.js"></script>
@@ -200,6 +1231,708 @@
 <script src="js/firebase-config.js"></script>
 <script src="js/firebase-auth.js"></script>
 <script src="js/auth.js"></script>
+
+<!-- Enhanced Registration Script -->
+<script>
+console.log('Registration script loaded successfully!');
+
+let currentStep = 1;
+const totalSteps = 3;
+
+// Role descriptions
+const roleDescriptions = {
+  student: "Students can submit project proposals, track progress, communicate with supervisors, and manage their FYP journey from start to finish.",
+  supervisor: "Supervisors can guide students, evaluate proposals, monitor progress, provide feedback, and manage multiple student projects efficiently.",
+  admin: "Administrators oversee the entire FYP system, manage user accounts, generate reports, and ensure smooth operation of the platform."
+};
+
+// Handle role selection
+function handleRoleChange() {
+  const role = document.getElementById('role').value;
+  const roleDescription = document.getElementById('roleDescription');
+  const roleText = document.getElementById('roleText');
+  const groupSizeSection = document.getElementById('groupSizeSection');
+  
+  // Hide all role-specific fields
+  document.getElementById('studentFields').style.display = 'none';
+  document.getElementById('supervisorFields').style.display = 'none';
+  document.getElementById('adminFields').style.display = 'none';
+  
+  // Hide group size section initially
+  groupSizeSection.style.display = 'none';
+  
+  if (role === 'student') {
+    roleDescription.style.display = 'block';
+    roleText.textContent = 'Register as a group of 2-3 students for your Final Year Project. Each member will receive individual login credentials but will be part of the same project group.';
+    groupSizeSection.style.display = 'block';
+  } else if (role === 'supervisor') {
+    roleDescription.style.display = 'block';
+    roleText.textContent = 'Register as a project supervisor to guide and evaluate student FYP projects.';
+    document.getElementById('supervisorFields').style.display = 'block';
+  } else if (role === 'admin') {
+    roleDescription.style.display = 'block';
+    roleText.textContent = 'Register as an administrator to manage the FYP system and oversee all operations.';
+    document.getElementById('adminFields').style.display = 'block';
+  } else {
+    roleDescription.style.display = 'none';
+  }
+}
+
+// Handle group size selection
+function handleGroupSizeChange() {
+  const groupSize = document.getElementById('groupSize').value;
+  const member2 = document.getElementById('member2');
+  const member3 = document.getElementById('member3');
+  
+  // Hide all additional members first
+  member2.style.display = 'none';
+  member3.style.display = 'none';
+  
+  if (groupSize === '2') {
+    member2.style.display = 'block';
+    document.getElementById('studentFields').style.display = 'block';
+  } else if (groupSize === '3') {
+    member2.style.display = 'block';
+    member3.style.display = 'block';
+    document.getElementById('studentFields').style.display = 'block';
+  } else {
+    document.getElementById('studentFields').style.display = 'none';
+  }
+}
+
+// Update progress indicator
+function updateProgress(step) {
+  currentStep = step;
+  
+  // Update step classes
+  for (let i = 1; i <= totalSteps; i++) {
+    const stepElement = document.getElementById('step' + i);
+    stepElement.classList.remove('active', 'completed');
+    
+    if (i < step) {
+      stepElement.classList.add('completed');
+    } else if (i === step) {
+      stepElement.classList.add('active');
+    }
+  }
+}
+
+// Password strength checker
+function checkPasswordStrength(password) {
+  const strengthBar = document.getElementById('strengthBar');
+  const strengthText = document.getElementById('strengthText');
+  
+  let strength = 0;
+  
+  // Check password strength
+  if (password.length >= 6) strength++;
+  if (password.length >= 10) strength++;
+  if (/[a-z]/.test(password) && /[A-Z]/.test(password)) strength++;
+  if (/[0-9]/.test(password)) strength++;
+  if (/[^a-zA-Z0-9]/.test(password)) strength++;
+  
+  // Update UI
+  strengthBar.className = 'strength-bar';
+  strengthText.className = 'strength-text';
+  
+  if (password.length === 0) {
+    strengthText.textContent = 'Enter password';
+  } else if (strength <= 2) {
+    strengthBar.classList.add('weak');
+    strengthText.classList.add('weak');
+    strengthText.textContent = 'Weak password';
+  } else if (strength <= 4) {
+    strengthBar.classList.add('medium');
+    strengthText.classList.add('medium');
+    strengthText.textContent = 'Medium strength';
+  } else {
+    strengthBar.classList.add('strong');
+    strengthText.classList.add('strong');
+    strengthText.textContent = 'Strong password';
+  }
+  
+  validateField(document.getElementById('password'));
+}
+
+// Real-time field validation
+function validateField(field) {
+  let isValid = true;
+  let value = field.value.trim();
+  
+  // Remove previous validation classes
+  field.classList.remove('field-valid', 'field-invalid');
+  
+  // Validate based on field type and ID
+  if (field.id.includes('email')) {
+    isValid = /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(value);
+  } else if (field.id === 'password') {
+    isValid = value.length >= 6;
+  } else if (field.id === 'confirmPassword') {
+    const password = document.getElementById('password').value;
+    isValid = value === password && value.length > 0;
+  } else if (field.id === 'displayName') {
+    isValid = value.length >= 2;
+  } else if (field.id.includes('Id')) {
+    isValid = value.length >= 3;
+  } else if (field.id.includes('phone')) {
+    isValid = value.length >= 7;
+  } else {
+    isValid = value.length > 0;
+  }
+  
+  // Add validation class
+  if (value.length > 0) {
+    field.classList.add(isValid ? 'field-valid' : 'field-invalid');
+  }
+  
+  return isValid;
+}
+
+// Navigation functions
+function nextStep() {
+  if (currentStep < totalSteps) {
+    // Validate current step
+    if (validateCurrentStep()) {
+      currentStep++;
+      showStep(currentStep);
+      updateProgress(currentStep);
+    }
+  }
+}
+
+function prevStep() {
+  if (currentStep > 1) {
+    currentStep--;
+    showStep(currentStep);
+    updateProgress(currentStep);
+  }
+}
+
+function showStep(step) {
+  // Hide all sections
+  document.getElementById('roleSection').style.display = 'none';
+  document.getElementById('detailsSection').style.display = 'none';
+  document.getElementById('accountSection').style.display = 'none';
+  document.getElementById('verificationSection').style.display = 'none';
+  
+  // Hide navigation buttons on verification step
+  const navButtons = document.getElementById('navButtons');
+  const registerBtn = document.getElementById('registerBtn');
+  
+  // Show current section
+  if (step === 1) {
+    document.getElementById('roleSection').style.display = 'block';
+    navButtons.style.display = 'flex';
+    registerBtn.style.display = 'none';
+  } else if (step === 2) {
+    document.getElementById('detailsSection').style.display = 'block';
+    navButtons.style.display = 'flex';
+    registerBtn.style.display = 'none';
+  } else if (step === 3) {
+    document.getElementById('accountSection').style.display = 'block';
+    navButtons.style.display = 'none';
+    registerBtn.style.display = 'block';
+  }
+  
+  // Update navigation buttons
+  updateNavButtons();
+}
+
+function updateNavButtons() {
+  const prevBtn = document.getElementById('prevBtn');
+  const nextBtn = document.getElementById('nextBtn');
+  
+  // Previous button
+  if (currentStep === 1) {
+    prevBtn.disabled = true;
+  } else {
+    prevBtn.disabled = false;
+  }
+  
+  // Next button - always show "Next" since we removed verification step
+  nextBtn.textContent = 'Next';
+  nextBtn.onclick = nextStep;
+}
+
+function validateCurrentStep() {
+  if (currentStep === 1) {
+    const role = document.getElementById('role').value;
+    if (!role) {
+      highlightInvalidField(document.getElementById('role'));
+      alert('Please select a role to continue.');
+      return false;
+    }
+    return true;
+  } else if (currentStep === 2) {
+    const role = document.getElementById('role').value;
+    
+    // For students, validate based on group size
+    if (role === 'student') {
+      const groupSize = document.getElementById('groupSize').value;
+      if (!groupSize) {
+        highlightInvalidField(document.getElementById('groupSize'));
+        alert('Please select group size to continue.');
+        return false;
+      }
+      
+      // Validate each group member's fields
+      for (let i = 1; i <= parseInt(groupSize); i++) {
+        const memberFields = [
+          `studentId${i}`, `fullName${i}`, `email${i}`, 
+          `department${i}`, `batch${i}`, `classNumber${i}`, 
+          `section${i}`, `phone${i}`
+        ];
+        
+        for (const fieldId of memberFields) {
+          const field = document.getElementById(fieldId);
+          if (field && !validateField(field)) {
+            highlightInvalidField(field);
+            alert(`Please fill in all required fields correctly for Student ${i}.`);
+            return false;
+          }
+        }
+      }
+    } else {
+      // For supervisor/admin
+      const fields = document.querySelectorAll('#' + role + 'Fields input, #' + role + 'Fields select');
+      for (const field of fields) {
+        if (!validateField(field)) {
+          highlightInvalidField(field);
+          alert('Please fill in all required fields correctly.');
+          return false;
+        }
+      }
+    }
+    return true;
+  } else if (currentStep === 3) {
+    // Check terms acceptance
+    const termsAccepted = document.getElementById('termsAccepted').checked;
+    if (!termsAccepted) {
+      highlightInvalidField(document.getElementById('termsAccepted'));
+      alert('Please accept the Terms & Conditions to continue.');
+      return false;
+    }
+    
+    // Validate password fields
+    const password = document.getElementById('password');
+    const confirmPassword = document.getElementById('confirmPassword');
+    
+    if (!validateField(password)) {
+      highlightInvalidField(password);
+      alert('Please set a valid password.');
+      return false;
+    }
+    
+    if (!validateField(confirmPassword)) {
+      highlightInvalidField(confirmPassword);
+      alert('Please confirm your password correctly.');
+      return false;
+    }
+    
+    return true;
+  }
+  return false;
+}
+
+// Highlight invalid field
+function highlightInvalidField(field) {
+  // Remove existing highlights
+  document.querySelectorAll('.field-invalid-highlight').forEach(el => {
+    el.classList.remove('field-invalid-highlight');
+  });
+  
+  // Add highlight to invalid field
+  field.classList.add('field-invalid-highlight');
+  field.focus();
+  
+  // Scroll to field if not visible
+  field.scrollIntoView({ behavior: 'smooth', block: 'center' });
+  
+  // Remove highlight after user starts typing
+  const removeHighlight = () => {
+    field.classList.remove('field-invalid-highlight');
+    field.removeEventListener('input', removeHighlight);
+    field.removeEventListener('change', removeHighlight);
+  };
+  
+  field.addEventListener('input', removeHighlight);
+  field.addEventListener('change', removeHighlight);
+}
+
+// Email verification functions
+function sendVerificationEmail() {
+  const email = document.getElementById('email').value;
+  console.log('Sending verification email to:', email);
+  // In a real implementation, this would send an actual email
+  alert('Verification code sent to ' + email);
+}
+
+function moveToNext(input, index) {
+  if (input.value.length === 1) {
+    const nextInput = input.parentElement.children[index];
+    if (nextInput && nextInput.tagName === 'INPUT') {
+      nextInput.focus();
+    }
+  }
+  
+  // Check if all 6 digits are entered
+  const codeInputs = document.querySelectorAll('.code-input');
+  let code = '';
+  codeInputs.forEach(input => code += input.value);
+  
+  if (code.length === 6) {
+    verifyCode(code);
+  }
+}
+
+function verifyCode(code) {
+  console.log('Verification disabled - demo mode');
+  // Email verification is non-functional for now
+  alert('Email verification is temporarily disabled. This is a demo only.');
+  
+  // Clear all inputs
+  document.querySelectorAll('.code-input').forEach(input => input.value = '');
+  document.querySelector('.code-input').focus();
+}
+
+function resendVerificationCode() {
+  sendVerificationEmail();
+  alert('Verification code resent!');
+}
+
+// Success animation
+function showSuccessAnimation() {
+  const registerBox = document.querySelector('.register-box');
+  registerBox.classList.add('success-animation');
+}
+
+// Modal functions
+function showTermsModal() {
+  document.getElementById('termsModal').style.display = 'flex';
+}
+
+function showPrivacyModal() {
+  document.getElementById('privacyModal').style.display = 'flex';
+}
+
+function closeModal(modalId) {
+  document.getElementById(modalId).style.display = 'none';
+}
+
+// Department suggestions
+function suggestDepartments(query) {
+  console.log('suggestDepartments called with query:', query);
+
+  const departments = [
+    'Computer Science',
+    'Information Technology',
+    'Artificial Intelligence',
+    'Cyber Security',
+    'Business Administration',
+    'Management Sciences',
+    'Finance'
+  ];
+
+  const role = document.getElementById('role').value;
+  console.log('Current role:', role);
+
+  const dropdownId = role === 'supervisor' ? 'departmentDropdownSup' : 'departmentDropdown';
+  const targetDropdown = document.getElementById(dropdownId);
+
+  console.log('Dropdown ID:', dropdownId);
+  console.log('Target dropdown element:', targetDropdown);
+
+  if (query.length < 2) {
+    targetDropdown.style.display = 'none';
+    return;
+  }
+
+  const filtered = departments.filter(dept =>
+    dept.toLowerCase().includes(query.toLowerCase())
+  );
+
+  console.log('Filtered departments:', filtered);
+
+  if (filtered.length > 0) {
+    targetDropdown.innerHTML = filtered.map(dept =>
+      `<div class="dropdown-item" onclick="selectDepartment('${dept}', '${dropdownId}')">${dept}</div>`
+    ).join('');
+    targetDropdown.style.display = 'block';
+    console.log('Dropdown updated and shown');
+  } else {
+    targetDropdown.style.display = 'none';
+    console.log('No matches, hiding dropdown');
+  }
+}
+
+function selectDepartment(department, dropdownId) {
+  const role = document.getElementById('role').value;
+  const inputId = role === 'supervisor' ? 'departmentSup' : 'department';
+  document.getElementById(inputId).value = department;
+  document.getElementById(dropdownId).style.display = 'none';
+  validateField(document.getElementById(inputId));
+}
+
+// Close modals when clicking outside
+window.onclick = function(event) {
+  if (event.target.classList.contains('modal')) {
+    event.target.style.display = 'none';
+  }
+}
+
+// Initialize on page load
+document.addEventListener('DOMContentLoaded', function() {
+  updateProgress(1);
+  updateNavButtons();
+});
+
+// Enhanced register function for group registration
+function register() {
+  if (!validateCurrentStep()) {
+    alert('Please fill in all required fields correctly.');
+    return;
+  }
+  
+  const role = document.getElementById('role').value;
+  
+  if (role === 'student') {
+    // Handle group registration
+    registerGroup();
+  } else {
+    // Handle individual registration (supervisor/admin)
+    registerIndividual();
+  }
+}
+
+// Generate unique group ID (0001-1000)
+async function generateGroupId() {
+  const groupsRef = firebase.firestore().collection('groups');
+  const snapshot = await groupsRef.get();
+  
+  // Find the highest existing group ID
+  let maxId = 0;
+  snapshot.forEach(doc => {
+    const groupId = doc.data().groupId;
+    const idNum = parseInt(groupId.replace('GRP', ''));
+    if (idNum > maxId) {
+      maxId = idNum;
+    }
+  });
+  
+  // Generate next ID (format: GRP0001, GRP0002, etc.)
+  const nextId = maxId + 1;
+  if (nextId > 1000) {
+    throw new Error('Maximum group limit reached (1000 groups)');
+  }
+
+  return `GRP${nextId.toString().padStart(4, '0')}`;
+}
+
+// Generate unique student login ID
+async function generateStudentLoginId(registrationNumber) {
+  // Extract the unique part from registration number
+  const uniquePart = registrationNumber.replace(/[^0-9]/g, '').slice(-4);
+  const loginId = `STU${uniquePart}`;
+
+  // Check if this login ID already exists
+  const usersRef = firebase.firestore().collection('users');
+  const snapshot = await usersRef.where('loginId', '==', loginId).get();
+
+  if (!snapshot.empty) {
+    // If exists, add a suffix
+    let suffix = 1;
+    let newLoginId = `${loginId}_${suffix}`;
+    let newSnapshot = await usersRef.where('loginId', '==', newLoginId).get();
+
+    while (!newSnapshot.empty) {
+      suffix++;
+      newLoginId = `${loginId}_${suffix}`;
+      newSnapshot = await usersRef.where('loginId', '==', newLoginId).get();
+    }
+    return newLoginId;
+  } else {
+    return loginId;
+  }
+}
+
+// Register group of students
+async function registerGroup() {
+  const groupSize = document.getElementById('groupSize').value;
+  const groupData = {
+    groupId: null, // Will be assigned
+    groupSize: parseInt(groupSize),
+    members: [],
+    createdAt: firebase.firestore.FieldValue.serverTimestamp(),
+    isActive: true
+  };
+  
+  // Collect data for each group member
+  for (let i = 1; i <= parseInt(groupSize); i++) {
+    const registrationNumber = document.getElementById(`studentId${i}`).value;
+    
+    const memberData = {
+      registrationNumber: registrationNumber,
+      loginId: registrationNumber, // Use registration number as login ID
+      fullName: document.getElementById(`fullName${i}`).value,
+      email: document.getElementById(`email${i}`).value,
+      medium: document.getElementById(`department${i}`).value,
+      batch: document.getElementById(`batch${i}`).value,
+      classNumber: document.getElementById(`classNumber${i}`).value,
+      section: document.getElementById(`section${i}`).value,
+      phone: document.getElementById(`countryCode${i}`).value + document.getElementById(`phone${i}`).value,
+      role: 'student',
+      isGroupLeader: i === 1
+    };
+    groupData.members.push(memberData);
+  }
+  
+  try {
+    // Generate unique group ID
+    const groupId = await generateGroupId();
+    groupData.groupId = groupId;
+    
+    // Create group document in Firestore
+    await firebase.firestore().collection('groups').doc(groupId).set(groupData);
+    
+    // Create individual user accounts for each member
+    const createdUsers = [];
+    for (let i = 0; i < groupData.members.length; i++) {
+      const member = groupData.members[i];
+      
+      // Create Firebase Auth account with email as auth identifier
+      const userCredential = await firebase.auth().createUserWithEmailAndPassword(
+        member.email, 
+        document.getElementById('password').value // Use same password for all group members
+      );
+      
+      const user = userCredential.user;
+      
+      // Update user profile
+      await user.updateProfile({
+        displayName: member.fullName
+      });
+      
+      // Store user data in Firestore with registration number as login ID
+      await firebase.firestore().collection('users').doc(user.uid).set({
+        uid: user.uid,
+        email: member.email,
+        loginId: member.loginId, 
+        displayName: member.fullName,
+        role: member.role,
+        groupId: groupId,
+        isGroupLeader: member.isGroupLeader,
+        registrationNumber: member.registrationNumber,
+        medium: member.medium,
+        batch: member.batch,
+        classNumber: member.classNumber,
+        section: member.section,
+        phone: member.phone,
+        createdAt: firebase.firestore.FieldValue.serverTimestamp(),
+        isActive: true
+      });
+      
+      createdUsers.push({
+        uid: user.uid,
+        loginId: member.loginId,
+        email: member.email,
+        fullName: member.fullName,
+        isGroupLeader: member.isGroupLeader
+      });
+    }
+    
+    // Show success message with group ID and login IDs (registration numbers)
+    let successMessage = `Group Registration Successful!\n\nGROUP ID: ${groupId}\n\nGROUP MEMBERS (${groupSize}):\n`;
+    createdUsers.forEach((user, index) => {
+      const leaderText = user.isGroupLeader ? ' (Group Leader)' : '';
+      successMessage += `\n${index + 1}. ${user.fullName}${leaderText}\n   Login ID: ${user.loginId}\n   Email: ${user.email}`;
+    });
+    
+    successMessage += `\n\nAll members use the same password you set.\n\nRedirecting to login page...`;
+    
+    alert(successMessage);
+    
+    // Redirect to login
+    window.location.href = 'login.html';
+    
+  } catch (error) {
+    console.error('Group registration error:', error);
+    let errorMessage = 'Group registration failed. Please try again.';
+    
+    if (error.code === 'auth/email-already-in-use') {
+      errorMessage = 'One or more email addresses are already registered. Please use different emails.';
+    } else if (error.code === 'auth/weak-password') {
+      errorMessage = 'Password is too weak. Please choose a stronger password.';
+    } else if (error.code === 'auth/invalid-email') {
+      errorMessage = 'One or more email addresses are invalid. Please check and try again.';
+    } else if (error.message.includes('Maximum group limit')) {
+      errorMessage = 'Maximum group limit reached. Please contact administrator.';
+    }
+    
+    alert(errorMessage);
+  }
+}
+
+// Register individual (supervisor/admin)
+async function registerIndividual() {
+  const formData = {
+    role: document.getElementById('role').value,
+    displayName: document.getElementById('displayName').value,
+    email: document.getElementById('email').value,
+    password: document.getElementById('password').value,
+    timestamp: new Date().toISOString()
+  };
+  
+  // Add role-specific data
+  if (formData.role === 'supervisor') {
+    formData.employeeId = document.getElementById('employeeId').value;
+    formData.medium = document.getElementById('departmentSup').value;
+    formData.designation = document.getElementById('designation').value;
+  } else if (formData.role === 'admin') {
+    formData.adminId = document.getElementById('adminId').value;
+    formData.office = document.getElementById('office').value;
+  }
+  
+  try {
+    // Create Firebase user account
+    const userCredential = await firebase.auth().createUserWithEmailAndPassword(formData.email, formData.password);
+    const user = userCredential.user;
+    
+    // Update user profile
+    await user.updateProfile({
+      displayName: formData.displayName
+    });
+    
+    // Store user data in Firestore
+    await firebase.firestore().collection('users').doc(user.uid).set({
+      uid: user.uid,
+      email: formData.email,
+      displayName: formData.displayName,
+      role: formData.role,
+      createdAt: firebase.firestore.FieldValue.serverTimestamp(),
+      isActive: true,
+      ...formData
+    });
+    
+    alert('Registration successful! Redirecting to login page...');
+    window.location.href = 'login.html';
+    
+  } catch (error) {
+    console.error('Registration error:', error);
+    let errorMessage = 'Registration failed. Please try again.';
+    
+    if (error.code === 'auth/email-already-in-use') {
+      errorMessage = 'This email is already registered. Please use a different email or login.';
+    } else if (error.code === 'auth/weak-password') {
+      errorMessage = 'Password is too weak. Please choose a stronger password.';
+    } else if (error.code === 'auth/invalid-email') {
+      errorMessage = 'Invalid email address. Please check and try again.';
+    }
+    
+    alert(errorMessage);
+  }
+}
+
+</script>
 
 </body>
 </html>
