@@ -12,10 +12,47 @@
   <script src="https://www.gstatic.com/firebasejs/9.22.1/firebase-app-compat.js"></script>
   <script src="https://www.gstatic.com/firebasejs/9.22.1/firebase-firestore-compat.js"></script>
   <script src="https://www.gstatic.com/firebasejs/9.22.1/firebase-storage-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/9.22.1/firebase-auth-compat.js"></script>
+  
+  <!-- Firebase Configuration (must load after SDK) -->
   <script src="js/firebase-config.js"></script>
   <script src="js/firebase-auth.js"></script>
   <script src="js/auth.js"></script>
   <script src="js/student.js"></script>
+  
+  <!-- Verify Firebase is loaded -->
+  <script>
+    console.log('🔍 Firebase Check:');
+    console.log('- Firebase available:', typeof firebase !== 'undefined');
+    console.log('- Firestore available:', typeof firebase !== 'undefined' && typeof firebase.firestore !== 'undefined');
+    console.log('- Auth available:', typeof firebase !== 'undefined' && typeof firebase.auth !== 'undefined');
+  </script>
+  
+  <!-- Initialize Dashboard Data Loading -->
+  <script>
+    // Ensure dashboard data loads after Firebase is fully initialized
+    document.addEventListener('DOMContentLoaded', function() {
+      console.log('� Student Dashboard Loaded');
+      
+      // Wait for Firebase to be ready, then load data
+      const waitForFirebase = () => {
+        if (typeof db !== 'undefined' && typeof auth !== 'undefined') {
+          console.log('✅ Firebase is ready, loading dashboard data...');
+          if (typeof loadAllDashboardData === 'function') {
+            loadAllDashboardData();
+          } else {
+            console.log('⚠️ loadAllDashboardData function not found');
+          }
+        } else {
+          console.log('⏳ Waiting for Firebase to initialize...');
+          setTimeout(waitForFirebase, 500);
+        }
+      };
+      
+      // Start waiting for Firebase
+      setTimeout(waitForFirebase, 1000);
+    });
+  </script>
 </head>
 
 <body>

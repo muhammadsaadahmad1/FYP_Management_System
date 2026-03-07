@@ -63,164 +63,156 @@ function loadUserData() {
 
 // Load all dashboard data
 async function loadAllDashboardData() {
+    // Check if Firebase is properly initialized
+    if (typeof db === 'undefined') {
+        console.error('❌ Firebase database (db) is not defined');
+        showNotification('Firebase not initialized. Please refresh the page.', 'error');
+        return;
+    }
+    
     const groupId = localStorage.getItem('groupId');
     const currentUserRole = localStorage.getItem('role');
     
+    console.log('🚀 Starting loadAllDashboardData');
+    console.log('📋 Group ID:', groupId);
+    console.log('👤 User Role:', currentUserRole);
+    console.log('🔥 Firebase db available:', typeof db !== 'undefined');
+    
     if (!groupId || currentUserRole !== 'student') {
-        console.log('Missing groupId or not student role');
+        console.log('❌ Missing required data');
+        console.log('- groupId:', groupId);
+        console.log('- role:', currentUserRole);
+        showNotification('Please log in as a student to access the dashboard', 'error');
         return;
     }
     
     try {
         showLoadingOverlay('Loading dashboard data...');
+        console.log('🔄 Loading data for groupId:', groupId);
         
-        // Fetch group data
-        const groupDoc = await firebase.firestore().collection('groups').doc(groupId).get();
+        // Test basic Firebase connection first
+        console.log('🔍 Testing Firebase connection...');
+        const testQuery = await db.collection('users').limit(1).get();
+        console.log('✅ Firebase connection working');
+        
+        // Fetch group data with error handling
+        console.log('📊 Fetching group data...');
         let groupData = {};
-        
-        if (groupDoc.exists) {
-            groupData = groupDoc.data();
-        } else {
-            // Create default group if it doesn't exist
-            groupData = await createDefaultGroup(groupId);
+        try {
+            const groupDoc = await db.collection('groups').doc(groupId).get();
+            if (groupDoc.exists) {
+                groupData = groupDoc.data();
+                console.log('✅ Group data found:', groupData);
+            } else {
+                console.log('📝 Group not found, creating default...');
+                groupData = await createDefaultGroup(groupId);
+                console.log('✅ Default group created:', groupData);
+            }
+        } catch (groupError) {
+            console.error('🔥 Error fetching group data:', groupError);
+            groupData = { groupId: groupId }; // Use minimal data
         }
         
-        // Fetch group members
-        const membersSnapshot = await firebase.firestore()
-            .collection('users')
-            .where('groupId', '==', groupId)
-            .where('role', '==', 'student')
-            .get();
-        
-        const members = [];
-        membersSnapshot.forEach(doc => {
-            const memberData = doc.data();
-            members.push({
-                id: doc.id,
-                name: memberData.displayName || memberData.name || 'Unknown',
-                registrationNumber: memberData.loginId || memberData.registrationNumber || 'N/A',
-                email: memberData.email || 'N/A',
-                isGroupLeader: memberData.isGroupLeader || false
+        // Fetch group members with error handling
+        console.log('👥 Fetching group members...');
+        let members = [];
+        try {
+            const membersSnapshot = await db.collection('users')
+                .where('groupId', '==', groupId)
+                .where('role', '==', 'student')
+                .get();
+            
+            membersSnapshot.forEach(doc => {
+                const memberData = doc.data();
+                console.log('👤 Found member:', memberData.displayName || memberData.name);
+                members.push({
+                    id: doc.id,
+                    name: memberData.displayName || memberData.name || 'Unknown',
+                    registrationNumber: memberData.loginId || memberData.registrationNumber || 'N/A',
+                    email: memberData.email || 'N/A',
+                    isGroupLeader: memberData.isGroupLeader || false,
+                    uid: doc.id,
+                    phone: memberData.phone || 'N/A',
+                    isActive: memberData.isActive !== false
+                });
             });
-        });
+            console.log(`✅ Found ${members.length} group members`);
+        } catch (membersError) {
+            console.error('🔥 Error fetching members:', membersError);
+            // Continue with empty members array
+        }
         
-        // Fetch tasks
-        const tasksSnapshot = await firebase.firestore()
-            .collection('tasks')
-            .where('groupId', '==', groupId)
-            .get();
-        
-        const tasks = [];
-        tasksSnapshot.forEach(doc => {
-            const taskData = doc.data();
-            tasks.push({
-                id: doc.id,
-                title: taskData.title,
-                assignedTo: taskData.assignedTo,
-                status: taskData.status
+        // Fetch proposals with error handling
+        console.log('📄 Fetching proposals...');
+        let proposals = [];
+        try {
+            const proposalsSnapshot = await db.collection('proposals')
+                .where('groupId', '==', groupId)
+                .get();
+            
+            proposalsSnapshot.forEach(doc => {
+                const proposalData = doc.data();
+                proposals.push({
+                    id: doc.id,
+                    title: proposalData.title || 'Untitled Proposal',
+                    status: proposalData.status || 'pending',
+                    submittedDate: proposalData.submittedDate || proposalData.createdAt,
+                    feedback: proposalData.feedback || 'No feedback yet',
+                    lastUpdated: proposalData.lastUpdated || proposalData.updatedAt
+                });
             });
-        });
+            console.log(`✅ Found ${proposals.length} proposals`);
+        } catch (proposalsError) {
+            console.error('🔥 Error fetching proposals:', proposalsError);
+            // Continue with empty proposals array
+        }
         
-        // Fetch files
-        const filesSnapshot = await firebase.firestore()
-            .collection('files')
-            .where('groupId', '==', groupId)
-            .get();
-        
-        const files = [];
-        filesSnapshot.forEach(doc => {
-            const fileData = doc.data();
-            files.push({
-                id: doc.id,
-                name: fileData.name,
-                uploadedBy: fileData.uploadedBy,
-                date: fileData.uploadDate,
-                status: fileData.status
-            });
-        });
-        
-        // Fetch meetings
-        const meetingsSnapshot = await firebase.firestore()
-            .collection('meetings')
-            .where('groupId', '==', groupId)
-            .get();
-        
-        const meetings = [];
-        meetingsSnapshot.forEach(doc => {
-            const meetingData = doc.data();
-            meetings.push({
-                id: doc.id,
-                date: meetingData.date,
-                type: meetingData.type,
-                status: meetingData.status
-            });
-        });
-        
-        // Fetch feedback
-        const feedbackSnapshot = await firebase.firestore()
-            .collection('feedback')
-            .where('groupId', '==', groupId)
-            .orderBy('timestamp', 'desc')
-            .get();
-        
-        const feedbacks = [];
-        feedbackSnapshot.forEach(doc => {
-            const feedbackData = doc.data();
-            feedbacks.push({
-                id: doc.id,
-                supervisor: feedbackData.supervisor,
-                message: feedbackData.message,
-                timestamp: feedbackData.timestamp
-            });
-        });
-        
-        // Fetch announcements
-        const announcementsSnapshot = await firebase.firestore()
-            .collection('announcements')
-            .orderBy('timestamp', 'desc')
-            .limit(5)
-            .get();
-        
-        const announcements = [];
-        announcementsSnapshot.forEach(doc => {
-            const announcementData = doc.data();
-            announcements.push({
-                id: doc.id,
-                title: announcementData.title,
-                content: announcementData.content,
-                timestamp: announcementData.timestamp
-            });
-        });
-        
-        // Update all sections
+        // Update UI with whatever data we have
+        console.log('🎨 Updating UI...');
         updateWelcomeMessage(groupData);
         updateGroupMembers(members);
         updateProjectOverview(groupData);
-        updateTaskAssignments(members, tasks);
-        updateFileUploads(members, files);
-        updateMeetingTable(meetings);
-        updateProposalStatus(groupData);
-        updateSupervisorFeedback(feedbacks);
-        updateAnnouncements(announcements);
-        updateNotificationCount(announcements.length);
+        updateProposalStatus(groupData, proposals);
         
-        hideLoadingOverlay();
-        
-    } catch (error) {
-        hideLoadingOverlay();
-        console.error('Error loading dashboard data:', error);
-        showNotification('Error loading dashboard data. Please check your connection.', 'error');
-        
-        // Show empty states
-        updateWelcomeMessage({ groupId: groupId });
-        updateGroupMembers([]);
-        updateProjectOverview({ groupId, projectTitle: 'No Project Data', supervisor: 'No Supervisor', timeline: 'N/A', progress: 0 });
+        // Update other sections with empty data for now
         updateTaskAssignments([], []);
         updateFileUploads([], []);
         updateMeetingTable([]);
-        updateProposalStatus({});
         updateSupervisorFeedback([]);
         updateAnnouncements([]);
+        updateNotificationCount(0);
+        
+        hideLoadingOverlay();
+        console.log('✅ Dashboard data loaded successfully!');
+        showNotification('Dashboard loaded successfully!', 'success');
+        
+    } catch (error) {
+        hideLoadingOverlay();
+        console.error('🔥 Critical error in loadAllDashboardData:', error);
+        console.error('Error details:', error.code, error.message);
+        
+        // Show user-friendly error message
+        let errorMessage = 'Error loading dashboard data';
+        
+        if (error.message.includes('permission-denied')) {
+            errorMessage = 'Permission denied. Please check your Firebase security rules.';
+        } else if (error.message.includes('index')) {
+            errorMessage = 'Database index required. Please check Firebase console.';
+        } else if (error.message.includes('network')) {
+            errorMessage = 'Network error. Please check your internet connection.';
+        } else if (error.message.includes('db is not defined') || error.message.includes('db is not found')) {
+            errorMessage = 'Firebase not initialized. Please refresh the page.';
+        } else {
+            errorMessage = `Dashboard Error: ${error.message}`;
+        }
+        
+        showNotification(errorMessage, 'error');
+        
+        // Show basic empty state
+        updateWelcomeMessage({ groupId: groupId || 'Unknown' });
+        updateGroupMembers([]);
+        updateProjectOverview({ groupId: groupId || 'Unknown', projectTitle: 'No Project Data', supervisor: 'No Supervisor', timeline: 'N/A', progress: 0 });
+        updateProposalStatus({}, []);
     }
 }
 
@@ -295,36 +287,140 @@ function updateGroupMembers(members) {
     membersList.innerHTML = '';
     
     if (members.length === 0) {
-        membersList.innerHTML = '<p style="color: #6c757d; text-align: center; padding: 20px;">No group members found</p>';
+        membersList.innerHTML = `
+            <div style="text-align: center; padding: 30px; color: #6c757d;">
+                <i class="fas fa-users" style="font-size: 48px; margin-bottom: 15px; opacity: 0.5;"></i>
+                <p style="font-size: 16px; margin-bottom: 10px;">No group members found</p>
+                <p style="font-size: 14px;">Students with the same Group ID will appear here</p>
+            </div>
+        `;
         console.log('⚠️ No members to display');
         return;
     }
     
-    members.forEach((member, index) => {
+    // Sort members: group leader first, then by name
+    const sortedMembers = members.sort((a, b) => {
+        if (a.isGroupLeader && !b.isGroupLeader) return -1;
+        if (!a.isGroupLeader && b.isGroupLeader) return 1;
+        return (a.name || '').localeCompare(b.name || '');
+    });
+    
+    // Create group header
+    const groupHeader = document.createElement('div');
+    groupHeader.className = 'group-header';
+    groupHeader.style.cssText = `
+        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        color: white;
+        padding: 15px;
+        border-radius: 8px;
+        margin-bottom: 15px;
+        text-align: center;
+    `;
+    groupHeader.innerHTML = `
+        <h3 style="margin: 0; font-size: 18px;">
+            <i class="fas fa-users"></i> Group Members (${members.length})
+        </h3>
+        <p style="margin: 5px 0 0 0; opacity: 0.9; font-size: 14px;">
+            All students sharing Group ID: ${localStorage.getItem('groupId')}
+        </p>
+    `;
+    membersList.appendChild(groupHeader);
+    
+    // Display each member
+    sortedMembers.forEach((member, index) => {
         console.log(`👤 Processing member ${index + 1}:`, member);
         
         const memberDiv = document.createElement('div');
         memberDiv.className = `member ${member.isGroupLeader ? 'leader' : ''}`;
+        memberDiv.style.cssText = `
+            background: ${member.isGroupLeader ? '#f8f9fa' : 'white'};
+            border: 2px solid ${member.isGroupLeader ? '#28a745' : '#e9ecef'};
+            border-radius: 8px;
+            padding: 15px;
+            margin-bottom: 10px;
+            position: relative;
+            transition: all 0.3s ease;
+        `;
         
-        const leaderBadge = member.isGroupLeader ? '<span class="leader-badge">Leader</span>' : '';
+        const leaderBadge = member.isGroupLeader ? 
+            `<span style="background: #28a745; color: white; padding: 4px 8px; border-radius: 4px; font-size: 12px; font-weight: bold;">
+                <i class="fas fa-crown"></i> Group Leader
+            </span>` : '';
+        
+        const statusBadge = member.isActive ? 
+            `<span style="background: #28a745; color: white; padding: 2px 6px; border-radius: 3px; font-size: 11px;">
+                Active
+            </span>` : 
+            `<span style="background: #dc3545; color: white; padding: 2px 6px; border-radius: 3px; font-size: 11px;">
+                Inactive
+            </span>`;
         
         memberDiv.innerHTML = `
-            <div class="member-info">
-                <div class="member-name">
-                    ${member.name} ${leaderBadge}
+            <div style="display: flex; justify-content: space-between; align-items: flex-start;">
+                <div style="flex: 1;">
+                    <div style="display: flex; align-items: center; margin-bottom: 8px;">
+                        <div style="width: 40px; height: 40px; background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); border-radius: 50%; display: flex; align-items: center; justify-content: center; color: white; font-weight: bold; margin-right: 12px;">
+                            ${(member.name || 'Unknown').charAt(0).toUpperCase()}
+                        </div>
+                        <div>
+                            <div style="font-weight: 600; font-size: 16px; color: #333;">
+                                ${member.name || 'Unknown'}
+                            </div>
+                            <div style="display: flex; gap: 8px; align-items: center; margin-top: 4px;">
+                                ${leaderBadge}
+                                ${statusBadge}
+                            </div>
+                        </div>
+                    </div>
+                    <div style="margin-left: 52px; color: #666; font-size: 14px;">
+                        <div style="margin-bottom: 3px;">
+                            <i class="fas fa-id-card" style="width: 16px;"></i>
+                            <strong>ID:</strong> ${member.registrationNumber || 'N/A'}
+                        </div>
+                        <div style="margin-bottom: 3px;">
+                            <i class="fas fa-envelope" style="width: 16px;"></i>
+                            <strong>Email:</strong> ${member.email || 'N/A'}
+                        </div>
+                        ${member.phone && member.phone !== 'N/A' ? `
+                        <div style="margin-bottom: 3px;">
+                            <i class="fas fa-phone" style="width: 16px;"></i>
+                            <strong>Phone:</strong> ${member.phone}
+                        </div>
+                        ` : ''}
+                        <div style="margin-bottom: 3px;">
+                            <i class="fas fa-user-tag" style="width: 16px;"></i>
+                            <strong>UID:</strong> ${member.uid || member.id}
+                        </div>
+                    </div>
                 </div>
-                <div class="member-details">
-                    ID: ${member.registrationNumber} | Email: ${member.email}
+                <div style="text-align: right;">
+                    <div style="color: #999; font-size: 12px; margin-bottom: 5px;">
+                        Member #${index + 1}
+                    </div>
+                    ${member.isGroupLeader ? 
+                        `<i class="fas fa-crown" style="color: #ffc107; font-size: 20px;"></i>` : 
+                        `<i class="fas fa-user" style="color: #6c757d; font-size: 20px;"></i>`
+                    }
                 </div>
             </div>
         `;
+        
+        // Add hover effect
+        memberDiv.addEventListener('mouseenter', () => {
+            memberDiv.style.transform = 'translateY(-2px)';
+            memberDiv.style.boxShadow = '0 4px 12px rgba(0,0,0,0.1)';
+        });
+        
+        memberDiv.addEventListener('mouseleave', () => {
+            memberDiv.style.transform = 'translateY(0)';
+            memberDiv.style.boxShadow = 'none';
+        });
         
         membersList.appendChild(memberDiv);
         console.log(`✅ Added member ${member.name} to display`);
     });
     
     console.log('✅ All group members displayed successfully');
-    console.log('🔍 Final members list HTML:', membersList.innerHTML);
 }
 
 // Update project overview
@@ -393,7 +489,7 @@ function updateSupervisorFeedback(feedbacks) {
     
     feedbackList.innerHTML = '';
     
-    if (!feedbackbacks || feedbacks.length === 0) {
+    if (!feedbacks || feedbacks.length === 0) {
         feedbackList.innerHTML = '<p style="color: #6c757d; text-align: center; padding: 20px;">No feedback available</p>';
         return;
     }
