@@ -1,0 +1,822 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Reports & Files - FYP Management System</title>
+  <link rel="stylesheet" href="css/style.css" />
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" />
+
+  <!-- Firebase SDK -->
+  <script src="https://www.gstatic.com/firebasejs/9.22.1/firebase-app-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/9.22.1/firebase-firestore-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/9.22.1/firebase-storage-compat.js"></script>
+  <script src="js/firebase-config.js"></script>
+  <script src="js/firebase-auth.js"></script>
+  <script src="js/auth.js"></script>
+  <script src="js/student.js"></script>
+</head>
+
+<body>
+
+  <div class="dashboard-container">
+    <!-- Sidebar -->
+    <aside class="sidebar">
+      <div class="logo">
+        <img src="assets/images/university-logo.png" alt="University Logo" class="logo-img">
+      </div>
+      <nav class="nav-menu">
+        <a href="student-dashboard.html" class="nav-item">
+          <i class="fas fa-tachometer-alt"></i>
+          <span>Dashboard</span>
+        </a>
+        <a href="proposals.html" class="nav-item">
+          <i class="fas fa-file-alt"></i>
+          <span>Proposals</span>
+        </a>
+        <a href="meetings-viva.html" class="nav-item">
+          <i class="fas fa-calendar-alt"></i>
+          <span>Meetings & Viva</span>
+        </a>
+        <a href="reports-files.html" class="nav-item active">
+          <i class="fas fa-file-alt"></i>
+          <span>Reports & Files</span>
+        </a>
+        <a href="index.html" class="nav-item logout">
+          <i class="fas fa-sign-out-alt"></i>
+          <span>Logout</span>
+        </a>
+      </nav>
+    </aside>
+
+    <!-- Main Content -->
+    <main class="main-content">
+      <!-- Top Bar -->
+      <header class="top-bar">
+        <div class="welcome-section">
+          <h1>Reports & Files</h1>
+          <p>Manage your project reports and share files with your group</p>
+        </div>
+        <div class="action-buttons">
+          <button class="btn btn-primary" onclick="showUploadModal()">
+            <i class="fas fa-upload"></i>
+            Upload File
+          </button>
+          <button class="btn btn-secondary" onclick="createNewReport()">
+            <i class="fas fa-plus"></i>
+            New Report
+          </button>
+        </div>
+      </header>
+
+      <!-- Reports & Files Content -->
+      <div class="reports-content">
+        <!-- File Upload Section -->
+        <div class="card">
+          <h3>File Upload</h3>
+          <div class="upload-section">
+            <div class="upload-area" id="uploadArea" ondrop="handleDrop(event)" ondragover="handleDragOver(event)" ondragleave="handleDragLeave(event)">
+              <i class="fas fa-cloud-upload-alt"></i>
+              <h4>Drag & Drop Files Here</h4>
+              <p>or click to browse</p>
+              <input type="file" id="fileInput" multiple accept=".pdf,.doc,.docx,.ppt,.pptx,.txt,.zip,.rar" style="display: none;" onchange="handleFileSelect(event)">
+              <button class="btn btn-secondary" onclick="document.getElementById('fileInput').click()">Browse Files</button>
+            </div>
+            <div class="upload-progress" id="uploadProgress" style="display: none;">
+              <div class="progress-bar">
+                <div class="progress" id="progressBar"></div>
+              </div>
+              <span class="progress-text" id="progressText">0%</span>
+            </div>
+          </div>
+        </div>
+
+        <!-- Recent Files -->
+        <div class="card">
+          <h3>Recent Files</h3>
+          <div class="files-grid" id="recentFiles">
+            <!-- Recent files will be dynamically loaded here -->
+          </div>
+        </div>
+
+        <!-- Reports Section -->
+        <div class="card">
+          <h3>Project Reports</h3>
+          <div class="reports-table">
+            <table>
+              <thead>
+                <tr>
+                  <th>Report Title</th>
+                  <th>Type</th>
+                  <th>Submitted Date</th>
+                  <th>Status</th>
+                  <th>Supervisor Review</th>
+                  <th>Actions</th>
+                </tr>
+              </thead>
+              <tbody id="reportsTableBody">
+                <!-- Reports will be dynamically loaded here -->
+              </tbody>
+            </table>
+          </div>
+        </div>
+
+        <!-- Shared Files -->
+        <div class="card">
+          <h3>Shared Files</h3>
+          <div class="files-table">
+            <table>
+              <thead>
+                <tr>
+                  <th>File Name</th>
+                  <th>Uploaded By</th>
+                  <th>Upload Date</th>
+                  <th>Size</th>
+                  <th>Type</th>
+                  <th>Actions</th>
+                </tr>
+              </thead>
+              <tbody id="sharedFilesTableBody">
+                <!-- Shared files will be dynamically loaded here -->
+              </tbody>
+            </table>
+          </div>
+        </div>
+
+        <!-- File Categories -->
+        <div class="card">
+          <h3>File Categories</h3>
+          <div class="categories-grid" id="categoriesGrid">
+            <!-- Categories will be dynamically loaded here -->
+          </div>
+        </div>
+
+        <!-- Storage Usage -->
+        <div class="card">
+          <h3>Storage Usage</h3>
+          <div class="storage-info" id="storageInfo">
+            <!-- Storage info will be dynamically loaded here -->
+          </div>
+        </div>
+
+        <!-- File Guidelines -->
+        <div class="card">
+          <h3>File Guidelines</h3>
+          <div class="guidelines-content">
+            <div class="guideline-item">
+              <h4><i class="fas fa-file-alt"></i> Supported File Types</h4>
+              <ul>
+                <li>Documents: PDF, DOC, DOCX, TXT</li>
+                <li>Presentations: PPT, PPTX</li>
+                <li>Archives: ZIP, RAR</li>
+                <li>Images: JPG, PNG, GIF (for diagrams)</li>
+                <li>Code: ZIP archives with source code</li>
+              </ul>
+            </div>
+            <div class="guideline-item">
+              <h4><i class="fas fa-hdd"></i> File Size Limits</h4>
+              <ul>
+                <li>Maximum file size: 50MB per file</li>
+                <li>Total storage: 500MB per group</li>
+                <li>Recommended report size: Under 10MB</li>
+                <li>Large files should be compressed</li>
+              </ul>
+            </div>
+            <div class="guideline-item">
+              <h4><i class="fas fa-shield-alt"></i> Security & Privacy</h4>
+              <ul>
+                <li>All files are encrypted during transmission</li>
+                <li>Only group members can access shared files</li>
+                <li>Supervisors have access to all reports</li>
+                <li>Files are automatically backed up</li>
+              </ul>
+            </div>
+          </div>
+        </div>
+      </div>
+    </main>
+  </div>
+
+  <!-- Main JavaScript -->
+  <script src="script.js"></script>
+  <script>
+    // Load files and reports data when page loads
+    document.addEventListener('DOMContentLoaded', function() {
+      loadFilesData();
+    });
+
+    // Load files data from Firebase
+    async function loadFilesData() {
+      const groupId = localStorage.getItem('groupId');
+      const currentUserRole = localStorage.getItem('role');
+      
+      if (!groupId || currentUserRole !== 'student') {
+        console.log('Missing groupId or not student role');
+        return;
+      }
+      
+      try {
+        showLoadingOverlay('Loading files data...');
+        
+        // Fetch recent files
+        const recentFilesSnapshot = await firebase.firestore()
+          .collection('files')
+          .where('groupId', '==', groupId)
+          .orderBy('uploadDate', 'desc')
+          .limit(6)
+          .get();
+        
+        const recentFiles = [];
+        recentFilesSnapshot.forEach(doc => {
+          const fileData = doc.data();
+          recentFiles.push({
+            id: doc.id,
+            ...fileData
+          });
+        });
+        
+        // Fetch reports
+        const reportsSnapshot = await firebase.firestore()
+          .collection('reports')
+          .where('groupId', '==', groupId)
+          .orderBy('submittedDate', 'desc')
+          .get();
+        
+        const reports = [];
+        reportsSnapshot.forEach(doc => {
+          const reportData = doc.data();
+          reports.push({
+            id: doc.id,
+            ...reportData
+          });
+        });
+        
+        // Fetch shared files
+        const sharedFilesSnapshot = await firebase.firestore()
+          .collection('files')
+          .where('groupId', '==', groupId)
+          .orderBy('uploadDate', 'desc')
+          .get();
+        
+        const sharedFiles = [];
+        sharedFilesSnapshot.forEach(doc => {
+          const fileData = doc.data();
+          sharedFiles.push({
+            id: doc.id,
+            ...fileData
+          });
+        });
+        
+        // Calculate storage usage
+        let totalSize = 0;
+        const fileCategories = {};
+        
+        sharedFiles.forEach(file => {
+          totalSize += file.size || 0;
+          const category = getFileCategory(file.name);
+          if (!fileCategories[category]) {
+            fileCategories[category] = { count: 0, size: 0 };
+          }
+          fileCategories[category].count++;
+          fileCategories[category].size += file.size || 0;
+        });
+        
+        // Update all sections
+        updateRecentFiles(recentFiles);
+        updateReportsTable(reports);
+        updateSharedFilesTable(sharedFiles);
+        updateCategoriesGrid(fileCategories);
+        updateStorageInfo(totalSize);
+        
+        hideLoadingOverlay();
+        
+      } catch (error) {
+        hideLoadingOverlay();
+        console.error('Error loading files data:', error);
+        showNotification('Error loading files data. Please check your connection.', 'error');
+      }
+    }
+
+    // Update recent files
+    function updateRecentFiles(files) {
+      const recentFilesDiv = document.getElementById('recentFiles');
+      if (!recentFilesDiv) return;
+      
+      recentFilesDiv.innerHTML = '';
+      
+      if (files.length === 0) {
+        recentFilesDiv.innerHTML = '<p style="color: #6c757d; text-align: center; padding: 20px;">No recent files</p>';
+        return;
+      }
+      
+      files.forEach(file => {
+        const fileDiv = document.createElement('div');
+        fileDiv.className = 'file-card';
+        
+        fileDiv.innerHTML = `
+          <div class="file-icon">
+            <i class="fas fa-file-${getFileIcon(file.name)}"></i>
+          </div>
+          <div class="file-info">
+            <h4>${file.name}</h4>
+            <p>${formatFileSize(file.size || 0)}</p>
+            <p>${new Date(file.uploadDate).toLocaleDateString()}</p>
+          </div>
+          <div class="file-actions">
+            <button class="btn-icon" onclick="downloadFile('${file.id}')" title="Download">
+              <i class="fas fa-download"></i>
+            </button>
+            <button class="btn-icon" onclick="shareFile('${file.id}')" title="Share">
+              <i class="fas fa-share"></i>
+            </button>
+            <button class="btn-icon" onclick="deleteFile('${file.id}')" title="Delete">
+              <i class="fas fa-trash"></i>
+            </button>
+          </div>
+        `;
+        
+        recentFilesDiv.appendChild(fileDiv);
+      });
+    }
+
+    // Update reports table
+    function updateReportsTable(reports) {
+      const tableBody = document.getElementById('reportsTableBody');
+      if (!tableBody) return;
+      
+      tableBody.innerHTML = '';
+      
+      if (reports.length === 0) {
+        tableBody.innerHTML = '<tr><td colspan="6" style="text-align: center; color: #6c757d; padding: 20px;">No reports submitted yet</td></tr>';
+        return;
+      }
+      
+      reports.forEach(report => {
+        const row = document.createElement('tr');
+        row.innerHTML = `
+          <td>
+            <div class="report-title">
+              <strong>${report.title}</strong>
+              ${report.isLatest ? '<span class="latest-badge">Latest</span>' : ''}
+            </div>
+          </td>
+          <td><span class="report-type">${report.type || 'Progress'}</span></td>
+          <td>${new Date(report.submittedDate).toLocaleDateString()}</td>
+          <td><span class="status ${report.status}">${report.status}</span></td>
+          <td>
+            ${report.supervisorReview ? 
+              `<div class="review-info">
+                <span class="review-rating">${generateStars(report.supervisorReview.rating || 0)}</span>
+                <p class="review-comment">${report.supervisorReview.comment || 'No comment'}</p>
+              </div>` : 
+              '<span class="no-review">Pending Review</span>'
+            }
+          </td>
+          <td>
+            <div class="action-buttons">
+              <button class="btn-icon" onclick="viewReport('${report.id}')" title="View">
+                <i class="fas fa-eye"></i>
+              </button>
+              <button class="btn-icon" onclick="downloadReport('${report.id}')" title="Download">
+                <i class="fas fa-download"></i>
+              </button>
+              <button class="btn-icon" onclick="editReport('${report.id}')" title="Edit">
+                <i class="fas fa-edit"></i>
+              </button>
+            </div>
+          </td>
+        `;
+        tableBody.appendChild(row);
+      });
+    }
+
+    // Update shared files table
+    function updateSharedFilesTable(files) {
+      const tableBody = document.getElementById('sharedFilesTableBody');
+      if (!tableBody) return;
+      
+      tableBody.innerHTML = '';
+      
+      if (files.length === 0) {
+        tableBody.innerHTML = '<tr><td colspan="6" style="text-align: center; color: #6c757d; padding: 20px;">No shared files</td></tr>';
+        return;
+      }
+      
+      files.forEach(file => {
+        const row = document.createElement('tr');
+        row.innerHTML = `
+          <td>
+            <div class="file-name">
+              <i class="fas fa-file-${getFileIcon(file.name)}"></i>
+              ${file.name}
+            </div>
+          </td>
+          <td>${file.uploadedBy || 'Unknown'}</td>
+          <td>${new Date(file.uploadDate).toLocaleDateString()}</td>
+          <td>${formatFileSize(file.size || 0)}</td>
+          <td><span class="file-type">${getFileType(file.name)}</span></td>
+          <td>
+            <div class="action-buttons">
+              <button class="btn-icon" onclick="downloadFile('${file.id}')" title="Download">
+                <i class="fas fa-download"></i>
+              </button>
+              <button class="btn-icon" onclick="previewFile('${file.id}')" title="Preview">
+                <i class="fas fa-eye"></i>
+              </button>
+              <button class="btn-icon" onclick="shareFile('${file.id}')" title="Share">
+                <i class="fas fa-share"></i>
+              </button>
+            </div>
+          </td>
+        `;
+        tableBody.appendChild(row);
+      });
+    }
+
+    // Update categories grid
+    function updateCategoriesGrid(categories) {
+      const categoriesGrid = document.getElementById('categoriesGrid');
+      if (!categoriesGrid) return;
+      
+      categoriesGrid.innerHTML = '';
+      
+      Object.entries(categories).forEach(([category, info]) => {
+        const categoryDiv = document.createElement('div');
+        categoryDiv.className = 'category-card';
+        
+        categoryDiv.innerHTML = `
+          <div class="category-icon">
+            <i class="fas fa-${getCategoryIcon(category)}"></i>
+          </div>
+          <div class="category-info">
+            <h4>${category}</h4>
+            <p>${info.count} files</p>
+            <p>${formatFileSize(info.size)}</p>
+          </div>
+          <button class="btn btn-secondary" onclick="viewCategory('${category}')">View</button>
+        `;
+        
+        categoriesGrid.appendChild(categoryDiv);
+      });
+    }
+
+    // Update storage info
+    function updateStorageInfo(totalSize) {
+      const storageInfo = document.getElementById('storageInfo');
+      if (!storageInfo) return;
+      
+      const maxStorage = 500 * 1024 * 1024; // 500MB in bytes
+      const usedPercentage = Math.round((totalSize / maxStorage) * 100);
+      const remainingStorage = maxStorage - totalSize;
+      
+      storageInfo.innerHTML = `
+        <div class="storage-overview">
+          <div class="storage-stats">
+            <div class="stat-item">
+              <h4>Used Storage</h4>
+              <p>${formatFileSize(totalSize)}</p>
+            </div>
+            <div class="stat-item">
+              <h4>Available Storage</h4>
+              <p>${formatFileSize(remainingStorage)}</p>
+            </div>
+            <div class="stat-item">
+              <h4>Total Storage</h4>
+              <p>500 MB</p>
+            </div>
+          </div>
+          <div class="storage-progress">
+            <div class="progress-bar">
+              <div class="progress ${usedPercentage > 80 ? 'warning' : ''}" style="width: ${usedPercentage}%"></div>
+            </div>
+            <span class="progress-text">${usedPercentage}% used</span>
+          </div>
+          ${usedPercentage > 80 ? '<p class="storage-warning">⚠️ Running low on storage space. Consider deleting old files.</p>' : ''}
+        </div>
+      `;
+    }
+
+    // File handling functions
+    function handleDrop(e) {
+      e.preventDefault();
+      e.stopPropagation();
+      document.getElementById('uploadArea').classList.remove('drag-over');
+      
+      const files = Array.from(e.dataTransfer.files);
+      uploadFiles(files);
+    }
+
+    function handleDragOver(e) {
+      e.preventDefault();
+      e.stopPropagation();
+      document.getElementById('uploadArea').classList.add('drag-over');
+    }
+
+    function handleDragLeave(e) {
+      e.preventDefault();
+      e.stopPropagation();
+      document.getElementById('uploadArea').classList.remove('drag-over');
+    }
+
+    function handleFileSelect(e) {
+      const files = Array.from(e.target.files);
+      uploadFiles(files);
+    }
+
+    // Upload files
+    async function uploadFiles(files) {
+      const groupId = localStorage.getItem('groupId');
+      const userId = localStorage.getItem('uid');
+      
+      if (!groupId || !userId) {
+        showNotification('Authentication error. Please login again.', 'error');
+        return;
+      }
+      
+      for (const file of files) {
+        try {
+          showLoadingOverlay(`Uploading ${file.name}...`);
+          
+          // Upload file to Firebase Storage
+          const storageRef = firebase.storage().ref();
+          const fileRef = storageRef.child(`groups/${groupId}/${file.name}`);
+          
+          await fileRef.put(file);
+          const downloadURL = await fileRef.getDownloadURL();
+          
+          // Save file metadata to Firestore
+          const fileData = {
+            name: file.name,
+            size: file.size,
+            type: file.type,
+            downloadURL: downloadURL,
+            groupId: groupId,
+            uploadedBy: userId,
+            uploadDate: new Date().toISOString(),
+            category: getFileCategory(file.name)
+          };
+          
+          await firebase.firestore().collection('files').add(fileData);
+          
+          showNotification(`${file.name} uploaded successfully!`, 'success');
+          
+        } catch (error) {
+          console.error('Error uploading file:', error);
+          showNotification(`Error uploading ${file.name}: ${error.message}`, 'error');
+        }
+      }
+      
+      hideLoadingOverlay();
+      // Reload files data
+      loadFilesData();
+    }
+
+    // Show upload modal
+    function showUploadModal() {
+      document.getElementById('fileInput').click();
+    }
+
+    // Create new report
+    function createNewReport() {
+      const formHtml = `
+        <div id="reportModal" class="modal" style="display: block;">
+          <div class="modal-content">
+            <div class="modal-header">
+              <h3>Create New Report</h3>
+              <span class="close" onclick="closeReportModal()">&times;</span>
+            </div>
+            <div class="modal-body">
+              <form id="reportForm">
+                <div class="form-group">
+                  <label>Report Title *</label>
+                  <input type="text" name="title" required placeholder="Enter report title">
+                </div>
+                <div class="form-group">
+                  <label>Report Type *</label>
+                  <select name="type" required>
+                    <option value="">Select report type</option>
+                    <option value="progress">Progress Report</option>
+                    <option value="milestone">Milestone Report</option>
+                    <option value="final">Final Report</option>
+                    <option value="technical">Technical Report</option>
+                    <option value="weekly">Weekly Report</option>
+                  </select>
+                </div>
+                <div class="form-group">
+                  <label>Summary *</label>
+                  <textarea name="summary" rows="4" required placeholder="Brief summary of the report"></textarea>
+                </div>
+                <div class="form-group">
+                  <label>Report File *</label>
+                  <input type="file" name="reportFile" accept=".pdf,.doc,.docx" required>
+                  <small>Upload your report file (PDF, DOC, or DOCX)</small>
+                </div>
+                <div class="form-actions">
+                  <button type="button" class="btn btn-secondary" onclick="closeReportModal()">Cancel</button>
+                  <button type="submit" class="btn btn-primary">Submit Report</button>
+                </div>
+              </form>
+            </div>
+          </div>
+        </div>
+      `;
+      
+      document.body.insertAdjacentHTML('beforeend', formHtml);
+    }
+
+    // Close report modal
+    function closeReportModal() {
+      const modal = document.getElementById('reportModal');
+      if (modal) {
+        modal.remove();
+      }
+    }
+
+    // Handle report form submission
+    document.addEventListener('submit', function(e) {
+      if (e.target.id === 'reportForm') {
+        e.preventDefault();
+        submitReport(e.target);
+      }
+    });
+
+    // Submit report
+    async function submitReport(form) {
+      const formData = new FormData(form);
+      const groupId = localStorage.getItem('groupId');
+      const userId = localStorage.getItem('uid');
+      const fileInput = form.querySelector('input[name="reportFile"]');
+      
+      if (!fileInput.files[0]) {
+        showNotification('Please select a report file', 'error');
+        return;
+      }
+      
+      try {
+        showLoadingOverlay('Submitting report...');
+        
+        const file = fileInput.files[0];
+        
+        // Upload report file to Firebase Storage
+        const storageRef = firebase.storage().ref();
+        const fileRef = storageRef.child(`groups/${groupId}/reports/${file.name}`);
+        
+        await fileRef.put(file);
+        const downloadURL = await fileRef.getDownloadURL();
+        
+        // Save report metadata to Firestore
+        const reportData = {
+          title: formData.get('title'),
+          type: formData.get('type'),
+          summary: formData.get('summary'),
+          fileName: file.name,
+          fileSize: file.size,
+          downloadURL: downloadURL,
+          groupId: groupId,
+          submittedBy: userId,
+          submittedDate: new Date().toISOString(),
+          status: 'pending',
+          isLatest: true
+        };
+        
+        // Mark previous reports as not latest
+        await firebase.firestore()
+          .collection('reports')
+          .where('groupId', '==', groupId)
+          .get()
+          .then(snapshot => {
+            const batch = firebase.firestore().batch();
+            snapshot.forEach(doc => {
+              batch.update(doc.ref, { isLatest: false });
+            });
+            return batch.commit();
+          });
+        
+        await firebase.firestore().collection('reports').add(reportData);
+        
+        hideLoadingOverlay();
+        closeReportModal();
+        showNotification('Report submitted successfully!', 'success');
+        
+        // Reload files data
+        loadFilesData();
+        
+      } catch (error) {
+        hideLoadingOverlay();
+        console.error('Error submitting report:', error);
+        showNotification('Error submitting report. Please try again.', 'error');
+      }
+    }
+
+    // Utility functions
+    function getFileIcon(filename) {
+      const ext = filename.split('.').pop().toLowerCase();
+      const icons = {
+        'pdf': 'pdf',
+        'doc': 'word',
+        'docx': 'word',
+        'ppt': 'powerpoint',
+        'pptx': 'powerpoint',
+        'txt': 'alt',
+        'zip': 'archive',
+        'rar': 'archive',
+        'jpg': 'image',
+        'jpeg': 'image',
+        'png': 'image',
+        'gif': 'image'
+      };
+      return icons[ext] || 'alt';
+    }
+
+    function getFileCategory(filename) {
+      const ext = filename.split('.').pop().toLowerCase();
+      if (['pdf', 'doc', 'docx', 'txt'].includes(ext)) return 'Documents';
+      if (['ppt', 'pptx'].includes(ext)) return 'Presentations';
+      if (['zip', 'rar'].includes(ext)) return 'Archives';
+      if (['jpg', 'jpeg', 'png', 'gif'].includes(ext)) return 'Images';
+      return 'Other';
+    }
+
+    function getCategoryIcon(category) {
+      const icons = {
+        'Documents': 'file-alt',
+        'Presentations': 'presentation',
+        'Archives': 'archive',
+        'Images': 'image',
+        'Other': 'folder'
+      };
+      return icons[category] || 'folder';
+    }
+
+    function getFileType(filename) {
+      return filename.split('.').pop().toUpperCase();
+    }
+
+    function formatFileSize(bytes) {
+      if (bytes === 0) return '0 Bytes';
+      const k = 1024;
+      const sizes = ['Bytes', 'KB', 'MB', 'GB'];
+      const i = Math.floor(Math.log(bytes) / Math.log(k));
+      return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + ' ' + sizes[i];
+    }
+
+    function generateStars(rating) {
+      let stars = '';
+      for (let i = 1; i <= 5; i++) {
+        if (i <= rating) {
+          stars += '<i class="fas fa-star"></i>';
+        } else {
+          stars += '<i class="far fa-star"></i>';
+        }
+      }
+      return stars;
+    }
+
+    // Action functions
+    function downloadFile(fileId) {
+      showNotification('Downloading file...', 'info');
+      // Implementation for downloading file
+    }
+
+    function shareFile(fileId) {
+      showNotification('Opening share dialog...', 'info');
+      // Implementation for sharing file
+    }
+
+    function deleteFile(fileId) {
+      if (confirm('Are you sure you want to delete this file?')) {
+        showNotification('Deleting file...', 'info');
+        // Implementation for deleting file
+      }
+    }
+
+    function viewReport(reportId) {
+      showNotification('Opening report viewer...', 'info');
+      // Implementation for viewing report
+    }
+
+    function downloadReport(reportId) {
+      showNotification('Downloading report...', 'info');
+      // Implementation for downloading report
+    }
+
+    function editReport(reportId) {
+      showNotification('Opening report editor...', 'info');
+      // Implementation for editing report
+    }
+
+    function previewFile(fileId) {
+      showNotification('Opening file preview...', 'info');
+      // Implementation for previewing file
+    }
+
+    function viewCategory(category) {
+      showNotification(`Loading ${category} files...`, 'info');
+      // Implementation for viewing category files
+    }
+  </script>
+
+</body>
+
+</html>

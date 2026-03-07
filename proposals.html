@@ -1,0 +1,544 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Proposals - FYP Management System</title>
+  <link rel="stylesheet" href="css/style.css" />
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" />
+
+  <!-- Firebase SDK -->
+  <script src="https://www.gstatic.com/firebasejs/9.22.1/firebase-app-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/9.22.1/firebase-firestore-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/9.22.1/firebase-storage-compat.js"></script>
+  <script src="js/firebase-config.js"></script>
+  <script src="js/firebase-auth.js"></script>
+  <script src="js/auth.js"></script>
+  <script src="js/student.js"></script>
+</head>
+
+<body>
+
+  <div class="dashboard-container">
+    <!-- Sidebar -->
+    <aside class="sidebar">
+      <div class="logo">
+        <img src="assets/images/university-logo.png" alt="University Logo" class="logo-img">
+      </div>
+      <nav class="nav-menu">
+        <a href="student-dashboard.html" class="nav-item">
+          <i class="fas fa-tachometer-alt"></i>
+          <span>Dashboard</span>
+        </a>
+        <a href="proposals.html" class="nav-item active">
+          <i class="fas fa-file-alt"></i>
+          <span>Proposals</span>
+        </a>
+        <a href="meetings-viva.html" class="nav-item">
+          <i class="fas fa-calendar-alt"></i>
+          <span>Meetings & Viva</span>
+        </a>
+        <a href="reports-files.html" class="nav-item">
+          <i class="fas fa-file-alt"></i>
+          <span>Reports & Files</span>
+        </a>
+        <a href="index.html" class="nav-item logout">
+          <i class="fas fa-sign-out-alt"></i>
+          <span>Logout</span>
+        </a>
+      </nav>
+    </aside>
+
+    <!-- Main Content -->
+    <main class="main-content">
+      <!-- Top Bar -->
+      <header class="top-bar">
+        <div class="welcome-section">
+          <h1>Proposals</h1>
+          <p>Manage and track your FYP proposals</p>
+        </div>
+        <div class="action-buttons">
+          <button class="btn btn-primary" onclick="showNewProposalForm()">
+            <i class="fas fa-plus"></i>
+            New Proposal
+          </button>
+          <button class="btn btn-secondary" onclick="downloadTemplate()">
+            <i class="fas fa-download"></i>
+            Download Template
+          </button>
+        </div>
+      </header>
+
+      <!-- Proposals Content -->
+      <div class="proposals-content">
+        <!-- Current Proposal Status -->
+        <div class="card">
+          <h3>Current Proposal Status</h3>
+          <div class="proposal-status-card" id="currentProposalStatus">
+            <!-- Current proposal status will be loaded here -->
+          </div>
+        </div>
+
+        <!-- Proposal History -->
+        <div class="card">
+          <h3>Proposal History</h3>
+          <div class="proposals-table">
+            <table>
+              <thead>
+                <tr>
+                  <th>Title</th>
+                  <th>Submitted Date</th>
+                  <th>Status</th>
+                  <th>Feedback</th>
+                  <th>Actions</th>
+                </tr>
+              </thead>
+              <tbody id="proposalsTableBody">
+                <!-- Proposals will be dynamically loaded here -->
+              </tbody>
+            </table>
+          </div>
+        </div>
+
+        <!-- Proposal Guidelines -->
+        <div class="card">
+          <h3>Proposal Guidelines</h3>
+          <div class="guidelines-content">
+            <div class="guideline-item">
+              <h4><i class="fas fa-check-circle"></i> Proposal Requirements</h4>
+              <ul>
+                <li>Project title and objectives</li>
+                <li>Problem statement and significance</li>
+                <li>Literature review</li>
+                <li>Methodology and approach</li>
+                <li>Expected outcomes</li>
+                <li>Timeline and milestones</li>
+              </ul>
+            </div>
+            <div class="guideline-item">
+              <h4><i class="fas fa-clock"></i> Submission Deadlines</h4>
+              <ul>
+                <li>Initial Proposal: Week 4 of semester</li>
+                <li>Revised Proposal: Week 6 of semester</li>
+                <li>Final Proposal: Week 8 of semester</li>
+              </ul>
+            </div>
+            <div class="guideline-item">
+              <h4><i class="fas fa-file-alt"></i> Format Requirements</h4>
+              <ul>
+                <li>PDF format only</li>
+                <li>Maximum 15 pages</li>
+                <li>Font: Times New Roman, 12pt</li>
+                <li>1.5 line spacing</li>
+                <li>Include references</li>
+              </ul>
+            </div>
+          </div>
+        </div>
+
+        <!-- Supervisor Feedback -->
+        <div class="card">
+          <h3>Latest Supervisor Feedback</h3>
+          <div class="feedback-section" id="supervisorFeedback">
+            <!-- Feedback will be dynamically loaded here -->
+          </div>
+        </div>
+      </div>
+    </main>
+  </div>
+
+  <!-- Main JavaScript -->
+  <script src="script.js"></script>
+  <script>
+    // Load proposals data when page loads
+    document.addEventListener('DOMContentLoaded', function() {
+      loadProposalsData();
+    });
+
+    // Load proposals data from Firebase
+    async function loadProposalsData() {
+      const groupId = localStorage.getItem('groupId');
+      const currentUserRole = localStorage.getItem('role');
+      
+      if (!groupId || currentUserRole !== 'student') {
+        console.log('Missing groupId or not student role');
+        return;
+      }
+      
+      try {
+        showLoadingOverlay('Loading proposals data...');
+        
+        // Fetch current proposal
+        const currentProposalSnapshot = await firebase.firestore()
+          .collection('proposals')
+          .where('groupId', '==', groupId)
+          .where('isCurrent', '==', true)
+          .get();
+        
+        let currentProposal = null;
+        if (!currentProposalSnapshot.empty) {
+          currentProposal = currentProposalSnapshot.docs[0].data();
+        }
+        
+        // Fetch proposal history
+        const proposalsHistorySnapshot = await firebase.firestore()
+          .collection('proposals')
+          .where('groupId', '==', groupId)
+          .orderBy('submittedDate', 'desc')
+          .get();
+        
+        const proposalsHistory = [];
+        proposalsHistorySnapshot.forEach(doc => {
+          const proposalData = doc.data();
+          proposalsHistory.push({
+            id: doc.id,
+            ...proposalData
+          });
+        });
+        
+        // Fetch supervisor feedback
+        const feedbackSnapshot = await firebase.firestore()
+          .collection('feedback')
+          .where('groupId', '==', groupId)
+          .where('type', '==', 'proposal')
+          .orderBy('timestamp', 'desc')
+          .limit(5)
+          .get();
+        
+        const feedbacks = [];
+        feedbackSnapshot.forEach(doc => {
+          const feedbackData = doc.data();
+          feedbacks.push({
+            id: doc.id,
+            ...feedbackData
+          });
+        });
+        
+        // Update all sections
+        updateCurrentProposalStatus(currentProposal);
+        updateProposalsTable(proposalsHistory);
+        updateSupervisorFeedback(feedbacks);
+        
+        hideLoadingOverlay();
+        
+      } catch (error) {
+        hideLoadingOverlay();
+        console.error('Error loading proposals data:', error);
+        showNotification('Error loading proposals data. Please check your connection.', 'error');
+      }
+    }
+
+    // Update current proposal status
+    function updateCurrentProposalStatus(proposal) {
+      const statusCard = document.getElementById('currentProposalStatus');
+      if (!statusCard) return;
+      
+      if (!proposal) {
+        statusCard.innerHTML = `
+          <div class="no-proposal">
+            <i class="fas fa-file-upload"></i>
+            <h4>No Proposal Submitted</h4>
+            <p>You haven't submitted any proposal yet. Click "New Proposal" to get started.</p>
+            <button class="btn btn-primary" onclick="showNewProposalForm()">Submit First Proposal</button>
+          </div>
+        `;
+        return;
+      }
+      
+      statusCard.innerHTML = `
+        <div class="proposal-details">
+          <div class="proposal-header">
+            <h4>${proposal.title}</h4>
+            <span class="status ${proposal.status}">${proposal.status}</span>
+          </div>
+          <div class="proposal-info">
+            <p><strong>Submitted:</strong> ${new Date(proposal.submittedDate).toLocaleDateString()}</p>
+            <p><strong>Last Updated:</strong> ${new Date(proposal.lastUpdated).toLocaleDateString()}</p>
+            <p><strong>Supervisor:</strong> ${proposal.supervisor || 'Not Assigned'}</p>
+          </div>
+          <div class="proposal-progress">
+            <p><strong>Progress:</strong></p>
+            <div class="progress-bar">
+              <div class="progress" style="width: ${proposal.progress || 0}%"></div>
+            </div>
+            <span class="progress-text">${proposal.progress || 0}%</span>
+          </div>
+          <div class="proposal-actions">
+            <button class="btn btn-secondary" onclick="viewProposal('${proposal.id}')">
+              <i class="fas fa-eye"></i> View
+            </button>
+            <button class="btn btn-secondary" onclick="editProposal('${proposal.id}')">
+              <i class="fas fa-edit"></i> Edit
+            </button>
+            <button class="btn btn-primary" onclick="downloadProposal('${proposal.id}')">
+              <i class="fas fa-download"></i> Download
+            </button>
+          </div>
+        </div>
+      `;
+    }
+
+    // Update proposals table
+    function updateProposalsTable(proposals) {
+      const tableBody = document.getElementById('proposalsTableBody');
+      if (!tableBody) return;
+      
+      tableBody.innerHTML = '';
+      
+      if (proposals.length === 0) {
+        tableBody.innerHTML = '<tr><td colspan="5" style="text-align: center; color: #6c757d; padding: 20px;">No proposals submitted yet</td></tr>';
+        return;
+      }
+      
+      proposals.forEach(proposal => {
+        const row = document.createElement('tr');
+        row.innerHTML = `
+          <td>
+            <div class="proposal-title">
+              <strong>${proposal.title}</strong>
+              ${proposal.isCurrent ? '<span class="current-badge">Current</span>' : ''}
+            </div>
+          </td>
+          <td>${new Date(proposal.submittedDate).toLocaleDateString()}</td>
+          <td><span class="status ${proposal.status}">${proposal.status}</span></td>
+          <td>
+            <button class="btn-icon" onclick="viewFeedback('${proposal.id}')" title="View Feedback">
+              <i class="fas fa-comment"></i>
+            </button>
+          </td>
+          <td>
+            <div class="action-buttons">
+              <button class="btn-icon" onclick="viewProposal('${proposal.id}')" title="View">
+                <i class="fas fa-eye"></i>
+              </button>
+              <button class="btn-icon" onclick="downloadProposal('${proposal.id}')" title="Download">
+                <i class="fas fa-download"></i>
+              </button>
+            </div>
+          </td>
+        `;
+        tableBody.appendChild(row);
+      });
+    }
+
+    // Update supervisor feedback
+    function updateSupervisorFeedback(feedbacks) {
+      const feedbackSection = document.getElementById('supervisorFeedback');
+      if (!feedbackSection) return;
+      
+      feedbackSection.innerHTML = '';
+      
+      if (feedbacks.length === 0) {
+        feedbackSection.innerHTML = '<p style="color: #6c757d; text-align: center; padding: 20px;">No feedback available yet</p>';
+        return;
+      }
+      
+      feedbacks.forEach(feedback => {
+        const feedbackDiv = document.createElement('div');
+        feedbackDiv.className = 'feedback-item';
+        
+        feedbackDiv.innerHTML = `
+          <div class="feedback-header">
+            <span class="feedback-author">${feedback.supervisor || 'Supervisor'}</span>
+            <span class="feedback-date">${new Date(feedback.timestamp).toLocaleDateString()}</span>
+          </div>
+          <div class="feedback-content">
+            <p>${feedback.message}</p>
+            <div class="feedback-rating">
+              <strong>Rating:</strong> 
+              <span class="stars">
+                ${generateStars(feedback.rating || 0)}
+              </span>
+            </div>
+          </div>
+        `;
+        
+        feedbackSection.appendChild(feedbackDiv);
+      });
+    }
+
+    // Generate star rating
+    function generateStars(rating) {
+      let stars = '';
+      for (let i = 1; i <= 5; i++) {
+        if (i <= rating) {
+          stars += '<i class="fas fa-star"></i>';
+        } else {
+          stars += '<i class="far fa-star"></i>';
+        }
+      }
+      return stars;
+    }
+
+    // Show new proposal form
+    function showNewProposalForm() {
+      const formHtml = `
+        <div id="proposalModal" class="modal" style="display: block;">
+          <div class="modal-content proposal-modal">
+            <div class="modal-header">
+              <h3>Submit New Proposal</h3>
+              <span class="close" onclick="closeProposalModal()">&times;</span>
+            </div>
+            <div class="modal-body">
+              <form id="proposalForm">
+                <div class="form-group">
+                  <label>Proposal Title *</label>
+                  <input type="text" name="title" required placeholder="Enter your proposal title">
+                </div>
+                <div class="form-group">
+                  <label>Category *</label>
+                  <select name="category" required>
+                    <option value="">Select category</option>
+                    <option value="ai">Artificial Intelligence</option>
+                    <option value="web">Web Development</option>
+                    <option value="mobile">Mobile Development</option>
+                    <option value="database">Database Systems</option>
+                    <option value="security">Cybersecurity</option>
+                    <option value="other">Other</option>
+                  </select>
+                </div>
+                <div class="form-group">
+                  <label>Abstract *</label>
+                  <textarea name="abstract" rows="4" required placeholder="Brief description of your proposal (max 500 words)"></textarea>
+                </div>
+                <div class="form-group">
+                  <label>Objectives *</label>
+                  <textarea name="objectives" rows="3" required placeholder="List your main objectives"></textarea>
+                </div>
+                <div class="form-group">
+                  <label>Methodology *</label>
+                  <textarea name="methodology" rows="4" required placeholder="Describe your approach and methodology"></textarea>
+                </div>
+                <div class="form-group">
+                  <label>Expected Outcomes *</label>
+                  <textarea name="outcomes" rows="3" required placeholder="What do you expect to achieve?"></textarea>
+                </div>
+                <div class="form-group">
+                  <label>Timeline (months) *</label>
+                  <input type="number" name="timeline" min="1" max="12" required placeholder="Expected duration in months">
+                </div>
+                <div class="form-group">
+                  <label>Proposal Document *</label>
+                  <input type="file" name="document" accept=".pdf,.doc,.docx" required>
+                  <small>Upload your detailed proposal document (PDF, DOC, or DOCX)</small>
+                </div>
+                <div class="form-actions">
+                  <button type="button" class="btn btn-secondary" onclick="closeProposalModal()">Cancel</button>
+                  <button type="submit" class="btn btn-primary">Submit Proposal</button>
+                </div>
+              </form>
+            </div>
+          </div>
+        </div>
+      `;
+      
+      document.body.insertAdjacentHTML('beforeend', formHtml);
+    }
+
+    // Close proposal modal
+    function closeProposalModal() {
+      const modal = document.getElementById('proposalModal');
+      if (modal) {
+        modal.remove();
+      }
+    }
+
+    // Handle proposal form submission
+    document.addEventListener('submit', function(e) {
+      if (e.target.id === 'proposalForm') {
+        e.preventDefault();
+        submitProposal(e.target);
+      }
+    });
+
+    // Submit proposal
+    async function submitProposal(form) {
+      const formData = new FormData(form);
+      const groupId = localStorage.getItem('groupId');
+      const userId = localStorage.getItem('uid');
+      
+      try {
+        showLoadingOverlay('Submitting proposal...');
+        
+        const proposalData = {
+          title: formData.get('title'),
+          category: formData.get('category'),
+          abstract: formData.get('abstract'),
+          objectives: formData.get('objectives'),
+          methodology: formData.get('methodology'),
+          outcomes: formData.get('outcomes'),
+          timeline: parseInt(formData.get('timeline')),
+          groupId: groupId,
+          submittedBy: userId,
+          submittedDate: new Date().toISOString(),
+          lastUpdated: new Date().toISOString(),
+          status: 'pending',
+          isCurrent: true,
+          progress: 0
+        };
+        
+        // Mark previous proposals as not current
+        await firebase.firestore()
+          .collection('proposals')
+          .where('groupId', '==', groupId)
+          .get()
+          .then(snapshot => {
+            const batch = firebase.firestore().batch();
+            snapshot.forEach(doc => {
+              batch.update(doc.ref, { isCurrent: false });
+            });
+            return batch.commit();
+          });
+        
+        // Add new proposal
+        await firebase.firestore().collection('proposals').add(proposalData);
+        
+        hideLoadingOverlay();
+        closeProposalModal();
+        showNotification('Proposal submitted successfully!', 'success');
+        
+        // Reload proposals data
+        loadProposalsData();
+        
+      } catch (error) {
+        hideLoadingOverlay();
+        console.error('Error submitting proposal:', error);
+        showNotification('Error submitting proposal. Please try again.', 'error');
+      }
+    }
+
+    // View proposal
+    function viewProposal(proposalId) {
+      showNotification('Opening proposal viewer...', 'info');
+      // Implementation for viewing proposal
+    }
+
+    // Edit proposal
+    function editProposal(proposalId) {
+      showNotification('Opening proposal editor...', 'info');
+      // Implementation for editing proposal
+    }
+
+    // Download proposal
+    function downloadProposal(proposalId) {
+      showNotification('Downloading proposal...', 'info');
+      // Implementation for downloading proposal
+    }
+
+    // View feedback
+    function viewFeedback(proposalId) {
+      showNotification('Loading feedback...', 'info');
+      // Implementation for viewing feedback
+    }
+
+    // Download template
+    function downloadTemplate() {
+      showNotification('Downloading proposal template...', 'info');
+      // Implementation for downloading template
+    }
+  </script>
+
+</body>
+
+</html>

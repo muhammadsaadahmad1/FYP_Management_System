@@ -1,0 +1,681 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Meetings & Viva - FYP Management System</title>
+  <link rel="stylesheet" href="css/style.css" />
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" />
+
+  <!-- Firebase SDK -->
+  <script src="https://www.gstatic.com/firebasejs/9.22.1/firebase-app-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/9.22.1/firebase-firestore-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/9.22.1/firebase-storage-compat.js"></script>
+  <script src="js/firebase-config.js"></script>
+  <script src="js/firebase-auth.js"></script>
+  <script src="js/auth.js"></script>
+  <script src="js/student.js"></script>
+</head>
+
+<body>
+
+  <div class="dashboard-container">
+    <!-- Sidebar -->
+    <aside class="sidebar">
+      <div class="logo">
+        <img src="assets/images/university-logo.png" alt="University Logo" class="logo-img">
+      </div>
+      <nav class="nav-menu">
+        <a href="student-dashboard.html" class="nav-item">
+          <i class="fas fa-tachometer-alt"></i>
+          <span>Dashboard</span>
+        </a>
+        <a href="proposals.html" class="nav-item">
+          <i class="fas fa-file-alt"></i>
+          <span>Proposals</span>
+        </a>
+        <a href="meetings-viva.html" class="nav-item active">
+          <i class="fas fa-calendar-alt"></i>
+          <span>Meetings & Viva</span>
+        </a>
+        <a href="reports-files.html" class="nav-item">
+          <i class="fas fa-file-alt"></i>
+          <span>Reports & Files</span>
+        </a>
+        <a href="index.html" class="nav-item logout">
+          <i class="fas fa-sign-out-alt"></i>
+          <span>Logout</span>
+        </a>
+      </nav>
+    </aside>
+
+    <!-- Main Content -->
+    <main class="main-content">
+      <!-- Top Bar -->
+      <header class="top-bar">
+        <div class="welcome-section">
+          <h1>Meetings & Viva</h1>
+          <p>Schedule and track your meetings and viva sessions</p>
+        </div>
+        <div class="action-buttons">
+          <button class="btn btn-primary" onclick="showMeetingRequestForm()">
+            <i class="fas fa-plus"></i>
+            Request Meeting
+          </button>
+          <button class="btn btn-secondary" onclick="viewCalendar()">
+            <i class="fas fa-calendar"></i>
+            View Calendar
+          </button>
+        </div>
+      </header>
+
+      <!-- Meetings Content -->
+      <div class="meetings-content">
+        <!-- Upcoming Meetings -->
+        <div class="card">
+          <h3>Upcoming Meetings</h3>
+          <div class="meetings-timeline" id="upcomingMeetings">
+            <!-- Upcoming meetings will be dynamically loaded here -->
+          </div>
+        </div>
+
+        <!-- Viva Schedule -->
+        <div class="card">
+          <h3>Viva Schedule</h3>
+          <div class="viva-schedule" id="vivaSchedule">
+            <!-- Viva schedule will be dynamically loaded here -->
+          </div>
+        </div>
+
+        <!-- Meeting History -->
+        <div class="card">
+          <h3>Meeting History</h3>
+          <div class="meetings-table">
+            <table>
+              <thead>
+                <tr>
+                  <th>Date</th>
+                  <th>Type</th>
+                  <th>Supervisor</th>
+                  <th>Status</th>
+                  <th>Minutes</th>
+                  <th>Actions</th>
+                </tr>
+              </thead>
+              <tbody id="meetingsTableBody">
+                <!-- Meeting history will be dynamically loaded here -->
+              </tbody>
+            </table>
+          </div>
+        </div>
+
+        <!-- Important Deadlines -->
+        <div class="card">
+          <h3>Important Deadlines</h3>
+          <div class="deadlines-list" id="deadlinesList">
+            <!-- Deadlines will be dynamically loaded here -->
+          </div>
+        </div>
+
+        <!-- Meeting Guidelines -->
+        <div class="card">
+          <h3>Meeting Guidelines</h3>
+          <div class="guidelines-content">
+            <div class="guideline-item">
+              <h4><i class="fas fa-users"></i> Meeting Preparation</h4>
+              <ul>
+                <li>Prepare agenda before meeting</li>
+                <li>Review previous meeting minutes</li>
+                <li>Bring progress reports</li>
+                <li>Note down questions for supervisor</li>
+                <li>Be punctual and professional</li>
+              </ul>
+            </div>
+            <div class="guideline-item">
+              <h4><i class="fas fa-graduation-cap"></i> Viva Preparation</h4>
+              <ul>
+                <li>Practice presentation multiple times</li>
+                <li>Prepare for technical questions</li>
+                <li>Review project documentation</li>
+                <li>Dress professionally</li>
+                <li>Arrive 30 minutes early</li>
+              </ul>
+            </div>
+            <div class="guideline-item">
+              <h4><i class="fas fa-clock"></i> Meeting Frequency</h4>
+              <ul>
+                <li>Weekly progress meetings</li>
+                <li>Bi-weekly technical discussions</li>
+                <li>Monthly milestone reviews</li>
+                <li>Pre-viva mock sessions</li>
+                <li>Final viva presentation</li>
+              </ul>
+            </div>
+          </div>
+        </div>
+
+        <!-- Meeting Resources -->
+        <div class="card">
+          <h3>Meeting Resources</h3>
+          <div class="resources-grid">
+            <div class="resource-item">
+              <i class="fas fa-file-alt"></i>
+              <h4>Meeting Templates</h4>
+              <p>Download meeting agenda and minutes templates</p>
+              <button class="btn btn-secondary" onclick="downloadTemplates()">Download</button>
+            </div>
+            <div class="resource-item">
+              <i class="fas fa-video"></i>
+              <h4>Online Meeting Guide</h4>
+              <p>Guidelines for virtual meetings and presentations</p>
+              <button class="btn btn-secondary" onclick="viewGuide()">View Guide</button>
+            </div>
+            <div class="resource-item">
+              <i class="fas fa-presentation"></i>
+              <h4>Presentation Tips</h4>
+              <p>Best practices for project presentations</p>
+              <button class="btn btn-secondary" onclick="viewTips()">View Tips</button>
+            </div>
+          </div>
+        </div>
+      </div>
+    </main>
+  </div>
+
+  <!-- Main JavaScript -->
+  <script src="script.js"></script>
+  <script>
+    // Load meetings data when page loads
+    document.addEventListener('DOMContentLoaded', function() {
+      loadMeetingsData();
+    });
+
+    // Load meetings data from Firebase
+    async function loadMeetingsData() {
+      const groupId = localStorage.getItem('groupId');
+      const currentUserRole = localStorage.getItem('role');
+      
+      if (!groupId || currentUserRole !== 'student') {
+        console.log('Missing groupId or not student role');
+        return;
+      }
+      
+      try {
+        showLoadingOverlay('Loading meetings data...');
+        
+        // Fetch upcoming meetings
+        const upcomingMeetingsSnapshot = await firebase.firestore()
+          .collection('meetings')
+          .where('groupId', '==', groupId)
+          .where('date', '>=', new Date().toISOString())
+          .orderBy('date', 'asc')
+          .get();
+        
+        const upcomingMeetings = [];
+        upcomingMeetingsSnapshot.forEach(doc => {
+          const meetingData = doc.data();
+          upcomingMeetings.push({
+            id: doc.id,
+            ...meetingData
+          });
+        });
+        
+        // Fetch viva schedule
+        const vivaSnapshot = await firebase.firestore()
+          .collection('viva')
+          .where('groupId', '==', groupId)
+          .get();
+        
+        let vivaSchedule = null;
+        if (!vivaSnapshot.empty) {
+          vivaSchedule = vivaSnapshot.docs[0].data();
+        }
+        
+        // Fetch meeting history
+        const meetingsHistorySnapshot = await firebase.firestore()
+          .collection('meetings')
+          .where('groupId', '==', groupId)
+          .where('date', '<', new Date().toISOString())
+          .orderBy('date', 'desc')
+          .get();
+        
+        const meetingsHistory = [];
+        meetingsHistorySnapshot.forEach(doc => {
+          const meetingData = doc.data();
+          meetingsHistory.push({
+            id: doc.id,
+            ...meetingData
+          });
+        });
+        
+        // Fetch deadlines
+        const deadlinesSnapshot = await firebase.firestore()
+          .collection('deadlines')
+          .where('groupId', '==', groupId)
+          .orderBy('date', 'asc')
+          .get();
+        
+        const deadlines = [];
+        deadlinesSnapshot.forEach(doc => {
+          const deadlineData = doc.data();
+          deadlines.push({
+            id: doc.id,
+            ...deadlineData
+          });
+        });
+        
+        // Update all sections
+        updateUpcomingMeetings(upcomingMeetings);
+        updateVivaSchedule(vivaSchedule);
+        updateMeetingsTable(meetingsHistory);
+        updateDeadlinesList(deadlines);
+        
+        hideLoadingOverlay();
+        
+      } catch (error) {
+        hideLoadingOverlay();
+        console.error('Error loading meetings data:', error);
+        showNotification('Error loading meetings data. Please check your connection.', 'error');
+      }
+    }
+
+    // Update upcoming meetings
+    function updateUpcomingMeetings(meetings) {
+      const meetingsTimeline = document.getElementById('upcomingMeetings');
+      if (!meetingsTimeline) return;
+      
+      meetingsTimeline.innerHTML = '';
+      
+      if (meetings.length === 0) {
+        meetingsTimeline.innerHTML = `
+          <div class="no-meetings">
+            <i class="fas fa-calendar-times"></i>
+            <h4>No Upcoming Meetings</h4>
+            <p>You don't have any scheduled meetings. Click "Request Meeting" to schedule one.</p>
+            <button class="btn btn-primary" onclick="showMeetingRequestForm()">Request Meeting</button>
+          </div>
+        `;
+        return;
+      }
+      
+      meetings.forEach(meeting => {
+        const meetingDiv = document.createElement('div');
+        meetingDiv.className = 'meeting-card';
+        
+        const meetingDate = new Date(meeting.date);
+        const isToday = meetingDate.toDateString() === new Date().toDateString();
+        const isTomorrow = meetingDate.toDateString() === new Date(Date.now() + 86400000).toDateString();
+        
+        meetingDiv.innerHTML = `
+          <div class="meeting-header">
+            <div class="meeting-date">
+              <span class="date">${meetingDate.getDate()}</span>
+              <span class="month">${meetingDate.toLocaleDateString('en', { month: 'short' })}</span>
+            </div>
+            <div class="meeting-info">
+              <h4>${meeting.type || 'General Meeting'}</h4>
+              <p><i class="fas fa-clock"></i> ${meetingDate.toLocaleTimeString('en', { hour: '2-digit', minute: '2-digit' })}</p>
+              <p><i class="fas fa-user"></i> ${meeting.supervisor || 'Supervisor'}</p>
+            </div>
+            <div class="meeting-status">
+              <span class="status ${meeting.status}">${meeting.status}</span>
+              ${isToday ? '<span class="today-badge">Today</span>' : ''}
+              ${isTomorrow ? '<span class="tomorrow-badge">Tomorrow</span>' : ''}
+            </div>
+          </div>
+          <div class="meeting-details">
+            <p><strong>Purpose:</strong> ${meeting.purpose || 'General discussion'}</p>
+            <p><strong>Location:</strong> ${meeting.location || 'Online'}</p>
+            <div class="meeting-actions">
+              <button class="btn btn-secondary" onclick="joinMeeting('${meeting.id}')">
+                <i class="fas fa-video"></i> Join
+              </button>
+              <button class="btn btn-secondary" onclick="rescheduleMeeting('${meeting.id}')">
+                <i class="fas fa-calendar-alt"></i> Reschedule
+              </button>
+            </div>
+          </div>
+        `;
+        
+        meetingsTimeline.appendChild(meetingDiv);
+      });
+    }
+
+    // Update viva schedule
+    function updateVivaSchedule(viva) {
+      const vivaScheduleDiv = document.getElementById('vivaSchedule');
+      if (!vivaScheduleDiv) return;
+      
+      if (!viva) {
+        vivaScheduleDiv.innerHTML = `
+          <div class="no-viva">
+            <i class="fas fa-graduation-cap"></i>
+            <h4>Viva Not Scheduled</h4>
+            <p>Your viva examination hasn't been scheduled yet. Check back later for updates.</p>
+          </div>
+        `;
+        return;
+      }
+      
+      const vivaDate = new Date(viva.date);
+      const daysUntilViva = Math.ceil((vivaDate - new Date()) / (1000 * 60 * 60 * 24));
+      
+      vivaScheduleDiv.innerHTML = `
+        <div class="viva-card">
+          <div class="viva-header">
+            <div class="viva-date">
+              <span class="date">${vivaDate.getDate()}</span>
+              <span class="month">${vivaDate.toLocaleDateString('en', { month: 'short' })}</span>
+              <span class="year">${vivaDate.getFullYear()}</span>
+            </div>
+            <div class="viva-info">
+              <h4>Final Viva Examination</h4>
+              <p><i class="fas fa-clock"></i> ${vivaDate.toLocaleTimeString('en', { hour: '2-digit', minute: '2-digit' })}</p>
+              <p><i class="fas fa-map-marker-alt"></i> ${viva.venue || 'Main Examination Hall'}</p>
+            </div>
+            <div class="viva-countdown">
+              <span class="countdown-badge">${daysUntilViva} days</span>
+            </div>
+          </div>
+          <div class="viva-details">
+            <div class="viva-panel">
+              <h5>Examination Panel:</h5>
+              <ul>
+                <li><strong>Chairperson:</strong> ${viva.chairperson || 'Dr. Ahmed Hassan'}</li>
+                <li><strong>Supervisor:</strong> ${viva.supervisor || 'Dr. Sarah Khan'}</li>
+                <li><strong>External:</strong> ${viva.external || 'Prof. Muhammad Ali'}</li>
+              </ul>
+            </div>
+            <div class="viva-preparation">
+              <h5>Preparation Checklist:</h5>
+              <div class="checklist">
+                <label><input type="checkbox"> Final presentation ready</label>
+                <label><input type="checkbox"> Project documentation complete</label>
+                <label><input type="checkbox"> Demo prepared and tested</label>
+                <label><input type="checkbox"> Questions from supervisor reviewed</label>
+              </div>
+            </div>
+            <div class="viva-actions">
+              <button class="btn btn-primary" onclick="viewVivaDetails()">View Details</button>
+              <button class="btn btn-secondary" onclick="downloadVivaGuide()">Download Guide</button>
+            </div>
+          </div>
+        </div>
+      `;
+    }
+
+    // Update meetings table
+    function updateMeetingsTable(meetings) {
+      const tableBody = document.getElementById('meetingsTableBody');
+      if (!tableBody) return;
+      
+      tableBody.innerHTML = '';
+      
+      if (meetings.length === 0) {
+        tableBody.innerHTML = '<tr><td colspan="6" style="text-align: center; color: #6c757d; padding: 20px;">No meeting history available</td></tr>';
+        return;
+      }
+      
+      meetings.forEach(meeting => {
+        const row = document.createElement('tr');
+        row.innerHTML = `
+          <td>${new Date(meeting.date).toLocaleDateString()}</td>
+          <td>${meeting.type || 'General'}</td>
+          <td>${meeting.supervisor || 'Supervisor'}</td>
+          <td><span class="status ${meeting.status}">${meeting.status}</span></td>
+          <td>
+            ${meeting.minutes ? 
+              `<button class="btn-icon" onclick="viewMinutes('${meeting.id}')" title="View Minutes">
+                <i class="fas fa-file-alt"></i>
+              </button>` : 
+              '<span class="no-minutes">No minutes</span>'
+            }
+          </td>
+          <td>
+            <div class="action-buttons">
+              <button class="btn-icon" onclick="viewMeetingDetails('${meeting.id}')" title="View Details">
+                <i class="fas fa-eye"></i>
+              </button>
+              <button class="btn-icon" onclick="downloadMeetingReport('${meeting.id}')" title="Download Report">
+                <i class="fas fa-download"></i>
+              </button>
+            </div>
+          </td>
+        `;
+        tableBody.appendChild(row);
+      });
+    }
+
+    // Update deadlines list
+    function updateDeadlinesList(deadlines) {
+      const deadlinesList = document.getElementById('deadlinesList');
+      if (!deadlinesList) return;
+      
+      deadlinesList.innerHTML = '';
+      
+      if (deadlines.length === 0) {
+        deadlinesList.innerHTML = '<p style="color: #6c757d; text-align: center; padding: 20px;">No deadlines scheduled</p>';
+        return;
+      }
+      
+      deadlines.forEach(deadline => {
+        const deadlineDate = new Date(deadline.date);
+        const isUrgent = deadlineDate <= new Date(Date.now() + 7 * 24 * 60 * 60 * 1000); // Within 7 days
+        const isOverdue = deadlineDate < new Date();
+        
+        const deadlineDiv = document.createElement('div');
+        deadlineDiv.className = `deadline-item ${isOverdue ? 'overdue' : ''} ${isUrgent ? 'urgent' : ''}`;
+        
+        deadlineDiv.innerHTML = `
+          <div class="deadline-header">
+            <div class="deadline-title">
+              <h4>${deadline.title}</h4>
+              <span class="deadline-type">${deadline.type || 'General'}</span>
+            </div>
+            <div class="deadline-date">
+              <i class="fas fa-calendar-alt"></i>
+              ${deadlineDate.toLocaleDateString()}
+              ${isOverdue ? '<span class="overdue-badge">Overdue</span>' : ''}
+              ${isUrgent && !isOverdue ? '<span class="urgent-badge">Urgent</span>' : ''}
+            </div>
+          </div>
+          <div class="deadline-details">
+            <p>${deadline.description || 'No description available'}</p>
+            <div class="deadline-progress">
+              <span>Progress: ${deadline.progress || 0}%</span>
+              <div class="progress-bar">
+                <div class="progress" style="width: ${deadline.progress || 0}%"></div>
+              </div>
+            </div>
+          </div>
+        `;
+        
+        deadlinesList.appendChild(deadlineDiv);
+      });
+    }
+
+    // Show meeting request form
+    function showMeetingRequestForm() {
+      const formHtml = `
+        <div id="meetingRequestModal" class="modal" style="display: block;">
+          <div class="modal-content">
+            <div class="modal-header">
+              <h3>Request Meeting</h3>
+              <span class="close" onclick="closeMeetingRequestModal()">&times;</span>
+            </div>
+            <div class="modal-body">
+              <form id="meetingRequestForm">
+                <div class="form-group">
+                  <label>Meeting Type *</label>
+                  <select name="type" required>
+                    <option value="">Select meeting type</option>
+                    <option value="progress">Progress Review</option>
+                    <option value="technical">Technical Discussion</option>
+                    <option value="milestone">Milestone Review</option>
+                    <option value="emergency">Emergency Meeting</option>
+                    <option value="viva-prep">Viva Preparation</option>
+                  </select>
+                </div>
+                <div class="form-group">
+                  <label>Preferred Date *</label>
+                  <input type="date" name="date" required>
+                </div>
+                <div class="form-group">
+                  <label>Preferred Time *</label>
+                  <input type="time" name="time" required>
+                </div>
+                <div class="form-group">
+                  <label>Duration *</label>
+                  <select name="duration" required>
+                    <option value="30">30 minutes</option>
+                    <option value="60">1 hour</option>
+                    <option value="90">1.5 hours</option>
+                    <option value="120">2 hours</option>
+                  </select>
+                </div>
+                <div class="form-group">
+                  <label>Purpose/Agenda *</label>
+                  <textarea name="purpose" rows="4" required placeholder="Describe the purpose of this meeting..."></textarea>
+                </div>
+                <div class="form-group">
+                  <label>Location Preference</label>
+                  <select name="location">
+                    <option value="online">Online Meeting</option>
+                    <option value="office">Supervisor Office</option>
+                    <option value="lab">Computer Lab</option>
+                    <option value="any">No Preference</option>
+                  </select>
+                </div>
+                <div class="form-actions">
+                  <button type="button" class="btn btn-secondary" onclick="closeMeetingRequestModal()">Cancel</button>
+                  <button type="submit" class="btn btn-primary">Submit Request</button>
+                </div>
+              </form>
+            </div>
+          </div>
+        </div>
+      `;
+      
+      document.body.insertAdjacentHTML('beforeend', formHtml);
+      
+      // Set minimum date to today
+      const dateInput = document.querySelector('input[name="date"]');
+      if (dateInput) {
+        dateInput.min = new Date().toISOString().split('T')[0];
+      }
+    }
+
+    // Close meeting request modal
+    function closeMeetingRequestModal() {
+      const modal = document.getElementById('meetingRequestModal');
+      if (modal) {
+        modal.remove();
+      }
+    }
+
+    // Handle meeting request form submission
+    document.addEventListener('submit', function(e) {
+      if (e.target.id === 'meetingRequestForm') {
+        e.preventDefault();
+        submitMeetingRequest(e.target);
+      }
+    });
+
+    // Submit meeting request
+    async function submitMeetingRequest(form) {
+      const formData = new FormData(form);
+      const groupId = localStorage.getItem('groupId');
+      const userId = localStorage.getItem('uid');
+      
+      try {
+        showLoadingOverlay('Submitting meeting request...');
+        
+        const meetingData = {
+          type: formData.get('type'),
+          date: new Date(formData.get('date') + 'T' + formData.get('time')).toISOString(),
+          duration: parseInt(formData.get('duration')),
+          purpose: formData.get('purpose'),
+          location: formData.get('location'),
+          groupId: groupId,
+          requestedBy: userId,
+          requestedDate: new Date().toISOString(),
+          status: 'pending'
+        };
+        
+        await firebase.firestore().collection('meetings').add(meetingData);
+        
+        hideLoadingOverlay();
+        closeMeetingRequestModal();
+        showNotification('Meeting request submitted successfully!', 'success');
+        
+        // Reload meetings data
+        loadMeetingsData();
+        
+      } catch (error) {
+        hideLoadingOverlay();
+        console.error('Error submitting meeting request:', error);
+        showNotification('Error submitting meeting request. Please try again.', 'error');
+      }
+    }
+
+    // Other utility functions
+    function joinMeeting(meetingId) {
+      showNotification('Joining meeting...', 'info');
+      // Implementation for joining meeting
+    }
+
+    function rescheduleMeeting(meetingId) {
+      showNotification('Opening reschedule form...', 'info');
+      // Implementation for rescheduling meeting
+    }
+
+    function viewMinutes(meetingId) {
+      showNotification('Loading meeting minutes...', 'info');
+      // Implementation for viewing minutes
+    }
+
+    function viewMeetingDetails(meetingId) {
+      showNotification('Loading meeting details...', 'info');
+      // Implementation for viewing meeting details
+    }
+
+    function downloadMeetingReport(meetingId) {
+      showNotification('Downloading meeting report...', 'info');
+      // Implementation for downloading report
+    }
+
+    function viewVivaDetails() {
+      showNotification('Loading viva details...', 'info');
+      // Implementation for viewing viva details
+    }
+
+    function downloadVivaGuide() {
+      showNotification('Downloading viva guide...', 'info');
+      // Implementation for downloading viva guide
+    }
+
+    function viewCalendar() {
+      showNotification('Opening calendar view...', 'info');
+      // Implementation for viewing calendar
+    }
+
+    function downloadTemplates() {
+      showNotification('Downloading templates...', 'info');
+      // Implementation for downloading templates
+    }
+
+    function viewGuide() {
+      showNotification('Loading online meeting guide...', 'info');
+      // Implementation for viewing guide
+    }
+
+    function viewTips() {
+      showNotification('Loading presentation tips...', 'info');
+      // Implementation for viewing tips
+    }
+  </script>
+
+</body>
+
+</html>

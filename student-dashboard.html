@@ -1,209 +1,152 @@
 <!DOCTYPE html>
 <html lang="en">
+
 <head>
   <meta charset="UTF-8" />
-  <title>Student Dashboard | FYP Management System</title>
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-
+  <title>Student Dashboard - FYP Management System</title>
   <link rel="stylesheet" href="css/style.css" />
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" />
 
   <!-- Firebase SDK -->
   <script src="https://www.gstatic.com/firebasejs/9.22.1/firebase-app-compat.js"></script>
-  <script src="https://www.gstatic.com/firebasejs/9.22.1/firebase-auth-compat.js"></script>
   <script src="https://www.gstatic.com/firebasejs/9.22.1/firebase-firestore-compat.js"></script>
   <script src="https://www.gstatic.com/firebasejs/9.22.1/firebase-storage-compat.js"></script>
   <script src="js/firebase-config.js"></script>
   <script src="js/firebase-auth.js"></script>
   <script src="js/auth.js"></script>
   <script src="js/student.js"></script>
-
-  <style>
-    .tabs {
-      display: flex;
-      gap: 12px;
-      margin-bottom: 25px;
-      flex-wrap: wrap;
-    }
-
-    .tab-btn {
-      padding: 10px 18px;
-      border: 1px solid rgba(148,163,184,0.5);
-      background: #070000;
-      border-radius: 10px;
-      cursor: pointer;
-      font-weight: 700;
-      transition: transform 0.2s ease, box-shadow 0.2s ease, background 0.2s ease;
-    }
-
-    .tab-btn:hover {
-      box-shadow: 0 10px 18px rgba(15,23,42,0.08);
-      transform: translateY(-1px);
-      background: #000306;
-    }
-
-    .tab-btn.active {
-      background: #2563eb;
-      color: #0b0000;
-      border-color: #2563eb;
-    }
-
-    .section {
-      display: none;
-      background: #ffffff;
-      padding: 20px;
-      border-radius: 14px;
-      border: 1px solid rgba(148,163,184,0.35);
-      box-shadow: 0 10px 22px rgba(15,23,42,0.08);
-    }
-
-    .section.active { display: block; }
-
-    .card {
-      margin-bottom: 15px;
-      padding: 15px;
-      border-bottom: 1px solid #e5e7eb;
-    }
-
-    .progress-bar {
-      background: #e5e7eb;
-      border-radius: 10px;
-      height: 12px;
-      overflow: hidden;
-      margin-top: 8px;
-    }
-
-    .progress-fill {
-      height: 100%;
-      background: #2563eb;
-      width: 0%;
-    }
-
-    .status {
-      display: inline-block;
-      padding: 6px 10px;
-      border-radius: 8px;
-      font-weight: 800;
-      font-size: 13px;
-    }
-
-    .approved { background: #dcfce7; color: #166534; }
-    .pending { background: #fef3c7; color: #92400e; }
-
-    textarea {
-      width: 100%;
-      padding: 10px 12px;
-      border-radius: 10px;
-      border: 1px solid #cbd5e1;
-      resize: vertical;
-      margin-top: 6px;
-      color: #374151;
-    }
-  </style>
 </head>
 
 <body>
 
-  <aside class="sidebar">
-    <h2>Student</h2>
-    <ul>
-      <li class="active">Dashboard</li>
-      <li onclick="logout()">Logout</li>
-    </ul>
-  </aside>
+  <div class="dashboard-container">
+    <!-- Sidebar -->
+    <aside class="sidebar">
+      <div class="logo">
+        <img src="assets/images/university-logo.png" alt="University Logo" class="logo-img">
+      </div>
+      <nav class="nav-menu">
+        <a href="student-dashboard.html" class="nav-item active">
+          <i class="fas fa-tachometer-alt"></i>
+          <span>Dashboard</span>
+        </a>
+        <a href="proposals.html" class="nav-item">
+          <i class="fas fa-file-alt"></i>
+          <span>Proposals</span>
+        </a>
+        <a href="meetings-viva.html" class="nav-item">
+          <i class="fas fa-calendar-alt"></i>
+          <span>Meetings & Viva</span>
+        </a>
+        <a href="reports-files.html" class="nav-item">
+          <i class="fas fa-file-alt"></i>
+          <span>Reports & Files</span>
+        </a>
+        <a href="index.html" class="nav-item logout">
+          <i class="fas fa-sign-out-alt"></i>
+          <span>Logout</span>
+        </a>
+      </nav>
+    </aside>
 
-  <main class="main-content">
+    <!-- Main Content -->
+    <main class="main-content">
+      <!-- Top Bar -->
+      <header class="top-bar">
+        <div class="welcome-section">
+          <h1>Welcome, <span id="dynamicUserName">Loading...</span>!</h1>
+        </div>
+        <div class="action-buttons">
+          <button class="btn btn-primary" onclick="handleFileUpload()">
+            <i class="fas fa-upload"></i>
+            Upload Report
+          </button>
+          <button class="btn btn-secondary" onclick="handleMeetingRequest()">
+            <i class="fas fa-calendar-plus"></i>
+            Request Meeting
+          </button>
+          <div class="notification-bell" onclick="showNotifications()">
+            <i class="fas fa-bell"></i>
+            <span class="notification-badge" id="notificationCount">0</span>
+          </div>
+        </div>
+      </header>
 
-    <header class="top-bar">
-      <h1>Student Dashboard</h1>
-      <p>Track proposal status, meetings, progress and feedback</p>
-    </header>
+      <!-- Dashboard Content -->
+      <div class="dashboard-content">
+        <!-- Project Overview Card -->
+        <div class="card">
+          <h3>Project Overview</h3>
+          <div class="project-info" id="projectInfo">
+            <!-- Project info will be dynamically loaded here -->
+          </div>
+        </div>
 
-    <div class="tabs">
-      <button class="tab-btn active" onclick="showSection('proposal', this)">Proposal Status</button>
-      <button class="tab-btn" onclick="showSection('meetings', this)">Meetings & Viva</button>
-      <button class="tab-btn" onclick="showSection('reports', this)">Reports & Feedback</button>
-    </div>
+        <!-- Group Members Card -->
+        <div class="card">
+          <h3>Group Members</h3>
+          <div class="members-list" id="membersList">
+            <!-- Members will be dynamically loaded here -->
+          </div>
+        </div>
 
-    <section id="proposal" class="section active">
-      <h2>Proposal Status</h2>
+        <!-- Task Assignments Card -->
+        <div class="card">
+          <h3>Task Assignments</h3>
+          <div class="task-table" id="taskTable">
+            <!-- Tasks will be dynamically loaded here -->
+          </div>
+          <button class="btn btn-primary" onclick="showNewTaskForm()">New Task</button>
+        </div>
 
-      <div class="card">
-        <p><strong>Project Title:</strong> Smart Attendance System</p>
-        <p><strong>Supervisor:</strong> Dr. Ahmed</p>
-        <p>
-          <strong>Status:</strong>
-          <span class="status approved">Approved</span>
-        </p>
+        <!-- Reports & File Upload Card -->
+        <div class="card">
+          <h3>Reports & File Upload</h3>
+          <div class="file-table" id="fileTable">
+            <!-- Files will be dynamically loaded here -->
+          </div>
+        </div>
 
-        <p><strong>Overall Progress:</strong> 72%</p>
-        <div class="progress-bar">
-          <div class="progress-fill" id="progressFill"></div>
+        <!-- Meetings & Viva Card -->
+        <div class="card">
+          <h3>Meetings & Viva</h3>
+          <div class="meeting-table" id="meetingTable">
+            <!-- Meetings will be dynamically loaded here -->
+          </div>
+          <button class="btn btn-secondary" onclick="handleMeetingRequest()">Request Meeting</button>
+        </div>
+
+        <!-- Proposal Status Card -->
+        <div class="card">
+          <h3>Proposal Status</h3>
+          <div class="proposal-status" id="proposalStatus">
+            <!-- Proposal status will be dynamically loaded here -->
+          </div>
+        </div>
+
+        <!-- Supervisor Feedback Card -->
+        <div class="card">
+          <h3>Supervisor Feedback</h3>
+          <div class="feedback-list" id="feedbackList">
+            <!-- Feedback will be dynamically loaded here -->
+          </div>
+        </div>
+
+        <!-- Announcements Card -->
+        <div class="card">
+          <h3>Announcements</h3>
+          <div class="announcements" id="announcements">
+            <!-- Announcements will be dynamically loaded here -->
+          </div>
         </div>
       </div>
-    </section>
+    </main>
+  </div>
 
-    <section id="meetings" class="section">
-      <h2>Meetings & Viva Schedule</h2>
-
-      <div class="card">
-        <p><strong>Next Meeting:</strong></p>
-        <p>📅 12 Jan 2026 — 10:00 AM</p>
-      </div>
-
-      <div class="card">
-        <p><strong>Viva Date:</strong></p>
-        <p>🎓 10 May 2026</p>
-      </div>
-
-      <div class="card">
-        <h3>Upcoming Deadlines</h3>
-        <ul>
-          <li>Proposal Submission — 15 Jan 2026</li>
-          <li>Mid Evaluation — 5 Mar 2026</li>
-          <li>Final Report Submission — 30 Apr 2026</li>
-        </ul>
-      </div>
-    </section>
-
-    <section id="reports" class="section">
-      <h2>Reports & Supervisor Feedback</h2>
-
-      <div class="card">
-        <h3>Weekly Progress Report</h3>
-        <p>Status: On Track</p>
-        <p>Last Updated: Week 5</p>
-      </div>
-
-      <div class="card">
-        <h3>Supervisor Feedback</h3>
-        <textarea readonly>
-Good progress overall. Focus on improving documentation and testing in the next phase.
-        </textarea>
-      </div>
-    </section>
-
-  </main>
-
-  <script>
-    if (localStorage.getItem("role") !== "student") {
-      window.location.href = "login.html";
-    }
-
-    document.getElementById("progressFill").style.width = "72%";
-
-    function showSection(id, btn) {
-      document.querySelectorAll(".section").forEach(s => s.classList.remove("active"));
-      document.querySelectorAll(".tab-btn").forEach(b => b.classList.remove("active"));
-
-      document.getElementById(id).classList.add("active");
-      btn.classList.add("active");
-    }
-
-    function logout() {
-      localStorage.clear();
-      window.location.href = "login.html";
-    }
-  </script>
+  <!-- Main JavaScript -->
+  <script src="script.js"></script>
 
 </body>
+
 </html>
