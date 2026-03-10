@@ -1528,3 +1528,337 @@ button.danger {
     grid-template-columns: repeat(auto-fill, minmax(150px, 1fr));
   }
 }
+
+/* =========================
+   PROPOSAL STATUS STYLES
+========================= */
+
+.no-proposal-status {
+  text-align: center;
+  padding: 40px 20px;
+  color: #6c757d;
+}
+
+.no-proposal-status i {
+  font-size: 48px;
+  margin-bottom: 15px;
+  color: #cbd5e1;
+}
+
+.no-proposal-status h4 {
+  margin: 10px 0 10px 0;
+  color: #4b5563;
+  font-size: 18px;
+}
+
+.no-proposal-status p {
+  margin: 10px 0 20px 0;
+  font-size: 14px;
+}
+
+.proposal-status-details {
+  background: #ffffff;
+  border-radius: 12px;
+  padding: 20px;
+  border: 1px solid #e5e7eb;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.05);
+}
+
+.status-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 15px;
+  padding-bottom: 15px;
+  border-bottom: 1px solid #e5e7eb;
+}
+
+.status-header h4 {
+  margin: 0;
+  color: #1f2937;
+  font-size: 16px;
+  font-weight: 600;
+}
+
+.status-badge {
+  padding: 4px 12px;
+  border-radius: 20px;
+  font-size: 12px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+.status-badge.pending {
+  background: #fef3c7;
+  color: #92400e;
+}
+
+.status-badge.under_review {
+  background: #dbeafe;
+  color: #1e40af;
+}
+
+.status-badge.approved {
+  background: #d1fae5;
+  color: #065f46;
+}
+
+.status-badge.rejected {
+  background: #fee2e2;
+  color: #991b1b;
+}
+
+.status-badge.revision_required {
+  background: #fed7aa;
+  color: #9a3412;
+}
+
+.status-info {
+  margin-bottom: 15px;
+}
+
+.status-info p {
+  margin: 5px 0;
+  font-size: 14px;
+  color: #4b5563;
+}
+
+.status-info strong {
+  color: #1f2937;
+}
+
+.status-progress {
+  margin-bottom: 20px;
+}
+
+.status-progress p {
+  margin: 0 0 8px 0;
+  font-size: 14px;
+  font-weight: 600;
+  color: #1f2937;
+}
+
+.progress-bar {
+  width: 100%;
+  height: 8px;
+  background: #e5e7eb;
+  border-radius: 4px;
+  overflow: hidden;
+  margin-bottom: 5px;
+}
+
+.progress {
+  height: 100%;
+  background: linear-gradient(90deg, #2563eb, #1e40af);
+  border-radius: 4px;
+  transition: width 0.3s ease;
+}
+
+.progress-text {
+  font-size: 12px;
+  color: #6b7280;
+  font-weight: 500;
+}
+
+.status-actions {
+  display: flex;
+  justify-content: flex-end;
+}
+
+.status-actions .btn {
+  padding: 8px 16px;
+  font-size: 14px;
+}
+
+/* Task item styles */
+.task-item {
+  background: #ffffff;
+  border: 1px solid #e5e7eb;
+  border-radius: 8px;
+  padding: 15px;
+  margin-bottom: 10px;
+}
+
+.task-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 10px;
+}
+
+.task-header h4 {
+  margin: 0;
+  font-size: 15px;
+  color: #1f2937;
+}
+
+.task-status {
+  padding: 2px 8px;
+  border-radius: 12px;
+  font-size: 11px;
+  font-weight: 600;
+  text-transform: uppercase;
+}
+
+.task-status.pending {
+  background: #fef3c7;
+  color: #92400e;
+}
+
+.task-status.in_progress {
+  background: #dbeafe;
+  color: #1e40af;
+}
+
+.task-status.completed {
+  background: #d1fae5;
+  color: #065f46;
+}
+
+.task-item p {
+  margin: 5px 0;
+  font-size: 13px;
+  color: #4b5563;
+}
+
+/* File item styles */
+.file-item {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  background: #ffffff;
+  border: 1px solid #e5e7eb;
+  border-radius: 8px;
+  padding: 12px;
+  margin-bottom: 8px;
+}
+
+.file-info {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.file-info i {
+  font-size: 24px;
+  color: #6b7280;
+}
+
+.file-info h4 {
+  margin: 0;
+  font-size: 14px;
+  color: #1f2937;
+}
+
+.file-info p {
+  margin: 2px 0 0 0;
+  font-size: 12px;
+  color: #6b7280;
+}
+
+/* Meeting item styles */
+.meeting-item {
+  background: #ffffff;
+  border: 1px solid #e5e7eb;
+  border-radius: 8px;
+  padding: 15px;
+  margin-bottom: 10px;
+}
+
+.meeting-info h4 {
+  margin: 0 0 8px 0;
+  font-size: 15px;
+  color: #1f2937;
+}
+
+.meeting-info p {
+  margin: 3px 0;
+  font-size: 13px;
+  color: #4b5563;
+}
+
+.meeting-status {
+  display: inline-block;
+  padding: 2px 8px;
+  border-radius: 12px;
+  font-size: 11px;
+  font-weight: 600;
+  text-transform: uppercase;
+  margin-top: 8px;
+}
+
+.meeting-status.scheduled {
+  background: #dbeafe;
+  color: #1e40af;
+}
+
+.meeting-status.completed {
+  background: #d1fae5;
+  color: #065f46;
+}
+
+.meeting-status.cancelled {
+  background: #fee2e2;
+  color: #991b1b;
+}
+
+/* Feedback item styles */
+.feedback-item {
+  background: #ffffff;
+  border: 1px solid #e5e7eb;
+  border-radius: 8px;
+  padding: 15px;
+  margin-bottom: 10px;
+}
+
+.feedback-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 10px;
+}
+
+.feedback-author {
+  font-weight: 600;
+  color: #1f2937;
+  font-size: 14px;
+}
+
+.feedback-date {
+  font-size: 12px;
+  color: #6b7280;
+}
+
+.feedback-content p {
+  margin: 0;
+  font-size: 14px;
+  color: #4b5563;
+  line-height: 1.5;
+}
+
+/* Announcement item styles */
+.announcement-item {
+  background: #ffffff;
+  border: 1px solid #e5e7eb;
+  border-radius: 8px;
+  padding: 15px;
+  margin-bottom: 10px;
+}
+
+.announcement-item h4 {
+  margin: 0 0 8px 0;
+  font-size: 15px;
+  color: #1f2937;
+}
+
+.announcement-item p {
+  margin: 5px 0;
+  font-size: 14px;
+  color: #4b5563;
+}
+
+.announcement-item small {
+  color: #6b7280;
+  font-size: 12px;
+}
