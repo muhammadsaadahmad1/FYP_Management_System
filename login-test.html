@@ -1,0 +1,305 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Login Test - Verify Fix</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            max-width: 800px;
+            margin: 0 auto;
+            padding: 20px;
+            background: #f8f9fa;
+        }
+        
+        .container {
+            background: white;
+            padding: 30px;
+            border-radius: 12px;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.1);
+            margin-bottom: 20px;
+        }
+        
+        .success {
+            background: #f0fdf4;
+            border: 2px solid #22c55e;
+            color: #166534;
+            padding: 20px;
+            border-radius: 8px;
+            margin-bottom: 20px;
+            font-weight: 600;
+        }
+        
+        .step {
+            background: #f8fafc;
+            padding: 20px;
+            border-radius: 8px;
+            margin-bottom: 20px;
+            border: 1px solid #e2e8f0;
+        }
+        
+        button {
+            background: #2563eb;
+            color: white;
+            border: none;
+            padding: 12px 24px;
+            border-radius: 6px;
+            cursor: pointer;
+            margin: 10px 5px;
+            font-weight: 600;
+        }
+        
+        button:hover {
+            background: #1e40af;
+        }
+        
+        .test-result {
+            margin-top: 15px;
+            padding: 15px;
+            border-radius: 6px;
+            font-family: monospace;
+            font-size: 12px;
+            white-space: pre-wrap;
+            max-height: 300px;
+            overflow-y: auto;
+        }
+        
+        .status-pass {
+            background: #dcfce7;
+            color: #166534;
+        }
+        
+        .status-fail {
+            background: #fecaca;
+            color: #991b1b;
+        }
+        
+        h1, h2, h3 {
+            color: #1e293b;
+        }
+        
+        .form-group {
+            margin-bottom: 15px;
+        }
+        
+        label {
+            display: block;
+            margin-bottom: 5px;
+            font-weight: 600;
+        }
+        
+        input {
+            width: 100%;
+            padding: 10px;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+        }
+    </style>
+</head>
+
+<body>
+    <div class="container">
+        <div class="success">
+            <h2>LOGIN FIX APPLIED!</h2>
+            <p>The student login lookup has been fixed to use proper Firebase queries instead of direct document lookup.</p>
+        </div>
+    </div>
+
+    <div class="container">
+        <h1>Login System Test</h1>
+        
+        <div class="step">
+            <h3>Step 1: Check Registered Students</h3>
+            <button onclick="checkRegisteredStudents()">Check Registered Students</button>
+            <div id="studentsResult" class="test-result"></div>
+        </div>
+        
+        <div class="step">
+            <h3>Step 2: Test Student Login Lookup</h3>
+            <div class="form-group">
+                <label>Registration Number:</label>
+                <input type="text" id="testRegNumber" placeholder="Enter registration number to test">
+            </div>
+            <button onclick="testStudentLookup()">Test Student Lookup</button>
+            <div id="lookupResult" class="test-result"></div>
+        </div>
+        
+        <div class="step">
+            <h3>Step 3: Open Login Page</h3>
+            <button onclick="window.open('login.html', '_blank')">Open Login Page</button>
+            <button onclick="window.open('register.html', '_blank')">Open Registration Page</button>
+        </div>
+    </div>
+
+    <!-- Firebase SDK -->
+    <script src="https://www.gstatic.com/firebasejs/9.22.1/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.22.1/firebase-auth-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.22.1/firebase-firestore-compat.js"></script>
+    <script src="js/firebase-config.js"></script>
+
+    <script>
+        async function checkRegisteredStudents() {
+            const resultDiv = document.getElementById('studentsResult');
+            resultDiv.textContent = 'Checking registered students...';
+            resultDiv.className = 'test-result';
+            
+            try {
+                console.log('Querying registered students...');
+                
+                // Query all student users
+                const querySnapshot = await firebase.firestore().collection('users')
+                    .where('role', '==', 'student')
+                    .limit(10)
+                    .get();
+                
+                if (querySnapshot.empty) {
+                    resultDiv.textContent = 'No registered students found.\n\n' +
+                        'Please register some students first using the registration page.\n' +
+                        'Then test the login again.';
+                    resultDiv.className = 'test-result status-fail';
+                    return;
+                }
+                
+                let studentsInfo = 'REGISTERED STUDENTS:\n\n';
+                querySnapshot.forEach((doc, index) => {
+                    const student = doc.data();
+                    studentsInfo += `${index + 1}. ${student.displayName}\n`;
+                    studentsInfo += `   Registration Number: ${student.registrationNumber}\n`;
+                    studentsInfo += `   Email: ${student.email}\n`;
+                    studentsInfo += `   Login ID: ${student.loginId}\n`;
+                    studentsInfo += `   Group ID: ${student.groupId}\n`;
+                    studentsInfo += `   Is Group Leader: ${student.isGroupLeader}\n\n`;
+                });
+                
+                studentsInfo += `Total Students Found: ${querySnapshot.size}\n\n` +
+                    `Use one of these registration numbers to test login lookup.`;
+                
+                resultDiv.textContent = studentsInfo;
+                resultDiv.className = 'test-result status-pass';
+                
+            } catch (error) {
+                console.error('Error checking registered students:', error);
+                resultDiv.textContent = 'ERROR: Failed to check registered students\n\n' +
+                    'Error: ' + error.message + '\n' +
+                    'Code: ' + (error.code || 'Unknown') + '\n\n' +
+                    'This indicates a Firebase permissions issue.';
+                resultDiv.className = 'test-result status-fail';
+            }
+        }
+        
+        async function testStudentLookup() {
+            const resultDiv = document.getElementById('lookupResult');
+            const regNumber = document.getElementById('testRegNumber').value;
+            
+            if (!regNumber) {
+                resultDiv.textContent = 'Please enter a registration number to test.';
+                resultDiv.className = 'test-result status-fail';
+                return;
+            }
+            
+            resultDiv.textContent = `Testing lookup for registration number: ${regNumber}...`;
+            resultDiv.className = 'test-result';
+            
+            try {
+                console.log('Testing student lookup for:', regNumber);
+                
+                // Test the same lookup logic as in login.html
+                let userData = null;
+                let lookupMethod = '';
+                
+                // Method 1: Query by registration number
+                try {
+                    const querySnapshot = await firebase.firestore().collection('users')
+                        .where('registrationNumber', '==', regNumber)
+                        .where('role', '==', 'student')
+                        .limit(1)
+                        .get();
+                    
+                    if (!querySnapshot.empty) {
+                        userData = querySnapshot.docs[0].data();
+                        lookupMethod = 'registrationNumber query';
+                        console.log('Found student by registration number:', userData);
+                    }
+                } catch (queryError) {
+                    console.log('Query lookup failed:', queryError.message);
+                }
+                
+                // Method 2: Query by loginId
+                if (!userData) {
+                    try {
+                        const loginQuery = await firebase.firestore().collection('users')
+                            .where('loginId', '==', regNumber)
+                            .where('role', '==', 'student')
+                            .limit(1)
+                            .get();
+                        
+                        if (!loginQuery.empty) {
+                            userData = loginQuery.docs[0].data();
+                            lookupMethod = 'loginId query';
+                            console.log('Found student by loginId:', userData);
+                        }
+                    } catch (loginError) {
+                        console.log('LoginId lookup failed:', loginError.message);
+                    }
+                }
+                
+                // Method 3: Direct document lookup
+                if (!userData) {
+                    try {
+                        const userDoc = await firebase.firestore().collection('users').doc(regNumber).get();
+                        if (userDoc.exists && userDoc.data().role === 'student') {
+                            userData = userDoc.data();
+                            lookupMethod = 'direct document lookup';
+                            console.log('Found student by direct lookup:', userData);
+                        }
+                    } catch (directError) {
+                        console.log('Direct lookup failed:', directError.message);
+                    }
+                }
+                
+                if (userData) {
+                    const result = `SUCCESS: Student found!\n\n` +
+                        `Lookup Method: ${lookupMethod}\n` +
+                        `Name: ${userData.displayName}\n` +
+                        `Registration Number: ${userData.registrationNumber}\n` +
+                        `Email: ${userData.email}\n` +
+                        `Login ID: ${userData.loginId}\n` +
+                        `Group ID: ${userData.groupId}\n` +
+                        `Role: ${userData.role}\n` +
+                        `Is Active: ${userData.isActive}\n\n` +
+                        `This student should be able to login with:\n` +
+                        `Registration Number: ${userData.registrationNumber}\n` +
+                        `Password: (group password set during registration)`;
+                    
+                    resultDiv.textContent = result;
+                    resultDiv.className = 'test-result status-pass';
+                } else {
+                    resultDiv.textContent = `FAILED: Student not found!\n\n` +
+                        `Registration Number: ${regNumber}\n\n` +
+                        `This registration number was not found in the system.\n` +
+                        `Make sure the student is registered first.\n` +
+                        `Check the registration number spelling and format.`;
+                    resultDiv.className = 'test-result status-fail';
+                }
+                
+            } catch (error) {
+                console.error('Student lookup test failed:', error);
+                resultDiv.textContent = 'ERROR: Student lookup test failed\n\n' +
+                    'Error: ' + error.message + '\n' +
+                    'Code: ' + (error.code || 'Unknown') + '\n\n' +
+                    'This indicates a Firebase permissions issue or network problem.';
+                resultDiv.className = 'test-result status-fail';
+            }
+        }
+        
+        // Auto-check students on page load
+        document.addEventListener('DOMContentLoaded', function() {
+            setTimeout(() => {
+                checkRegisteredStudents();
+            }, 1000);
+        });
+    </script>
+</body>
+</html>

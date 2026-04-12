@@ -1,0 +1,259 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Quick Fix - Firebase Permissions</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            max-width: 800px;
+            margin: 0 auto;
+            padding: 20px;
+            background: #f8f9fa;
+        }
+        
+        .container {
+            background: white;
+            padding: 30px;
+            border-radius: 12px;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.1);
+            margin-bottom: 20px;
+        }
+        
+        .urgent {
+            background: #fef2f2;
+            border: 2px solid #ef4444;
+            color: #991b1b;
+            padding: 20px;
+            border-radius: 8px;
+            margin-bottom: 20px;
+            font-weight: 600;
+        }
+        
+        .step {
+            background: #f8fafc;
+            padding: 20px;
+            border-radius: 8px;
+            margin-bottom: 20px;
+            border: 1px solid #e2e8f0;
+        }
+        
+        .step h3 {
+            margin: 0 0 15px 0;
+            color: #1e293b;
+        }
+        
+        .code-block {
+            background: #1e293b;
+            color: #e2e8f0;
+            padding: 15px;
+            border-radius: 6px;
+            font-family: monospace;
+            font-size: 12px;
+            overflow-x: auto;
+            margin: 10px 0;
+        }
+        
+        .success {
+            background: #f0fdf4;
+            border: 1px solid #dcfce7;
+            color: #166534;
+            padding: 15px;
+            border-radius: 8px;
+            margin: 10px 0;
+        }
+        
+        .error {
+            background: #fef2f2;
+            border: 1px solid #fecaca;
+            color: #991b1b;
+            padding: 15px;
+            border-radius: 8px;
+            margin: 10px 0;
+        }
+        
+        button {
+            background: #2563eb;
+            color: white;
+            border: none;
+            padding: 12px 24px;
+            border-radius: 6px;
+            cursor: pointer;
+            margin: 10px 5px;
+            font-weight: 600;
+        }
+        
+        button:hover {
+            background: #1e40af;
+        }
+        
+        .test-result {
+            margin-top: 15px;
+            padding: 15px;
+            border-radius: 6px;
+            font-family: monospace;
+            font-size: 12px;
+            white-space: pre-wrap;
+            max-height: 200px;
+            overflow-y: auto;
+        }
+        
+        h1, h2, h3 {
+            color: #1e293b;
+        }
+    </style>
+</head>
+
+<body>
+    <div class="container">
+        <div class="urgent">
+            <h2>URGENT: Firebase Permissions Issue</h2>
+            <p>The "Missing or insufficient permissions" error needs to be fixed immediately. Follow these steps exactly:</p>
+        </div>
+    </div>
+
+    <div class="container">
+        <h1>Step-by-Step Fix</h1>
+        
+        <div class="step">
+            <h3>Step 1: Open Firebase Console</h3>
+            <p>Click this button to open Firebase Console:</p>
+            <button onclick="window.open('https://console.firebase.google.com/', '_blank')">Open Firebase Console</button>
+            <p>Select project: <strong>fypmanagementsystem-29faf</strong></p>
+        </div>
+        
+        <div class="step">
+            <h3>Step 2: Go to Firestore Rules</h3>
+            <ol>
+                <li>Click on <strong>"Firestore Database"</strong> in left menu</li>
+                <li>Click on <strong>"Rules"</strong> tab at top</li>
+                <li>Delete all existing rules</li>
+            </ol>
+        </div>
+        
+        <div class="step">
+            <h3>Step 3: Paste New Rules</h3>
+            <p>Click below to copy the new rules, then paste them in Firebase Console:</p>
+            <button onclick="copyNewRules()">Copy New Rules</button>
+            <div class="code-block" id="newRules">
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    // Allow all operations for development
+    match /{document=**} {
+      allow read, write, create, update, delete: if true;
+    }
+  }
+}
+            </div>
+        </div>
+        
+        <div class="step">
+            <h3>Step 4: Publish Rules</h3>
+            <ol>
+                <li>Click <strong>"Publish"</strong> button at top</li>
+                <li>Wait for "Rules published successfully" message</li>
+                <li>Wait 30 seconds for rules to propagate</li>
+            </ol>
+        </div>
+        
+        <div class="step">
+            <h3>Step 5: Test Registration</h3>
+            <button onclick="testFirebase()">Test Firebase Connection</button>
+            <button onclick="window.open('register.html', '_blank')">Open Registration Page</button>
+            <div id="testResult" class="test-result"></div>
+        </div>
+    </div>
+
+    <div class="container">
+        <h2>If Still Not Working</h2>
+        <div class="error">
+            <h3>Alternative Solutions:</h3>
+            <ol>
+                <li><strong>Check Firebase Project Status:</strong> Make sure project is not disabled</li>
+                <li><strong>Check Internet Connection:</strong> Ensure stable internet connection</li>
+                <li><strong>Clear Browser Cache:</strong> Clear cache and reload</li>
+                <li><strong>Check Firebase Console:</strong> Look for any error messages</li>
+                <li><strong>Try Incognito Mode:</strong> Test in private browser window</li>
+            </ol>
+        </div>
+    </div>
+
+    <!-- Firebase SDK -->
+    <script src="https://www.gstatic.com/firebasejs/9.22.1/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.22.1/firebase-auth-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.22.1/firebase-firestore-compat.js"></script>
+    <script src="js/firebase-config.js"></script>
+
+    <script>
+        function copyNewRules() {
+            const rules = document.getElementById('newRules').textContent;
+            navigator.clipboard.writeText(rules).then(() => {
+                alert('New security rules copied! Paste them in Firebase Console and click Publish.');
+            }).catch(err => {
+                console.error('Failed to copy:', err);
+                alert('Failed to copy. Please copy manually.');
+            });
+        }
+        
+        async function testFirebase() {
+            const testResult = document.getElementById('testResult');
+            testResult.textContent = 'Testing Firebase connection...';
+            testResult.className = 'test-result';
+            
+            try {
+                console.log('Testing Firebase connection...');
+                
+                // Test 1: Basic connection
+                const testDoc = {
+                    test: true,
+                    timestamp: new Date(),
+                    message: 'Connection test'
+                };
+                
+                await firebase.firestore().collection('test').doc('connection').set(testDoc);
+                console.log('Write test passed');
+                
+                // Test 2: Read test
+                const doc = await firebase.firestore().collection('test').doc('connection').get();
+                if (doc.exists) {
+                    console.log('Read test passed');
+                    
+                    // Clean up
+                    await firebase.firestore().collection('test').doc('connection').delete();
+                    console.log('Cleanup completed');
+                    
+                    testResult.textContent = 'SUCCESS: Firebase is working correctly!\n\n' +
+                        'Connection: PASSED\n' +
+                        'Write: PASSED\n' +
+                        'Read: PASSED\n' +
+                        'Cleanup: PASSED\n\n' +
+                        'You can now test the registration page.';
+                    testResult.className = 'test-result success';
+                } else {
+                    throw new Error('Document not found after creation');
+                }
+                
+            } catch (error) {
+                console.error('Firebase test failed:', error);
+                testResult.textContent = 'ERROR: Firebase connection failed!\n\n' +
+                    'Error: ' + error.message + '\n' +
+                    'Code: ' + (error.code || 'Unknown') + '\n\n' +
+                    'This means the security rules have not been deployed yet.\n' +
+                    'Please follow the steps above to deploy the rules.';
+                testResult.className = 'test-result error';
+            }
+        }
+        
+        // Auto-test on page load
+        document.addEventListener('DOMContentLoaded', function() {
+            setTimeout(() => {
+                console.log('Auto-testing Firebase...');
+                testFirebase();
+            }, 1000);
+        });
+    </script>
+</body>
+</html>

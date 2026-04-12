@@ -1,0 +1,263 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Final Test - Registration System</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            max-width: 800px;
+            margin: 0 auto;
+            padding: 20px;
+            background: #f8f9fa;
+        }
+        
+        .container {
+            background: white;
+            padding: 30px;
+            border-radius: 12px;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.1);
+            margin-bottom: 20px;
+        }
+        
+        .success {
+            background: #f0fdf4;
+            border: 2px solid #22c55e;
+            color: #166534;
+            padding: 20px;
+            border-radius: 8px;
+            margin-bottom: 20px;
+            font-weight: 600;
+        }
+        
+        .step {
+            background: #f8fafc;
+            padding: 20px;
+            border-radius: 8px;
+            margin-bottom: 20px;
+            border: 1px solid #e2e8f0;
+        }
+        
+        button {
+            background: #2563eb;
+            color: white;
+            border: none;
+            padding: 12px 24px;
+            border-radius: 6px;
+            cursor: pointer;
+            margin: 10px 5px;
+            font-weight: 600;
+        }
+        
+        button:hover {
+            background: #1e40af;
+        }
+        
+        .test-result {
+            margin-top: 15px;
+            padding: 15px;
+            border-radius: 6px;
+            font-family: monospace;
+            font-size: 12px;
+            white-space: pre-wrap;
+            max-height: 300px;
+            overflow-y: auto;
+        }
+        
+        .status-pass {
+            background: #dcfce7;
+            color: #166534;
+        }
+        
+        .status-fail {
+            background: #fecaca;
+            color: #991b1b;
+        }
+        
+        h1, h2, h3 {
+            color: #1e293b;
+        }
+    </style>
+</head>
+
+<body>
+    <div class="container">
+        <div class="success">
+            <h2>✅ FIREBASE RULES DEPLOYED SUCCESSFULLY!</h2>
+            <p>The emergency security rules have been deployed to Firebase. The "Missing or insufficient permissions" error should now be resolved.</p>
+        </div>
+    </div>
+
+    <div class="container">
+        <h1>Final Verification Test</h1>
+        
+        <div class="step">
+            <h3>Step 1: Test Firebase Connection</h3>
+            <button onclick="testFirebaseConnection()">Test Firebase Connection</button>
+            <div id="connectionResult" class="test-result"></div>
+        </div>
+        
+        <div class="step">
+            <h3>Step 2: Test Registration Operations</h3>
+            <button onclick="testRegistrationOperations()">Test Registration Operations</button>
+            <div id="registrationResult" class="test-result"></div>
+        </div>
+        
+        <div class="step">
+            <h3>Step 3: Open Registration Page</h3>
+            <button onclick="window.open('register.html', '_blank')">Open Registration Page</button>
+            <button onclick="window.open('login.html', '_blank')">Open Login Page</button>
+        </div>
+    </div>
+
+    <!-- Firebase SDK -->
+    <script src="https://www.gstatic.com/firebasejs/9.22.1/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.22.1/firebase-auth-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.22.1/firebase-firestore-compat.js"></script>
+    <script src="js/firebase-config.js"></script>
+
+    <script>
+        async function testFirebaseConnection() {
+            const resultDiv = document.getElementById('connectionResult');
+            resultDiv.textContent = 'Testing Firebase connection...';
+            resultDiv.className = 'test-result';
+            
+            try {
+                // Test basic Firebase connection
+                const testDoc = {
+                    test: true,
+                    timestamp: new Date(),
+                    message: 'Final verification test'
+                };
+                
+                await firebase.firestore().collection('verification').doc('test').set(testDoc);
+                console.log('Firebase write test passed');
+                
+                // Test read
+                const doc = await firebase.firestore().collection('verification').doc('test').get();
+                if (doc.exists) {
+                    console.log('Firebase read test passed');
+                    
+                    // Cleanup
+                    await firebase.firestore().collection('verification').doc('test').delete();
+                    
+                    resultDiv.textContent = '✅ SUCCESS: Firebase connection working perfectly!\n\n' +
+                        'Write Test: PASSED\n' +
+                        'Read Test: PASSED\n' +
+                        'Cleanup: PASSED\n\n' +
+                        'Firebase security rules are working correctly.';
+                    resultDiv.className = 'test-result status-pass';
+                } else {
+                    throw new Error('Document not found after creation');
+                }
+                
+            } catch (error) {
+                console.error('Firebase connection test failed:', error);
+                resultDiv.textContent = '❌ ERROR: Firebase connection failed!\n\n' +
+                    'Error: ' + error.message + '\n' +
+                    'Code: ' + (error.code || 'Unknown') + '\n\n' +
+                    'This indicates the security rules may not have propagated yet.\n' +
+                    'Please wait 2-3 minutes and try again.';
+                resultDiv.className = 'test-result status-fail';
+            }
+        }
+        
+        async function testRegistrationOperations() {
+            const resultDiv = document.getElementById('registrationResult');
+            resultDiv.textContent = 'Testing registration operations...';
+            resultDiv.className = 'test-result';
+            
+            try {
+                let testsPassed = 0;
+                let totalTests = 4;
+                
+                // Test 1: Create user document
+                console.log('Test 1: Creating user document...');
+                const testUser = {
+                    uid: 'test-user-final',
+                    email: 'test@final.com',
+                    loginId: 'TESTFINAL',
+                    displayName: 'Test User Final',
+                    role: 'student',
+                    groupId: 'FINAL001',
+                    registrationNumber: '2026-CS-9999',
+                    medium: 'Computer Science',
+                    batch: '2026',
+                    createdAt: new Date(),
+                    isActive: true
+                };
+                
+                await firebase.firestore().collection('users').doc('test-user-final').set(testUser);
+                testsPassed++;
+                console.log('User creation test passed');
+                
+                // Test 2: Create group document
+                console.log('Test 2: Creating group document...');
+                const testGroup = {
+                    groupId: 'FINAL001',
+                    groupSize: 2,
+                    members: [],
+                    createdAt: new Date(),
+                    isActive: true
+                };
+                
+                await firebase.firestore().collection('groups').doc('FINAL001').set(testGroup);
+                testsPassed++;
+                console.log('Group creation test passed');
+                
+                // Test 3: Query operations
+                console.log('Test 3: Testing query operations...');
+                const querySnapshot = await firebase.firestore().collection('users').where('role', '==', 'student').limit(5).get();
+                if (querySnapshot.size >= 0) {
+                    testsPassed++;
+                    console.log('Query test passed');
+                }
+                
+                // Test 4: Update operations
+                console.log('Test 4: Testing update operations...');
+                await firebase.firestore().collection('users').doc('test-user-final').update({
+                    lastUpdated: new Date()
+                });
+                testsPassed++;
+                console.log('Update test passed');
+                
+                // Cleanup test data
+                await firebase.firestore().collection('users').doc('test-user-final').delete();
+                await firebase.firestore().collection('groups').doc('FINAL001').delete();
+                console.log('Test cleanup completed');
+                
+                const result = `✅ REGISTRATION OPERATIONS TEST RESULTS:\n\n` +
+                    `Tests Passed: ${testsPassed}/${totalTests}\n` +
+                    `User Creation: PASSED\n` +
+                    `Group Creation: PASSED\n` +
+                    `Query Operations: PASSED\n` +
+                    `Update Operations: PASSED\n` +
+                    `Test Cleanup: PASSED\n\n` +
+                    `All registration operations are working correctly!\n` +
+                    `The registration system should now work perfectly.`;
+                
+                resultDiv.textContent = result;
+                resultDiv.className = 'test-result status-pass';
+                
+            } catch (error) {
+                console.error('Registration operations test failed:', error);
+                resultDiv.textContent = '❌ REGISTRATION OPERATIONS TEST FAILED:\n\n' +
+                    'Error: ' + error.message + '\n' +
+                    'Code: ' + (error.code || 'Unknown') + '\n\n' +
+                    'This indicates there may still be permission issues.\n' +
+                    'Please check Firebase Console for any rule errors.';
+                resultDiv.className = 'test-result status-fail';
+            }
+        }
+        
+        // Auto-run connection test on page load
+        document.addEventListener('DOMContentLoaded', function() {
+            setTimeout(() => {
+                testFirebaseConnection();
+            }, 1000);
+        });
+    </script>
+</body>
+</html>

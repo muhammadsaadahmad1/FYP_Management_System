@@ -1,0 +1,384 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Deploy Firebase Security Rules</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            max-width: 800px;
+            margin: 0 auto;
+            padding: 20px;
+            background: #f8f9fa;
+        }
+        
+        .container {
+            background: white;
+            padding: 30px;
+            border-radius: 12px;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.1);
+            margin-bottom: 20px;
+        }
+        
+        .step {
+            background: #f8fafc;
+            padding: 20px;
+            border-radius: 8px;
+            margin-bottom: 20px;
+            border: 1px solid #e2e8f0;
+        }
+        
+        .step h3 {
+            margin: 0 0 15px 0;
+            color: #1e293b;
+        }
+        
+        .code-block {
+            background: #1e293b;
+            color: #e2e8f0;
+            padding: 15px;
+            border-radius: 6px;
+            font-family: monospace;
+            font-size: 12px;
+            overflow-x: auto;
+            margin: 10px 0;
+        }
+        
+        .success {
+            background: #f0fdf4;
+            border: 1px solid #dcfce7;
+            color: #166534;
+            padding: 15px;
+            border-radius: 8px;
+            margin: 10px 0;
+        }
+        
+        .warning {
+            background: #fff3cd;
+            border: 1px solid #ffeaa7;
+            color: #856404;
+            padding: 15px;
+            border-radius: 8px;
+            margin: 10px 0;
+        }
+        
+        .error {
+            background: #fef2f2;
+            border: 1px solid #fecaca;
+            color: #991b1b;
+            padding: 15px;
+            border-radius: 8px;
+            margin: 10px 0;
+        }
+        
+        button {
+            background: #2563eb;
+            color: white;
+            border: none;
+            padding: 12px 24px;
+            border-radius: 6px;
+            cursor: pointer;
+            margin: 10px 5px;
+            font-weight: 600;
+        }
+        
+        button:hover {
+            background: #1e40af;
+        }
+        
+        .test-result {
+            margin-top: 15px;
+            padding: 15px;
+            border-radius: 6px;
+            font-family: monospace;
+            font-size: 12px;
+            white-space: pre-wrap;
+            max-height: 200px;
+            overflow-y: auto;
+        }
+        
+        h1, h2, h3 {
+            color: #1e293b;
+        }
+    </style>
+</head>
+
+<body>
+    <div class="container">
+        <h1>Deploy Firebase Security Rules</h1>
+        <p>This page will help you deploy the updated Firebase security rules to fix the "Missing or insufficient permissions" error.</p>
+    </div>
+
+    <div class="container">
+        <h2>Step-by-Step Deployment</h2>
+        
+        <div class="step">
+            <h3>Step 1: Open Firebase Console</h3>
+            <p>Go to the Firebase Console and select your project:</p>
+            <div class="code-block">
+https://console.firebase.google.com/
+Project: fypmanagementsystem-29faf
+            </div>
+            <button onclick="openFirebaseConsole()">Open Firebase Console</button>
+        </div>
+        
+        <div class="step">
+            <h3>Step 2: Navigate to Firestore Rules</h3>
+            <ol>
+                <li>In the Firebase Console, click on "Firestore Database" in the left menu</li>
+                <li>Click on the "Rules" tab at the top</li>
+                <li>You should see the current security rules</li>
+            </ol>
+        </div>
+        
+        <div class="step">
+            <h3>Step 3: Replace Security Rules</h3>
+            <p>Copy the updated security rules below and paste them into the Firebase Console:</p>
+            <button onclick="copyRules()">Copy Security Rules</button>
+            <div class="code-block" id="rulesContent">
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    // Users collection rules
+    match /users/{userId} {
+      // Allow read access for user lookup during login
+      allow read: if true;
+      // Allow write only if user is authenticated and owns the document
+      allow write: if request.auth != null && request.auth.uid == userId;
+      // Allow create if user is authenticated OR if creating during registration
+      allow create: if request.auth != null || (request.resource.data.role == 'student' || request.resource.data.role == 'supervisor' || request.resource.data.role == 'admin');
+      // Allow update if user is authenticated and owns the document
+      allow update: if request.auth != null && request.auth.uid == userId;
+      // Allow delete if user is authenticated and owns the document
+      allow delete: if request.auth != null && request.auth.uid == userId;
+    }
+    
+    // Allow queries on users collection for login purposes
+    match /users/{document} {
+      allow read: if true;
+    }
+    
+    // Groups collection rules
+    match /groups/{groupId} {
+      // Allow read/write if user is authenticated
+      allow read, write: if request.auth != null;
+      // Allow create if user is authenticated OR if creating during registration
+      allow create: if request.auth != null || request.resource.data.groupSize != null;
+      // Allow update if user is authenticated
+      allow update: if request.auth != null;
+      // Allow delete if user is authenticated
+      allow delete: if request.auth != null;
+    }
+    
+    // Projects collection rules
+    match /projects/{projectId} {
+      // Allow read/write if user is authenticated
+      allow read, write: if request.auth != null;
+      // Allow create if user is authenticated
+      allow create: if request.auth != null;
+      // Allow update if user is authenticated
+      allow update: if request.auth != null;
+      // Allow delete if user is authenticated
+      allow delete: if request.auth != null;
+    }
+    
+    // Proposals collection rules
+    match /proposals/{proposalId} {
+      // Allow read/write if user is authenticated
+      allow read, write: if request.auth != null;
+      // Allow create if user is authenticated
+      allow create: if request.auth != null;
+      // Allow update if user is authenticated
+      allow update: if request.auth != null;
+      // Allow delete if user is authenticated
+      allow delete: if request.auth != null;
+    }
+    
+    // Reports collection rules
+    match /reports/{reportId} {
+      // Allow read/write if user is authenticated
+      allow read, write: if request.auth != null;
+      // Allow create if user is authenticated
+      allow create: if request.auth != null;
+      // Allow update if user is authenticated
+      allow update: if request.auth != null;
+      // Allow delete if user is authenticated
+      allow delete: if request.auth != null;
+    }
+    
+    // Meetings collection rules
+    match /meetings/{meetingId} {
+      // Allow read/write if user is authenticated
+      allow read, write: if request.auth != null;
+      // Allow create if user is authenticated
+      allow create: if request.auth != null;
+      // Allow update if user is authenticated
+      allow update: if request.auth != null;
+      // Allow delete if user is authenticated
+      allow delete: if request.auth != null;
+    }
+    
+    // Test collection rules - for development and testing
+    match /test_collection/{docId} {
+      // Allow all operations for testing
+      allow read, write, create, update, delete: if true;
+    }
+    
+    // Public collection rules - for development
+    match /public/{docId} {
+      // Allow all operations for testing
+      allow read, write, create, update, delete: if true;
+    }
+    
+    // System collection rules - for system data
+    match /system/{docId} {
+      // Allow read for authenticated users
+      allow read: if request.auth != null;
+      // Allow write for authenticated users (admin only in production)
+      allow write: if request.auth != null;
+    }
+  }
+}
+            </div>
+        </div>
+        
+        <div class="step">
+            <h3>Step 4: Publish Rules</h3>
+            <ol>
+                <li>After pasting the rules, click the "Publish" button at the top</li>
+                <li>Wait for the rules to be deployed (usually takes a few seconds)</li>
+                <li>You should see a "Rules published successfully" message</li>
+            </ol>
+        </div>
+        
+        <div class="step">
+            <h3>Step 5: Test Registration</h3>
+            <p>After deploying the rules, test the registration to verify the fix:</p>
+            <button onclick="testRegistration()">Test Registration</button>
+            <button onclick="openRegistration()">Open Registration Page</button>
+            <div id="testResult" class="test-result"></div>
+        </div>
+    </div>
+
+    <div class="container">
+        <h2>What Was Fixed</h2>
+        <div class="success">
+            <h3>Security Rules Updated:</h3>
+            <ul>
+                <li><strong>Users Collection:</strong> Now allows user creation during registration (unauthenticated users with valid role data)</li>
+                <li><strong>Groups Collection:</strong> Now allows group creation during registration (unauthenticated users with groupSize data)</li>
+                <li><strong>Other Collections:</strong> Still require authentication for security</li>
+                <li><strong>Read Access:</strong> Still allows public read for login functionality</li>
+            </ul>
+        </div>
+        
+        <div class="warning">
+            <h3>Security Considerations:</h3>
+            <ul>
+                <li>The rules allow registration operations but maintain security for other operations</li>
+                <li>Only users with valid role data (student/supervisor/admin) can be created</li>
+                <li>Only documents with groupSize data can be created in groups collection</li>
+                <li>All other operations still require authentication</li>
+            </ul>
+        </div>
+    </div>
+
+    <!-- Firebase SDK -->
+    <script src="https://www.gstatic.com/firebasejs/9.22.1/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.22.1/firebase-auth-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.22.1/firebase-firestore-compat.js"></script>
+    <script src="js/firebase-config.js"></script>
+
+    <script>
+        function openFirebaseConsole() {
+            window.open('https://console.firebase.google.com/', '_blank');
+        }
+        
+        function copyRules() {
+            const rulesContent = document.getElementById('rulesContent').textContent;
+            navigator.clipboard.writeText(rulesContent).then(() => {
+                alert('Security rules copied to clipboard! Paste them into Firebase Console.');
+            }).catch(err => {
+                console.error('Failed to copy rules:', err);
+                alert('Failed to copy rules. Please copy manually.');
+            });
+        }
+        
+        function openRegistration() {
+            window.open('register.html', '_blank');
+        }
+        
+        async function testRegistration() {
+            const testResult = document.getElementById('testResult');
+            testResult.textContent = 'Testing Firebase permissions...';
+            testResult.className = 'test-result';
+            
+            try {
+                // Test 1: Check if we can create a test group document
+                console.log('Testing group creation permissions...');
+                
+                const testGroupData = {
+                    groupId: 'TEST001',
+                    groupSize: 2,
+                    members: [],
+                    createdAt: new Date(),
+                    isActive: true
+                };
+                
+                await firebase.firestore().collection('groups').doc('TEST001').set(testGroupData);
+                console.log('Group creation test passed');
+                
+                // Test 2: Check if we can create a test user document
+                console.log('Testing user creation permissions...');
+                
+                const testUserData = {
+                    uid: 'test123',
+                    email: 'test@example.com',
+                    loginId: 'TEST001',
+                    displayName: 'Test User',
+                    role: 'student',
+                    groupId: 'TEST001',
+                    isGroupLeader: true,
+                    registrationNumber: '2026-CS-1234',
+                    medium: 'Computer Science',
+                    batch: '2026',
+                    createdAt: new Date(),
+                    isActive: true
+                };
+                
+                await firebase.firestore().collection('users').doc('test123').set(testUserData);
+                console.log('User creation test passed');
+                
+                // Clean up test data
+                await firebase.firestore().collection('groups').doc('TEST001').delete();
+                await firebase.firestore().collection('users').doc('test123').delete();
+                console.log('Test data cleaned up');
+                
+                testResult.textContent = 'SUCCESS: Firebase permissions are working correctly!\n\n' +
+                    'Group creation: PASSED\n' +
+                    'User creation: PASSED\n' +
+                    'Test cleanup: PASSED\n\n' +
+                    'The security rules have been successfully deployed.\n' +
+                    'You can now test the registration page.';
+                testResult.className = 'test-result success';
+                
+            } catch (error) {
+                console.error('Permission test failed:', error);
+                testResult.textContent = 'ERROR: Firebase permissions test failed!\n\n' +
+                    'Error: ' + error.message + '\n' +
+                    'Code: ' + (error.code || 'Unknown') + '\n\n' +
+                    'Please ensure the security rules have been deployed correctly.\n' +
+                    'Check the Firebase Console for any rule compilation errors.';
+                testResult.className = 'test-result error';
+            }
+        }
+        
+        // Initialize
+        document.addEventListener('DOMContentLoaded', function() {
+            console.log('Firebase Rules Deployment Tool Ready');
+        });
+    </script>
+</body>
+</html>

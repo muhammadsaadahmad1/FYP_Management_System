@@ -1,0 +1,183 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Create Test Student | FYP Management System</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            max-width: 600px;
+            margin: 50px auto;
+            padding: 20px;
+        }
+        .form-section {
+            background: #f8f9fa;
+            padding: 20px;
+            border-radius: 8px;
+            margin-bottom: 20px;
+        }
+        .status {
+            padding: 10px;
+            border-radius: 4px;
+            margin: 10px 0;
+        }
+        .success { background: #d4edda; color: #155724; }
+        .error { background: #f8d7da; color: #721c24; }
+        .info { background: #d1ecf1; color: #0c5460; }
+        button {
+            background: #2563eb;
+            color: white;
+            border: none;
+            padding: 10px 20px;
+            border-radius: 4px;
+            cursor: pointer;
+            margin: 5px;
+        }
+        button:hover { background: #1e40af; }
+        input, select {
+            width: 100%;
+            padding: 8px;
+            margin: 5px 0;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+        }
+    </style>
+</head>
+<body>
+    <h1>👨‍🎓 Create Test Student Account</h1>
+    
+    <div class="form-section">
+        <h3>Student Registration</h3>
+        <input type="text" id="regNumber" placeholder="Registration Number (e.g., TEST-001)">
+        <input type="email" id="email" placeholder="Email (e.g., test@student.edu)">
+        <input type="text" id="fullName" placeholder="Full Name">
+        <input type="password" id="password" placeholder="Password (min 6 chars)">
+        <button onclick="createTestStudent()">Create Test Student</button>
+        <div id="create-status" class="status info">Ready to create student account...</div>
+    </div>
+
+    <div class="form-section">
+        <h3>Test Student Login</h3>
+        <input type="text" id="loginRegNumber" placeholder="Registration Number">
+        <input type="password" id="loginPassword" placeholder="Password">
+        <button onclick="testLogin()">Test Login</button>
+        <div id="login-status" class="status info">Ready to test login...</div>
+    </div>
+
+    <!-- Firebase SDK -->
+    <script src="https://www.gstatic.com/firebasejs/9.22.1/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.22.1/firebase-auth-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.22.1/firebase-firestore-compat.js"></script>
+    
+    <script>
+        // Firebase Configuration
+        const firebaseConfig = {
+            apiKey: "AIzaSyCljq20BTSxK2mRWicAsfAjh7B8ZTDSNgQ",
+            authDomain: "fypmanagementsystem-29faf.firebaseapp.com",
+            projectId: "fypmanagementsystem-29faf",
+            storageBucket: "fypmanagementsystem-29faf.firebasestorage.app",
+            messagingSenderId: "215218060669",
+            appId: "1:215218060669:web:2cb287d2aa4b545f50a014",
+            measurementId: "G-4DQVXVP3NX"
+        };
+
+        // Initialize Firebase
+        firebase.initializeApp(firebaseConfig);
+        const auth = firebase.auth();
+        const db = firebase.firestore();
+
+        // Create Test Student
+        async function createTestStudent() {
+            try {
+                const regNumber = document.getElementById('regNumber').value;
+                const email = document.getElementById('email').value;
+                const password = document.getElementById('password').value;
+                const fullName = document.getElementById('fullName').value;
+
+                if (!regNumber || !email || !password || !fullName) {
+                    updateStatus('create-status', '⚠️ Please fill all fields', 'error');
+                    return;
+                }
+
+                if (password.length < 6) {
+                    updateStatus('create-status', '⚠️ Password must be at least 6 characters', 'error');
+                    return;
+                }
+
+                updateStatus('create-status', '🔄 Creating test student...', 'info');
+
+                // Create Firebase Auth user
+                const userCredential = await auth.createUserWithEmailAndPassword(email, password);
+                const user = userCredential.user;
+
+                // Create Firestore document with registration number as document ID
+                await db.collection('users').doc(regNumber).set({
+                    uid: user.uid,
+                    email: email,
+                    displayName: fullName,
+                    role: 'student',
+                    loginId: regNumber,
+                    groupId: user.uid,
+                    isGroupLeader: true,
+                    isActive: true,
+                    createdAt: firebase.firestore.FieldValue.serverTimestamp()
+                });
+
+                updateStatus('create-status', '✅ Test student created! Registration Number: ' + regNumber + ', Email: ' + email, 'success');
+
+            } catch (error) {
+                updateStatus('create-status', '❌ Error creating student: ' + error.message, 'error');
+            }
+        }
+
+        // Test Student Login
+        async function testLogin() {
+            try {
+                const regNumber = document.getElementById('loginRegNumber').value;
+                const password = document.getElementById('loginPassword').value;
+
+                if (!regNumber || !password) {
+                    updateStatus('login-status', '⚠️ Please enter registration number and password', 'error');
+                    return;
+                }
+
+                updateStatus('login-status', '🔄 Testing login...', 'info');
+
+                // Try direct document lookup using registration number as document ID
+                console.log('🔍 Looking for student with registration number:', regNumber);
+                const userDoc = await db.collection('users').doc(regNumber).get();
+                
+                if (!userDoc.exists) {
+                    updateStatus('login-status', '❌ Student not found. Registration Number: ' + regNumber, 'error');
+                    return;
+                }
+
+                const userData = userDoc.data();
+                console.log('✅ Found student:', userData);
+
+                // Try Firebase Auth login
+                const userCredential = await auth.signInWithEmailAndPassword(userData.email, password);
+                
+                updateStatus('login-status', '✅ Login successful! Student: ' + userData.displayName + ' (' + userData.email + ')', 'success');
+
+                // Store in localStorage
+                localStorage.setItem('uid', userCredential.user.uid);
+                localStorage.setItem('role', 'student');
+                localStorage.setItem('displayName', userData.displayName);
+                localStorage.setItem('groupId', userData.groupId);
+                localStorage.setItem('loginId', userData.loginId);
+
+            } catch (error) {
+                updateStatus('login-status', '❌ Login failed: ' + error.message, 'error');
+                console.error('Login error:', error);
+            }
+        }
+
+        function updateStatus(elementId, message, type) {
+            const element = document.getElementById(elementId);
+            element.innerHTML = message;
+            element.className = 'status ' + type;
+        }
+    </script>
+</body>
+</html>

@@ -1224,17 +1224,27 @@
     </div>
   </div>
 
-<script src="https://www.gstatic.com/firebasejs/9.22.1/firebase-app-compat.js"></script>
-<script src="https://www.gstatic.com/firebasejs/9.22.1/firebase-auth-compat.js"></script>
-<script src="https://www.gstatic.com/firebasejs/9.22.1/firebase-firestore-compat.js"></script>
-<script src="https://www.gstatic.com/firebasejs/9.22.1/firebase-storage-compat.js"></script>
-<script src="js/firebase-config.js"></script>
-<script src="js/firebase-auth.js"></script>
-<script src="js/auth.js"></script>
+  <!-- Firebase SDK -->
+  <script src="https://www.gstatic.com/firebasejs/9.22.1/firebase-app-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/9.22.1/firebase-auth-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/9.22.1/firebase-firestore-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/9.22.1/firebase-storage-compat.js"></script>
+  <script src="js/firebase-config.js"></script>
 
-<!-- Enhanced Registration Script -->
-<script>
-console.log('Registration script loaded successfully!');
+  <!-- Enhanced Registration Script -->
+  <script>
+  console.log('Registration script loaded successfully!');
+
+  // Wait for Firebase to be ready
+  function waitForFirebase() {
+    return new Promise((resolve) => {
+      if (typeof firebase !== 'undefined' && firebase.apps.length > 0) {
+        resolve();
+      } else {
+        setTimeout(waitForFirebase, 100);
+      }
+    });
+  }
 
 let currentStep = 1;
 const totalSteps = 3;
@@ -1686,21 +1696,42 @@ document.addEventListener('DOMContentLoaded', function() {
   updateNavButtons();
 });
 
-// Enhanced register function for group registration
-function register() {
-  if (!validateCurrentStep()) {
-    alert('Please fill in all required fields correctly.');
-    return;
-  }
-  
-  const role = document.getElementById('role').value;
-  
-  if (role === 'student') {
-    // Handle group registration
-    registerGroup();
-  } else {
-    // Handle individual registration (supervisor/admin)
-    registerIndividual();
+// Main registration function
+async function register() {
+  try {
+    // Wait for Firebase to be ready
+    await waitForFirebase();
+    
+    console.log('Starting registration process...');
+    
+    if (!validateCurrentStep()) {
+      alert('Please fill in all required fields correctly.');
+      return;
+    }
+    
+    const role = document.getElementById('role').value;
+    
+    if (role === 'student') {
+      await registerGroup();
+    } else {
+      await registerIndividual();
+    }
+    
+  } catch (error) {
+    console.error('Registration error:', error);
+    let errorMessage = 'Registration failed. Please try again.';
+    
+    if (error.code === 'auth/email-already-in-use') {
+      errorMessage = 'This email is already registered. Please use a different email or login.';
+    } else if (error.code === 'auth/weak-password') {
+      errorMessage = 'Password is too weak. Please choose a stronger password.';
+    } else if (error.code === 'auth/invalid-email') {
+      errorMessage = 'Invalid email address. Please check and try again.';
+    } else {
+      errorMessage = error.message;
+    }
+    
+    alert(errorMessage);
   }
 }
 
@@ -1757,87 +1788,168 @@ async function generateStudentLoginId(registrationNumber) {
 
 // Register group of students
 async function registerGroup() {
-  const groupSize = document.getElementById('groupSize').value;
-  const groupData = {
-    groupId: null, // Will be assigned
-    groupSize: parseInt(groupSize),
-    members: [],
-    createdAt: firebase.firestore.FieldValue.serverTimestamp(),
-    isActive: true
-  };
-  
-  // Collect data for each group member
-  for (let i = 1; i <= parseInt(groupSize); i++) {
-    const registrationNumber = document.getElementById(`studentId${i}`).value;
-    
-    const memberData = {
-      registrationNumber: registrationNumber,
-      loginId: registrationNumber, // Use registration number as login ID
-      fullName: document.getElementById(`fullName${i}`).value,
-      email: document.getElementById(`email${i}`).value,
-      medium: document.getElementById(`department${i}`).value,
-      batch: document.getElementById(`batch${i}`).value,
-      classNumber: document.getElementById(`classNumber${i}`).value,
-      section: document.getElementById(`section${i}`).value,
-      phone: document.getElementById(`countryCode${i}`).value + document.getElementById(`phone${i}`).value,
-      role: 'student',
-      isGroupLeader: i === 1
-    };
-    groupData.members.push(memberData);
-  }
-  
   try {
+    console.log('Registering student group...');
+    
+    const groupSize = document.getElementById('groupSize').value;
+    const password = document.getElementById('password').value;
+    
+    if (!groupSize || !password) {
+      throw new Error('Please fill all required fields');
+    }
+    
+    // Validate all member data first
+    const groupData = {
+      groupId: null, // Will be assigned
+      groupSize: parseInt(groupSize),
+      members: [],
+      createdAt: firebase.firestore.FieldValue.serverTimestamp(),
+      isActive: true
+    };
+    
+    // Collect and validate data for each group member
+    for (let i = 1; i <= parseInt(groupSize); i++) {
+      const registrationNumber = document.getElementById(`studentId${i}`).value;
+      const fullName = document.getElementById(`fullName${i}`).value;
+      const email = document.getElementById(`email${i}`).value;
+      const department = document.getElementById(`department${i}`).value;
+      const batch = document.getElementById(`batch${i}`).value;
+      
+      // Validate required fields
+      if (!registrationNumber || !fullName || !email || !department || !batch) {
+        throw new Error(`Please fill all required fields for Student ${i}`);
+      }
+      
+      // Validate email format
+      const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+      if (!emailRegex.test(email)) {
+        throw new Error(`Invalid email address for Student ${i}`);
+      }
+      
+      const memberData = {
+        registrationNumber: registrationNumber,
+        loginId: registrationNumber, // Use registration number as login ID
+        fullName: fullName,
+        email: email,
+        medium: department,
+        batch: batch,
+        classNumber: document.getElementById(`classNumber${i}`).value || '',
+        section: document.getElementById(`section${i}`).value || '',
+        phone: (document.getElementById(`countryCode${i}`).value || '+92') + (document.getElementById(`phone${i}`).value || ''),
+        role: 'student',
+        isGroupLeader: i === 1
+      };
+      groupData.members.push(memberData);
+    }
+    
     // Generate unique group ID
     const groupId = await generateGroupId();
     groupData.groupId = groupId;
     
-    // Create group document in Firestore
-    await firebase.firestore().collection('groups').doc(groupId).set(groupData);
+    console.log('Generated group ID:', groupId);
     
-    // Create individual user accounts for each member
+    // Create group document in Firestore first
+    await firebase.firestore().collection('groups').doc(groupId).set(groupData);
+    console.log('Group document created successfully');
+    
+    // Create individual user accounts for each member sequentially
     const createdUsers = [];
     for (let i = 0; i < groupData.members.length; i++) {
       const member = groupData.members[i];
       
-      // Create Firebase Auth account with email as auth identifier
-      const userCredential = await firebase.auth().createUserWithEmailAndPassword(
-        member.email, 
-        document.getElementById('password').value // Use same password for all group members
-      );
-      
-      const user = userCredential.user;
-      
-      // Update user profile
-      await user.updateProfile({
-        displayName: member.fullName
-      });
-      
-      // Store user data in Firestore with registration number as login ID
-      await firebase.firestore().collection('users').doc(user.uid).set({
-        uid: user.uid,
-        email: member.email,
-        loginId: member.loginId, 
-        displayName: member.fullName,
-        role: member.role,
-        groupId: groupId,
-        isGroupLeader: member.isGroupLeader,
-        registrationNumber: member.registrationNumber,
-        medium: member.medium,
-        batch: member.batch,
-        classNumber: member.classNumber,
-        section: member.section,
-        phone: member.phone,
-        createdAt: firebase.firestore.FieldValue.serverTimestamp(),
-        isActive: true
-      });
-      
-      createdUsers.push({
-        uid: user.uid,
-        loginId: member.loginId,
-        email: member.email,
-        fullName: member.fullName,
-        isGroupLeader: member.isGroupLeader
-      });
+      try {
+        console.log(`Creating account for member ${i + 1}: ${member.email}`);
+        
+        // Check if email already exists
+        try {
+          const signInMethods = await firebase.auth().fetchSignInMethodsForEmail(member.email);
+          if (signInMethods.length > 0) {
+            throw new Error(`Email ${member.email} is already registered. Please use a different email.`);
+          }
+        } catch (checkError) {
+          // If email doesn't exist, continue with registration
+          if (checkError.code !== 'auth/user-not-found') {
+            console.log('Email check passed');
+          }
+        }
+        
+        // Create Firebase Auth account with email as auth identifier
+        const userCredential = await firebase.auth().createUserWithEmailAndPassword(
+          member.email, 
+          password // Use same password for all group members
+        );
+        
+        const user = userCredential.user;
+        console.log(`Firebase Auth account created for ${member.email}`);
+        
+        // Update user profile
+        await user.updateProfile({
+          displayName: member.fullName
+        });
+        
+        // Store user data in Firestore with registration number as login ID
+        const userDoc = {
+          uid: user.uid,
+          email: member.email,
+          loginId: member.loginId, 
+          displayName: member.fullName,
+          role: member.role,
+          groupId: groupId,
+          isGroupLeader: member.isGroupLeader,
+          registrationNumber: member.registrationNumber,
+          medium: member.medium,
+          batch: member.batch,
+          classNumber: member.classNumber,
+          section: member.section,
+          phone: member.phone,
+          createdAt: firebase.firestore.FieldValue.serverTimestamp(),
+          isActive: true
+        };
+        
+        await firebase.firestore().collection('users').doc(user.uid).set(userDoc);
+        console.log(`User document created for ${member.email}`);
+        
+        createdUsers.push({
+          uid: user.uid,
+          loginId: member.loginId,
+          email: member.email,
+          fullName: member.fullName,
+          isGroupLeader: member.isGroupLeader
+        });
+        
+      } catch (memberError) {
+        console.error(`Error creating account for ${member.email}:`, memberError);
+        
+        // If any member fails, clean up created accounts
+        if (createdUsers.length > 0) {
+          console.log('Cleaning up created accounts due to error...');
+          for (const createdUser of createdUsers) {
+            try {
+              await firebase.auth().deleteUser(createdUser.uid);
+              await firebase.firestore().collection('users').doc(createdUser.uid).delete();
+            } catch (cleanupError) {
+              console.error('Error during cleanup:', cleanupError);
+            }
+          }
+          // Also delete the group document
+          try {
+            await firebase.firestore().collection('groups').doc(groupId).delete();
+          } catch (cleanupError) {
+            console.error('Error deleting group document:', cleanupError);
+          }
+        }
+        
+        // Re-throw the error with more specific message
+        if (memberError.code === 'auth/email-already-in-use') {
+          throw new Error(`Email ${member.email} is already registered. Please use a different email.`);
+        } else if (memberError.code === 'auth/weak-password') {
+          throw new Error('Password is too weak. Please choose a stronger password (at least 6 characters).');
+        } else if (memberError.code === 'auth/invalid-email') {
+          throw new Error(`Invalid email address: ${member.email}. Please check and try again.`);
+        } else {
+          throw new Error(`Failed to create account for ${member.fullName}: ${memberError.message}`);
+        }
+      }
     }
     
     // Show success message with group ID and login IDs (registration numbers)
@@ -1861,11 +1973,15 @@ async function registerGroup() {
     if (error.code === 'auth/email-already-in-use') {
       errorMessage = 'One or more email addresses are already registered. Please use different emails.';
     } else if (error.code === 'auth/weak-password') {
-      errorMessage = 'Password is too weak. Please choose a stronger password.';
+      errorMessage = 'Password is too weak. Please choose a stronger password (at least 6 characters).';
     } else if (error.code === 'auth/invalid-email') {
       errorMessage = 'One or more email addresses are invalid. Please check and try again.';
     } else if (error.message.includes('Maximum group limit')) {
       errorMessage = 'Maximum group limit reached. Please contact administrator.';
+    } else if (error.message.includes('already registered')) {
+      errorMessage = error.message;
+    } else {
+      errorMessage = error.message || 'Group registration failed. Please try again.';
     }
     
     alert(errorMessage);

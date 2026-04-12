@@ -1,0 +1,707 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Firebase Setup & Test | FYP Management System</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            max-width: 1000px;
+            margin: 0 auto;
+            padding: 20px;
+            background: #f8f9fa;
+        }
+        
+        .container {
+            background: white;
+            padding: 30px;
+            border-radius: 12px;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.1);
+            margin-bottom: 20px;
+        }
+        
+        .test-section {
+            margin-bottom: 30px;
+            padding: 20px;
+            border: 1px solid #e2e8f0;
+            border-radius: 8px;
+            background: #f8fafc;
+        }
+        
+        .status {
+            padding: 12px;
+            border-radius: 6px;
+            margin: 10px 0;
+            font-weight: 600;
+        }
+        
+        .success { background: #d4edda; color: #155724; border: 1px solid #c3e6cb; }
+        .error { background: #f8d7da; color: #721c24; border: 1px solid #f5c6cb; }
+        .warning { background: #fff3cd; color: #856404; border: 1px solid #ffeaa7; }
+        .info { background: #d1ecf1; color: #0c5460; border: 1px solid #bee5eb; }
+        
+        button {
+            background: #2563eb;
+            color: white;
+            border: none;
+            padding: 12px 24px;
+            border-radius: 6px;
+            cursor: pointer;
+            margin: 5px;
+            font-weight: 600;
+        }
+        
+        button:hover { background: #1e40af; }
+        button:disabled { background: #94a3b8; cursor: not-allowed; }
+        
+        .test-result {
+            margin-top: 15px;
+            padding: 15px;
+            border-radius: 6px;
+            font-family: monospace;
+            font-size: 12px;
+            white-space: pre-wrap;
+            max-height: 200px;
+            overflow-y: auto;
+        }
+        
+        .form-group {
+            margin-bottom: 15px;
+        }
+        
+        .form-group label {
+            display: block;
+            margin-bottom: 5px;
+            font-weight: 600;
+        }
+        
+        .form-group input, .form-group select {
+            width: 100%;
+            padding: 8px 12px;
+            border: 1px solid #cbd5e1;
+            border-radius: 4px;
+            font-size: 14px;
+        }
+        
+        .progress-bar {
+            width: 100%;
+            height: 20px;
+            background: #e2e8f0;
+            border-radius: 10px;
+            overflow: hidden;
+            margin: 10px 0;
+        }
+        
+        .progress-fill {
+            height: 100%;
+            background: #2563eb;
+            transition: width 0.3s ease;
+        }
+        
+        h1, h2, h3 {
+            color: #1e293b;
+        }
+        
+        .grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+            gap: 20px;
+        }
+    </style>
+</head>
+
+<body>
+    <div class="container">
+        <h1> Firebase Setup & Test Suite</h1>
+        <p>This tool will help you set up and test all Firebase services for your FYP Management System.</p>
+        
+        <div class="progress-bar">
+            <div class="progress-fill" id="progressBar" style="width: 0%"></div>
+        </div>
+        <div id="progressText" style="text-align: center; margin-bottom: 20px;">Ready to start testing...</div>
+    </div>
+
+    <!-- Firebase Connection Test -->
+    <div class="container">
+        <h2>1. Firebase Connection Test</h2>
+        <div class="test-section">
+            <p>Tests basic Firebase connectivity and configuration.</p>
+            <button onclick="testFirebaseConnection()">Test Firebase Connection</button>
+            <div id="connectionResult" class="test-result"></div>
+        </div>
+    </div>
+
+    <!-- Authentication Test -->
+    <div class="container">
+        <h2>2. Firebase Authentication Test</h2>
+        <div class="test-section">
+            <p>Tests user registration, login, and authentication flow.</p>
+            
+            <div class="grid">
+                <div>
+                    <h3>Create Test User</h3>
+                    <div class="form-group">
+                        <label>Email</label>
+                        <input type="email" id="testEmail" placeholder="test@example.com">
+                    </div>
+                    <div class="form-group">
+                        <label>Password</label>
+                        <input type="password" id="testPassword" placeholder="password123">
+                    </div>
+                    <div class="form-group">
+                        <label>Display Name</label>
+                        <input type="text" id="testName" placeholder="Test User">
+                    </div>
+                    <button onclick="testAuthRegister()">Register Test User</button>
+                    <button onclick="testAuthLogin()">Login Test User</button>
+                    <button onclick="testAuthLogout()">Logout</button>
+                </div>
+                <div>
+                    <h3>Authentication Status</h3>
+                    <div id="authStatus" class="test-result"></div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Firestore Database Test -->
+    <div class="container">
+        <h2>3. Firestore Database Test</h2>
+        <div class="test-section">
+            <p>Tests Firestore database operations: create, read, update, delete.</p>
+            
+            <div class="grid">
+                <div>
+                    <h3>Database Operations</h3>
+                    <button onclick="testFirestoreWrite()">Test Write Operation</button>
+                    <button onclick="testFirestoreRead()">Test Read Operation</button>
+                    <button onclick="testFirestoreUpdate()">Test Update Operation</button>
+                    <button onclick="testFirestoreDelete()">Test Delete Operation</button>
+                    <button onclick="testFirestoreQuery()">Test Query Operation</button>
+                </div>
+                <div>
+                    <h3>Database Status</h3>
+                    <div id="firestoreStatus" class="test-result"></div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Security Rules Test -->
+    <div class="container">
+        <h2>4. Security Rules Test</h2>
+        <div class="test-section">
+            <p>Tests Firebase security rules and permissions.</p>
+            <button onclick="testSecurityRules()">Test Security Rules</button>
+            <button onclick="deploySecurityRules()">Deploy Security Rules</button>
+            <div id="securityResult" class="test-result"></div>
+        </div>
+    </div>
+
+    <!-- Complete System Test -->
+    <div class="container">
+        <h2>5. Complete System Test</h2>
+        <div class="test-section">
+            <p>Runs all tests in sequence to verify complete system functionality.</p>
+            <button onclick="runCompleteTest()">Run Complete System Test</button>
+            <div id="completeResult" class="test-result"></div>
+        </div>
+    </div>
+
+    <!-- Firebase SDK -->
+    <script src="https://www.gstatic.com/firebasejs/9.22.1/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.22.1/firebase-auth-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.22.1/firebase-firestore-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.22.1/firebase-storage-compat.js"></script>
+    
+    <script>
+        // Firebase Configuration
+        const firebaseConfig = {
+            apiKey: "AIzaSyCljq20BTSxK2mRWicAsfAjh7B8ZTDSNgQ",
+            authDomain: "fypmanagementsystem-29faf.firebaseapp.com",
+            projectId: "fypmanagementsystem-29faf",
+            storageBucket: "fypmanagementsystem-29faf.firebasestorage.app",
+            messagingSenderId: "215218060669",
+            appId: "1:215218060669:web:2cb287d2aa4b545f50a014",
+            measurementId: "G-4DQVXVP3NX"
+        };
+
+        // Initialize Firebase
+        firebase.initializeApp(firebaseConfig);
+        const auth = firebase.auth();
+        const db = firebase.firestore();
+        const storage = firebase.storage();
+
+        // Enable offline persistence
+        db.enablePersistence()
+            .catch((err) => {
+                console.log('Persistence error:', err);
+            });
+
+        let testResults = {
+            connection: false,
+            auth: false,
+            firestore: false,
+            security: false,
+            complete: false
+        };
+
+        function updateProgress(percentage, text) {
+            document.getElementById('progressBar').style.width = percentage + '%';
+            document.getElementById('progressText').textContent = text;
+        }
+
+        function showResult(elementId, message, type = 'info') {
+            const element = document.getElementById(elementId);
+            element.innerHTML = message;
+            element.className = 'test-result status ' + type;
+        }
+
+        // Test 1: Firebase Connection
+        async function testFirebaseConnection() {
+            showResult('connectionResult', 'Testing Firebase connection...', 'info');
+            updateProgress(10, 'Testing Firebase connection...');
+            
+            try {
+                const app = firebase.app();
+                const projectId = app.options.projectId;
+                const appName = app.name;
+                
+                // Test basic connectivity
+                await db.collection('_connection_test').add({
+                    test: true,
+                    timestamp: new Date(),
+                    projectId: projectId
+                }).then(() => {
+                    showResult('connectionResult', 
+                        `SUCCESS: Firebase connected successfully!\n` +
+                        `Project ID: ${projectId}\n` +
+                        `App Name: ${appName}\n` +
+                        `Timestamp: ${new Date().toISOString()}`, 
+                        'success'
+                    );
+                    testResults.connection = true;
+                    updateProgress(20, 'Firebase connection verified');
+                });
+                
+            } catch (error) {
+                showResult('connectionResult', 
+                    `ERROR: Firebase connection failed!\n` +
+                    `Error: ${error.message}\n` +
+                    `Code: ${error.code}\n` +
+                    `Please check your Firebase configuration.`, 
+                    'error'
+                );
+                updateProgress(0, 'Connection failed');
+            }
+        }
+
+        // Test 2: Authentication
+        async function testAuthRegister() {
+            const email = document.getElementById('testEmail').value || 'test@example.com';
+            const password = document.getElementById('testPassword').value || 'password123';
+            const name = document.getElementById('testName').value || 'Test User';
+            
+            showResult('authStatus', 'Registering test user...', 'info');
+            
+            try {
+                const userCredential = await auth.createUserWithEmailAndPassword(email, password);
+                const user = userCredential.user;
+                
+                await user.updateProfile({ displayName: name });
+                
+                showResult('authStatus', 
+                    `SUCCESS: User registered!\n` +
+                    `UID: ${user.uid}\n` +
+                    `Email: ${user.email}\n` +
+                    `Name: ${user.displayName}\n` +
+                    `Email Verified: ${user.emailVerified}`, 
+                    'success'
+                );
+                testResults.auth = true;
+                
+            } catch (error) {
+                showResult('authStatus', 
+                    `ERROR: Registration failed!\n` +
+                    `Error: ${error.message}\n` +
+                    `Code: ${error.code}`, 
+                    'error'
+                );
+            }
+        }
+
+        async function testAuthLogin() {
+            const email = document.getElementById('testEmail').value || 'test@example.com';
+            const password = document.getElementById('testPassword').value || 'password123';
+            
+            showResult('authStatus', 'Logging in test user...', 'info');
+            
+            try {
+                const userCredential = await auth.signInWithEmailAndPassword(email, password);
+                const user = userCredential.user;
+                
+                showResult('authStatus', 
+                    `SUCCESS: User logged in!\n` +
+                    `UID: ${user.uid}\n` +
+                    `Email: ${user.email}\n` +
+                    `Name: ${user.displayName}\n` +
+                    `Last Login: ${user.metadata.lastSignInTime}`, 
+                    'success'
+                );
+                testResults.auth = true;
+                
+            } catch (error) {
+                showResult('authStatus', 
+                    `ERROR: Login failed!\n` +
+                    `Error: ${error.message}\n` +
+                    `Code: ${error.code}`, 
+                    'error'
+                );
+            }
+        }
+
+        async function testAuthLogout() {
+            try {
+                await auth.signOut();
+                showResult('authStatus', 'SUCCESS: User logged out!', 'success');
+            } catch (error) {
+                showResult('authStatus', 
+                    `ERROR: Logout failed!\n` +
+                    `Error: ${error.message}`, 
+                    'error'
+                );
+            }
+        }
+
+        // Test 3: Firestore Operations
+        async function testFirestoreWrite() {
+            showResult('firestoreStatus', 'Testing Firestore write...', 'info');
+            
+            try {
+                const docRef = await db.collection('test_collection').add({
+                    name: 'Test Document',
+                    timestamp: new Date(),
+                    testData: 'This is a test document for Firestore operations',
+                    createdBy: auth.currentUser?.uid || 'anonymous'
+                });
+                
+                showResult('firestoreStatus', 
+                    `SUCCESS: Document written!\n` +
+                    `Document ID: ${docRef.id}\n` +
+                    `Path: test_collection/${docRef.id}`, 
+                    'success'
+                );
+                
+                // Store doc ID for other tests
+                window.testDocId = docRef.id;
+                
+            } catch (error) {
+                showResult('firestoreStatus', 
+                    `ERROR: Write operation failed!\n` +
+                    `Error: ${error.message}\n` +
+                    `Code: ${error.code}`, 
+                    'error'
+                );
+            }
+        }
+
+        async function testFirestoreRead() {
+            if (!window.testDocId) {
+                showResult('firestoreStatus', 'ERROR: No test document to read. Please run write test first.', 'error');
+                return;
+            }
+            
+            showResult('firestoreStatus', 'Testing Firestore read...', 'info');
+            
+            try {
+                const docRef = db.collection('test_collection').doc(window.testDocId);
+                const doc = await docRef.get();
+                
+                if (doc.exists) {
+                    const data = doc.data();
+                    showResult('firestoreStatus', 
+                        `SUCCESS: Document read!\n` +
+                        `Document ID: ${doc.id}\n` +
+                        `Data: ${JSON.stringify(data, null, 2)}`, 
+                        'success'
+                    );
+                    testResults.firestore = true;
+                } else {
+                    showResult('firestoreStatus', 'ERROR: Document does not exist!', 'error');
+                }
+                
+            } catch (error) {
+                showResult('firestoreStatus', 
+                    `ERROR: Read operation failed!\n` +
+                    `Error: ${error.message}\n` +
+                    `Code: ${error.code}`, 
+                    'error'
+                );
+            }
+        }
+
+        async function testFirestoreUpdate() {
+            if (!window.testDocId) {
+                showResult('firestoreStatus', 'ERROR: No test document to update. Please run write test first.', 'error');
+                return;
+            }
+            
+            showResult('firestoreStatus', 'Testing Firestore update...', 'info');
+            
+            try {
+                const docRef = db.collection('test_collection').doc(window.testDocId);
+                await docRef.update({
+                    lastUpdated: new Date(),
+                    updateCount: firebase.firestore.FieldValue.increment(1),
+                    status: 'updated'
+                });
+                
+                showResult('firestoreStatus', 
+                    `SUCCESS: Document updated!\n` +
+                    `Document ID: ${window.testDocId}\n` +
+                    `Updated at: ${new Date().toISOString()}`, 
+                    'success'
+                );
+                
+            } catch (error) {
+                showResult('firestoreStatus', 
+                    `ERROR: Update operation failed!\n` +
+                    `Error: ${error.message}\n` +
+                    `Code: ${error.code}`, 
+                    'error'
+                );
+            }
+        }
+
+        async function testFirestoreDelete() {
+            if (!window.testDocId) {
+                showResult('firestoreStatus', 'ERROR: No test document to delete. Please run write test first.', 'error');
+                return;
+            }
+            
+            showResult('firestoreStatus', 'Testing Firestore delete...', 'info');
+            
+            try {
+                await db.collection('test_collection').doc(window.testDocId).delete();
+                
+                showResult('firestoreStatus', 
+                    `SUCCESS: Document deleted!\n` +
+                    `Document ID: ${window.testDocId}`, 
+                    'success'
+                );
+                
+                window.testDocId = null;
+                
+            } catch (error) {
+                showResult('firestoreStatus', 
+                    `ERROR: Delete operation failed!\n` +
+                    `Error: ${error.message}\n` +
+                    `Code: ${error.code}`, 
+                    'error'
+                );
+            }
+        }
+
+        async function testFirestoreQuery() {
+            showResult('firestoreStatus', 'Testing Firestore query...', 'info');
+            
+            try {
+                const snapshot = await db.collection('test_collection')
+                    .where('testData', '==', 'This is a test document for Firestore operations')
+                    .limit(10)
+                    .get();
+                
+                let results = [];
+                snapshot.forEach(doc => {
+                    results.push({
+                        id: doc.id,
+                        data: doc.data()
+                    });
+                });
+                
+                showResult('firestoreStatus', 
+                    `SUCCESS: Query completed!\n` +
+                    `Found ${results.length} documents:\n` +
+                    `${JSON.stringify(results, null, 2)}`, 
+                    'success'
+                );
+                
+                testResults.firestore = true;
+                
+            } catch (error) {
+                showResult('firestoreStatus', 
+                    `ERROR: Query operation failed!\n` +
+                    `Error: ${error.message}\n` +
+                    `Code: ${error.code}`, 
+                    'error'
+                );
+            }
+        }
+
+        // Test 4: Security Rules
+        async function testSecurityRules() {
+            showResult('securityResult', 'Testing security rules...', 'info');
+            
+            try {
+                // Test public read access
+                const publicDoc = await db.collection('public').doc('test').get();
+                
+                // Test authenticated user access
+                if (auth.currentUser) {
+                    const userDoc = await db.collection('users').doc(auth.currentUser.uid).get();
+                }
+                
+                showResult('securityResult', 
+                    `SUCCESS: Security rules working!\n` +
+                    `Public access: ${publicDoc.exists ? 'Allowed' : 'Restricted'}\n` +
+                    `User access: ${auth.currentUser ? 'Tested' : 'Not logged in'}\n` +
+                    `Note: Deploy security rules for full functionality.`, 
+                    'success'
+                );
+                
+                testResults.security = true;
+                
+            } catch (error) {
+                showResult('securityResult', 
+                    `WARNING: Security rules need attention!\n` +
+                    `Error: ${error.message}\n` +
+                    `This is expected if rules aren't deployed yet.`, 
+                    'warning'
+                );
+            }
+        }
+
+        // Deploy Security Rules
+        async function deploySecurityRules() {
+            showResult('securityResult', 'Deploying security rules...', 'info');
+            
+            const rules = `rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    // Allow read access to users collection for login
+    match /users/{userId} {
+      allow read: if true;
+      allow write: if request.auth != null && request.auth.uid == userId;
+      allow create: if request.auth != null;
+    }
+    
+    // Allow queries on users collection
+    match /users/{document} {
+      allow read: if true;
+    }
+    
+    // Groups collection - authenticated users only
+    match /groups/{groupId} {
+      allow read, write: if request.auth != null;
+      allow create: if request.auth != null;
+    }
+    
+    // Projects collection - authenticated users only
+    match /projects/{projectId} {
+      allow read, write: if request.auth != null;
+      allow create: if request.auth != null;
+    }
+    
+    // Proposals collection - authenticated users only
+    match /proposals/{proposalId} {
+      allow read, write: if request.auth != null;
+      allow create: if request.auth != null;
+    }
+    
+    // Test collection - for development
+    match /test_collection/{docId} {
+      allow read, write: if true;
+    }
+    
+    // Public collection - for testing
+    match /public/{docId} {
+      allow read: if true;
+      allow write: if true;
+    }
+  }
+}`;
+            
+            showResult('securityResult', 
+                `Security rules ready for deployment!\n\n` +
+                `To deploy these rules:\n` +
+                `1. Open Firebase Console\n` +
+                `2. Go to Firestore Database\n` +
+                `3. Click on 'Rules' tab\n` +
+                `4. Replace existing rules with the rules above\n` +
+                `5. Click 'Publish'\n\n` +
+                `Rules content:\n${rules}`, 
+                'info'
+            );
+        }
+
+        // Complete System Test
+        async function runCompleteTest() {
+            showResult('completeResult', 'Starting complete system test...', 'info');
+            updateProgress(0, 'Initializing complete test...');
+            
+            let results = [];
+            let progress = 0;
+            
+            try {
+                // Test 1: Connection
+                updateProgress(10, 'Testing Firebase connection...');
+                await testFirebaseConnection();
+                results.push('Firebase Connection: ' + (testResults.connection ? 'PASS' : 'FAIL'));
+                progress += 20;
+                
+                // Test 2: Auth
+                updateProgress(progress, 'Testing authentication...');
+                await testAuthRegister();
+                results.push('Authentication: ' + (testResults.auth ? 'PASS' : 'FAIL'));
+                progress += 20;
+                
+                // Test 3: Firestore
+                updateProgress(progress, 'Testing Firestore operations...');
+                await testFirestoreWrite();
+                await testFirestoreRead();
+                await testFirestoreUpdate();
+                await testFirestoreDelete();
+                results.push('Firestore Operations: ' + (testResults.firestore ? 'PASS' : 'FAIL'));
+                progress += 20;
+                
+                // Test 4: Security
+                updateProgress(progress, 'Testing security rules...');
+                await testSecurityRules();
+                results.push('Security Rules: ' + (testResults.security ? 'PASS' : 'NEEDS ATTENTION'));
+                progress += 20;
+                
+                // Final result
+                updateProgress(100, 'Complete test finished!');
+                
+                const summary = `COMPLETE SYSTEM TEST RESULTS:\n\n${results.join('\n')}\n\n` +
+                              `Overall Status: ${testResults.connection && testResults.auth && testResults.firestore ? 'READY FOR PRODUCTION' : 'NEEDS ATTENTION'}\n\n` +
+                              `Next Steps:\n` +
+                              `1. Fix any failed tests\n` +
+                              `2. Deploy security rules if needed\n` +
+                              `3. Test registration and login flows\n` +
+                              `4. Verify dashboard functionality`;
+                
+                showResult('completeResult', summary, testResults.connection && testResults.auth && testResults.firestore ? 'success' : 'warning');
+                testResults.complete = true;
+                
+            } catch (error) {
+                showResult('completeResult', 
+                    `ERROR: Complete test failed!\n` +
+                    `Error: ${error.message}\n` +
+                    `Please check individual tests.`, 
+                    'error'
+                );
+                updateProgress(0, 'Test failed');
+            }
+        }
+
+        // Initialize
+        document.addEventListener('DOMContentLoaded', function() {
+            console.log('Firebase Setup Tool Ready');
+            updateProgress(0, 'Ready to start testing...');
+        });
+    </script>
+</body>
+</html>

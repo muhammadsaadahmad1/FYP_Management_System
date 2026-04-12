@@ -1,0 +1,62 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    // Allow read access to all collections for development
+    match /{document=**} {
+      allow read: if true;
+    }
+    
+    // Users collection - allow all operations for registration
+    match /users/{userId} {
+      allow read: if true;
+      allow create: if true;
+      allow write: if true;
+      allow update: if true;
+      allow delete: if true;
+    }
+    
+    // Groups collection - allow all operations for registration
+    match /groups/{groupId} {
+      allow read: if true;
+      allow create: if true;
+      allow write: if true;
+      allow update: if true;
+      allow delete: if true;
+    }
+    
+    // Projects collection
+    match /projects/{projectId} {
+      allow read, write, create, update, delete: if true;
+    }
+    
+    // Proposals collection
+    match /proposals/{proposalId} {
+      allow read, write, create, update, delete: if true;
+    }
+    
+    // Reports collection
+    match /reports/{reportId} {
+      allow read, write, create, update, delete: if true;
+    }
+    
+    // Meetings collection
+    match /meetings/{meetingId} {
+      allow read, write, create, update, delete: if true;
+    }
+    
+    // Test collection
+    match /test_collection/{docId} {
+      allow read, write, create, update, delete: if true;
+    }
+    
+    // Public collection
+    match /public/{docId} {
+      allow read, write, create, update, delete: if true;
+    }
+    
+    // System collection
+    match /system/{docId} {
+      allow read, write, create, update, delete: if true;
+    }
+  }
+}

@@ -1,0 +1,513 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Firebase Diagnostic Tool</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            max-width: 900px;
+            margin: 0 auto;
+            padding: 20px;
+            background: #f8f9fa;
+        }
+        
+        .container {
+            background: white;
+            padding: 30px;
+            border-radius: 12px;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.1);
+            margin-bottom: 20px;
+        }
+        
+        .critical {
+            background: #fef2f2;
+            border: 2px solid #ef4444;
+            color: #991b1b;
+            padding: 20px;
+            border-radius: 8px;
+            margin-bottom: 20px;
+            font-weight: 600;
+        }
+        
+        .step {
+            background: #f8fafc;
+            padding: 20px;
+            border-radius: 8px;
+            margin-bottom: 20px;
+            border: 1px solid #e2e8f0;
+        }
+        
+        .step h3 {
+            margin: 0 0 15px 0;
+            color: #1e293b;
+        }
+        
+        .code-block {
+            background: #1e293b;
+            color: #e2e8f0;
+            padding: 15px;
+            border-radius: 6px;
+            font-family: monospace;
+            font-size: 11px;
+            overflow-x: auto;
+            margin: 10px 0;
+        }
+        
+        .success {
+            background: #f0fdf4;
+            border: 1px solid #dcfce7;
+            color: #166534;
+            padding: 15px;
+            border-radius: 8px;
+            margin: 10px 0;
+        }
+        
+        .error {
+            background: #fef2f2;
+            border: 1px solid #fecaca;
+            color: #991b1b;
+            padding: 15px;
+            border-radius: 8px;
+            margin: 10px 0;
+        }
+        
+        .warning {
+            background: #fff3cd;
+            border: 1px solid #ffeaa7;
+            color: #856404;
+            padding: 15px;
+            border-radius: 8px;
+            margin: 10px 0;
+        }
+        
+        button {
+            background: #2563eb;
+            color: white;
+            border: none;
+            padding: 12px 24px;
+            border-radius: 6px;
+            cursor: pointer;
+            margin: 10px 5px;
+            font-weight: 600;
+        }
+        
+        button:hover {
+            background: #1e40af;
+        }
+        
+        .test-result {
+            margin-top: 15px;
+            padding: 15px;
+            border-radius: 6px;
+            font-family: monospace;
+            font-size: 11px;
+            white-space: pre-wrap;
+            max-height: 300px;
+            overflow-y: auto;
+        }
+        
+        .status {
+            display: inline-block;
+            padding: 4px 8px;
+            border-radius: 4px;
+            font-size: 11px;
+            font-weight: 600;
+            margin-left: 10px;
+        }
+        
+        .status-pass {
+            background: #dcfce7;
+            color: #166534;
+        }
+        
+        .status-fail {
+            background: #fecaca;
+            color: #991b1b;
+        }
+        
+        h1, h2, h3 {
+            color: #1e293b;
+        }
+        
+        .progress {
+            width: 100%;
+            height: 20px;
+            background: #e5e7eb;
+            border-radius: 10px;
+            margin: 10px 0;
+            overflow: hidden;
+        }
+        
+        .progress-bar {
+            height: 100%;
+            background: #2563eb;
+            transition: width 0.3s ease;
+        }
+    </style>
+</head>
+
+<body>
+    <div class="container">
+        <div class="critical">
+            <h2>CRITICAL: Firebase Permissions Issue</h2>
+            <p>This tool will diagnose and fix the "Missing or insufficient permissions" error completely.</p>
+        </div>
+    </div>
+
+    <div class="container">
+        <h1>Complete Diagnostic & Fix</h1>
+        
+        <div class="step">
+            <h3>Step 1: Firebase Configuration Check</h3>
+            <button onclick="checkFirebaseConfig()">Check Firebase Config</button>
+            <div id="configResult" class="test-result"></div>
+        </div>
+        
+        <div class="step">
+            <h3>Step 2: Test All Firebase Operations</h3>
+            <button onclick="testAllOperations()">Test All Operations</button>
+            <div class="progress">
+                <div id="progressBar" class="progress-bar" style="width: 0%"></div>
+            </div>
+            <div id="operationsResult" class="test-result"></div>
+        </div>
+        
+        <div class="step">
+            <h3>Step 3: Deploy Emergency Rules</h3>
+            <p>This will deploy the most permissive rules possible:</p>
+            <button onclick="deployEmergencyRules()">Deploy Emergency Rules</button>
+            <div id="deployResult" class="test-result"></div>
+        </div>
+        
+        <div class="step">
+            <h3>Step 4: Alternative Registration Method</h3>
+            <p>If Firebase still doesn't work, this creates a local registration system:</p>
+            <button onclick="createAlternativeRegistration()">Create Alternative Registration</button>
+            <div id="alternativeResult" class="test-result"></div>
+        </div>
+    </div>
+
+    <div class="container">
+        <h2>Emergency Solutions</h2>
+        
+        <div class="critical">
+            <h3>IMMEDIATE ACTIONS:</h3>
+            <ol>
+                <li><strong>Open Firebase Console:</strong> <button onclick="window.open('https://console.firebase.google.com/', '_blank')">Open Now</button></li>
+                <li><strong>Delete ALL security rules:</strong> Go to Firestore → Rules → Delete all</li>
+                <li><strong>Use this rule:</strong> <code>allow read, write: if true;</code></li>
+                <li><strong>Click Publish:</strong> Wait for success message</li>
+                <li><strong>Wait 60 seconds:</strong> Rules take time to propagate</li>
+            </ol>
+        </div>
+        
+        <div class="warning">
+            <h3>If Still Not Working:</h3>
+            <ul>
+                <li><strong>Check Project Status:</strong> Firebase project might be disabled</li>
+                <li><strong>Check Billing:</strong> Project might have billing issues</li>
+                <li><strong>Check API Keys:</strong> Firebase config might be wrong</li>
+                <li><strong>Check Network:</strong> Firewall might block Firebase</li>
+                <li><strong>Try Different Browser:</strong> Chrome/Firefox issues</li>
+            </ul>
+        </div>
+    </div>
+
+    <!-- Firebase SDK -->
+    <script src="https://www.gstatic.com/firebasejs/9.22.1/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.22.1/firebase-auth-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.22.1/firebase-firestore-compat.js"></script>
+    <script src="js/firebase-config.js"></script>
+
+    <script>
+        let testResults = [];
+        
+        function updateProgress(percent) {
+            document.getElementById('progressBar').style.width = percent + '%';
+        }
+        
+        function addResult(category, test, status, message) {
+            testResults.push({category, test, status, message});
+            return `${category}: ${test} - ${status.toUpperCase()} - ${message}`;
+        }
+        
+        async function checkFirebaseConfig() {
+            const resultDiv = document.getElementById('configResult');
+            resultDiv.textContent = 'Checking Firebase configuration...';
+            resultDiv.className = 'test-result';
+            
+            try {
+                // Check Firebase initialization
+                if (typeof firebase === 'undefined') {
+                    throw new Error('Firebase SDK not loaded');
+                }
+                
+                if (!firebase.apps || firebase.apps.length === 0) {
+                    throw new Error('Firebase not initialized');
+                }
+                
+                const app = firebase.app();
+                console.log('Firebase app initialized:', app.name);
+                
+                // Check services
+                const auth = firebase.auth();
+                const db = firebase.firestore();
+                
+                if (!auth) {
+                    throw new Error('Firebase Auth not available');
+                }
+                
+                if (!db) {
+                    throw new Error('Firebase Firestore not available');
+                }
+                
+                // Check project configuration
+                const config = app.options;
+                console.log('Firebase config:', config);
+                
+                if (!config.projectId) {
+                    throw new Error('Firebase project ID missing');
+                }
+                
+                if (config.projectId !== 'fypmanagementsystem-29faf') {
+                    throw new Error('Wrong project ID: ' + config.projectId);
+                }
+                
+                const results = [
+                    addResult('CONFIG', 'Firebase SDK', 'PASS', 'Firebase SDK loaded'),
+                    addResult('CONFIG', 'Firebase App', 'PASS', 'Firebase app initialized'),
+                    addResult('CONFIG', 'Firebase Auth', 'PASS', 'Firebase Auth available'),
+                    addResult('CONFIG', 'Firebase Firestore', 'PASS', 'Firebase Firestore available'),
+                    addResult('CONFIG', 'Project ID', 'PASS', 'Correct project ID: ' + config.projectId)
+                ];
+                
+                resultDiv.textContent = results.join('\n');
+                resultDiv.className = 'test-result success';
+                
+            } catch (error) {
+                resultDiv.textContent = addResult('CONFIG', 'Firebase Config', 'FAIL', error.message);
+                resultDiv.className = 'test-result error';
+            }
+        }
+        
+        async function testAllOperations() {
+            const resultDiv = document.getElementById('operationsResult');
+            resultDiv.textContent = 'Testing Firebase operations...';
+            resultDiv.className = 'test-result';
+            testResults = [];
+            
+            try {
+                updateProgress(10);
+                
+                // Test 1: Write to test collection
+                console.log('Test 1: Writing to test collection...');
+                await firebase.firestore().collection('test').doc('write-test').set({
+                    test: true,
+                    timestamp: new Date(),
+                    operation: 'write'
+                });
+                testResults.push(addResult('OPERATION', 'Write Test', 'PASS', 'Can write to Firestore'));
+                updateProgress(25);
+                
+                // Test 2: Read from test collection
+                console.log('Test 2: Reading from test collection...');
+                const doc = await firebase.firestore().collection('test').doc('write-test').get();
+                if (doc.exists) {
+                    testResults.push(addResult('OPERATION', 'Read Test', 'PASS', 'Can read from Firestore'));
+                } else {
+                    throw new Error('Document not found after write');
+                }
+                updateProgress(40);
+                
+                // Test 3: Create user document
+                console.log('Test 3: Creating user document...');
+                const testUser = {
+                    uid: 'test-user-123',
+                    email: 'test@example.com',
+                    loginId: 'TEST123',
+                    displayName: 'Test User',
+                    role: 'student',
+                    groupId: 'TEST001',
+                    createdAt: new Date(),
+                    isActive: true
+                };
+                await firebase.firestore().collection('users').doc('test-user-123').set(testUser);
+                testResults.push(addResult('OPERATION', 'User Create', 'PASS', 'Can create user documents'));
+                updateProgress(60);
+                
+                // Test 4: Create group document
+                console.log('Test 4: Creating group document...');
+                const testGroup = {
+                    groupId: 'TEST001',
+                    groupSize: 2,
+                    members: [],
+                    createdAt: new Date(),
+                    isActive: true
+                };
+                await firebase.firestore().collection('groups').doc('TEST001').set(testGroup);
+                testResults.push(addResult('OPERATION', 'Group Create', 'PASS', 'Can create group documents'));
+                updateProgress(80);
+                
+                // Test 5: Query operations
+                console.log('Test 5: Testing query operations...');
+                const querySnapshot = await firebase.firestore().collection('users').where('role', '==', 'student').get();
+                testResults.push(addResult('OPERATION', 'Query Test', 'PASS', `Query returned ${querySnapshot.size} documents`));
+                updateProgress(90);
+                
+                // Cleanup test data
+                await firebase.firestore().collection('test').doc('write-test').delete();
+                await firebase.firestore().collection('users').doc('test-user-123').delete();
+                await firebase.firestore().collection('groups').doc('TEST001').delete();
+                testResults.push(addResult('OPERATION', 'Cleanup', 'PASS', 'Test data cleaned up'));
+                updateProgress(100);
+                
+                resultDiv.textContent = testResults.join('\n');
+                resultDiv.className = 'test-result success';
+                
+            } catch (error) {
+                console.error('Operations test failed:', error);
+                testResults.push(addResult('OPERATION', 'All Tests', 'FAIL', error.message));
+                resultDiv.textContent = testResults.join('\n');
+                resultDiv.className = 'test-result error';
+            }
+        }
+        
+        async function deployEmergencyRules() {
+            const resultDiv = document.getElementById('deployResult');
+            resultDiv.textContent = 'Preparing emergency rules deployment...';
+            resultDiv.className = 'test-result';
+            
+            const emergencyRules = `rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    match /{document=**} {
+      allow read, write, create, update, delete: if true;
+    }
+  }
+}`;
+            
+            try {
+                // Copy to clipboard
+                await navigator.clipboard.writeText(emergencyRules);
+                
+                resultDiv.textContent = `EMERGENCY RULES COPIED!\n\n` +
+                    `1. Open Firebase Console (button below)\n` +
+                    `2. Go to Firestore → Rules\n` +
+                    `3. Delete all existing rules\n` +
+                    `4. Paste the copied rules\n` +
+                    `5. Click Publish\n` +
+                    `6. Wait 60 seconds\n\n` +
+                    `Rules copied to clipboard!`;
+                resultDiv.className = 'test-result success';
+                
+                // Open Firebase Console
+                setTimeout(() => {
+                    window.open('https://console.firebase.google.com/', '_blank');
+                }, 2000);
+                
+            } catch (error) {
+                resultDiv.textContent = 'Failed to copy emergency rules: ' + error.message;
+                resultDiv.className = 'test-result error';
+            }
+        }
+        
+        function createAlternativeRegistration() {
+            const resultDiv = document.getElementById('alternativeResult');
+            resultDiv.textContent = 'Creating alternative registration system...';
+            resultDiv.className = 'test-result';
+            
+            // Create a simple registration that doesn't depend on Firebase
+            const alternativeHtml = `<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Alternative Registration</title>
+    <style>
+        body { font-family: Arial, sans-serif; max-width: 600px; margin: 50px auto; padding: 20px; }
+        .form-group { margin-bottom: 15px; }
+        label { display: block; margin-bottom: 5px; font-weight: 600; }
+        input, select { width: 100%; padding: 10px; border: 1px solid #ddd; border-radius: 4px; }
+        button { background: #2563eb; color: white; padding: 12px 24px; border: none; border-radius: 6px; cursor: pointer; }
+        .success { background: #f0fdf4; padding: 15px; border-radius: 8px; margin: 10px 0; }
+    </style>
+</head>
+<body>
+    <h1>Alternative Registration System</h1>
+    <p>This system stores registration data locally until Firebase is fixed.</p>
+    
+    <form onsubmit="handleAlternativeRegistration(event)">
+        <div class="form-group">
+            <label>Full Name:</label>
+            <input type="text" id="altName" required>
+        </div>
+        <div class="form-group">
+            <label>Email:</label>
+            <input type="email" id="altEmail" required>
+        </div>
+        <div class="form-group">
+            <label>Registration Number:</label>
+            <input type="text" id="altRegNo" required>
+        </div>
+        <div class="form-group">
+            <label>Role:</label>
+            <select id="altRole" required>
+                <option value="">Select Role</option>
+                <option value="student">Student</option>
+                <option value="supervisor">Supervisor</option>
+                <option value="admin">Admin</option>
+            </select>
+        </div>
+        <button type="submit">Register</button>
+    </form>
+    
+    <div id="altResult"></div>
+    
+    <script>
+        function handleAlternativeRegistration(event) {
+            event.preventDefault();
+            
+            const data = {
+                name: document.getElementById('altName').value,
+                email: document.getElementById('altEmail').value,
+                registrationNumber: document.getElementById('altRegNo').value,
+                role: document.getElementById('altRole').value,
+                timestamp: new Date().toISOString()
+            };
+            
+            // Store in localStorage
+            let registrations = JSON.parse(localStorage.getItem('alternativeRegistrations') || '[]');
+            registrations.push(data);
+            localStorage.setItem('alternativeRegistrations', JSON.stringify(registrations));
+            
+            document.getElementById('altResult').innerHTML = 
+                '<div class="success">Registration saved locally! Firebase connection issue detected - data stored until Firebase is fixed.</div>';
+            
+            // Clear form
+            event.target.reset();
+        }
+    </script>
+</body>
+</html>`;
+            
+            const blob = new Blob([alternativeHtml], { type: 'text/html' });
+            const url = URL.createObjectURL(blob);
+            
+            resultDiv.innerHTML = `ALTERNATIVE REGISTRATION CREATED!\n\n` +
+                `<a href="${url}" target="_blank">Open Alternative Registration</a>\n\n` +
+                `This system stores registrations locally until Firebase is fixed.\n` +
+                `Data is saved in browser localStorage.`;
+            resultDiv.className = 'test-result success';
+        }
+        
+        // Auto-run configuration check on load
+        document.addEventListener('DOMContentLoaded', function() {
+            setTimeout(() => {
+                checkFirebaseConfig();
+            }, 1000);
+        });
+    </script>
+</body>
+</html>

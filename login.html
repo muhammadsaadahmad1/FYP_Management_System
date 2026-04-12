@@ -22,7 +22,7 @@
 
   /* Header */
   .login-header {
-    padding: 16px 40px;
+    padding:16px 40px;
     background: rgba(255,255,255,0.92);
     backdrop-filter: blur(8px);
     box-shadow: 0 2px 10px rgba(0,0,0,0.05);
@@ -200,13 +200,12 @@
     <a href="https://www.aup.edu.pk/" target="_blank" rel="noopener">University Website</a>
   </footer>
 
-<script src="https://www.gstatic.com/firebasejs/9.22.1/firebase-app-compat.js"></script>
-<script src="https://www.gstatic.com/firebasejs/9.22.1/firebase-auth-compat.js"></script>
-<script src="https://www.gstatic.com/firebasejs/9.22.1/firebase-firestore-compat.js"></script>
-<script src="https://www.gstatic.com/firebasejs/9.22.1/firebase-storage-compat.js"></script>
-<script src="js/firebase-config.js"></script>
-<script src="js/firebase-auth.js"></script>
-<script src="js/auth.js"></script>
+  <!-- Firebase SDK -->
+  <script src="https://www.gstatic.com/firebasejs/9.22.1/firebase-app-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/9.22.1/firebase-auth-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/9.22.1/firebase-firestore-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/9.22.1/firebase-storage-compat.js"></script>
+  <script src="js/firebase-config.js"></script>
 
 <!-- Enhanced Login Script -->
 <script>
@@ -230,7 +229,7 @@ function handleRoleChange() {
   }
 }
 
-// Enhanced login function
+// Enhanced login function with simplified approach
 async function login() {
   const role = document.getElementById('role').value;
   
@@ -239,141 +238,155 @@ async function login() {
     return;
   }
   
-  let loginId, password;
+  let email, password;
+  let userData = null; // Define userData in the outer scope
   
   if (role === 'student') {
-    loginId = document.getElementById('registrationNumber').value;
+    // Student login with registration number
+    const registrationNumber = document.getElementById('registrationNumber').value;
     password = document.getElementById('password').value;
     
-    if (!loginId || !password) {
+    if (!registrationNumber || !password) {
       alert('Please enter your registration number and group password.');
       return;
     }
+    
+    try {
+      console.log('Looking up student with registration number:', registrationNumber);
+      
+      // Query users collection for registration number (not document ID)
+      
+      try {
+        const querySnapshot = await firebase.firestore().collection('users')
+          .where('registrationNumber', '==', registrationNumber)
+          .where('role', '==', 'student')
+          .limit(1)
+          .get();
+        
+        if (!querySnapshot.empty) {
+          userData = querySnapshot.docs[0].data();
+          console.log('Found student by registration number:', userData);
+        } else {
+          console.log('No student found with registration number:', registrationNumber);
+        }
+      } catch (queryError) {
+        console.log('Query lookup failed:', queryError.message);
+      }
+      
+      // If query fails, try alternative lookup methods
+      if (!userData) {
+        try {
+          // Try loginId lookup (some systems use this)
+          const loginQuery = await firebase.firestore().collection('users')
+            .where('loginId', '==', registrationNumber)
+            .where('role', '==', 'student')
+            .limit(1)
+            .get();
+          
+          if (!loginQuery.empty) {
+            userData = loginQuery.docs[0].data();
+            console.log('Found student by loginId:', userData);
+          }
+        } catch (loginError) {
+          console.log('LoginId lookup failed:', loginError.message);
+        }
+      }
+      
+      // Final fallback - try direct document lookup (for compatibility)
+      if (!userData) {
+        try {
+          const userDoc = await firebase.firestore().collection('users').doc(registrationNumber).get();
+          if (userDoc.exists && userDoc.data().role === 'student') {
+            userData = userDoc.data();
+            console.log('Found student by direct lookup:', userData);
+          }
+        } catch (directError) {
+          console.log('Direct lookup failed:', directError.message);
+        }
+      }
+      
+      if (!userData) {
+        console.log('Student not found with registration number:', registrationNumber);
+        alert('Student not found. Please register your account first.');
+        return;
+      }
+      
+      if (!userData.isActive) {
+        throw new Error('Account is not active. Please contact administrator.');
+      }
+      
+      // Use the email associated with this student for Firebase Auth
+      email = userData.email;
+      
+      console.log('Student found:', userData.email, 'Role:', userData.role);
+      
+    } catch (error) {
+      console.error('Student lookup error:', error);
+      alert('Student lookup failed: ' + error.message);
+      return;
+    }
   } else {
-    loginId = document.getElementById('email').value;
+    // Staff login (admin/supervisor) with email
+    email = document.getElementById('email').value;
     password = document.getElementById('password').value;
     
-    if (!loginId || !password) {
+    if (!email || !password) {
       alert('Please enter your email and password.');
       return;
     }
   }
   
   try {
-    if (role === 'student') {
-      // Student login with registration number
-      await loginStudent(loginId, password);
-    } else {
-      // Staff login with email
-      await loginStaff(loginId, password, role);
-    }
-  } catch (error) {
-    console.error('Login error:', error);
-    alert('Login failed: ' + error.message);
-  }
-}
-
-// Student login function
-async function loginStudent(registrationNumber, password) {
-  try {
-    // Find user by registration number (loginId)
-    const usersRef = firebase.firestore().collection('users');
-    const snapshot = await usersRef.where('loginId', '==', registrationNumber).where('role', '==', 'student').get();
+    console.log('🔐 Attempting Firebase Auth login for:', email);
     
-    if (snapshot.empty) {
-      throw new Error('Registration number not found. Please check your registration number or contact administrator.');
-    }
-    
-    const userDoc = snapshot.docs[0];
-    const userData = userDoc.data();
-    
-    // Check if account is active
-    if (!userData.isActive) {
-      throw new Error('Account is not active. Please contact administrator.');
-    }
-    
-    // Get the email associated with this registration number for Firebase Auth
-    const email = userData.email;
-    
-    // Authenticate with Firebase Auth using email and password
-    const userCredential = await firebase.auth().signInWithEmailAndPassword(email, password);
-    const user = userCredential.user;
-    
-    // Store user data in localStorage
-    localStorage.setItem('uid', user.uid);
-    localStorage.setItem('role', userData.role);
-    localStorage.setItem('groupId', userData.groupId);
-    localStorage.setItem('loginId', userData.loginId);
-    localStorage.setItem('displayName', userData.displayName);
-    localStorage.setItem('isGroupLeader', userData.isGroupLeader || false);
-    
-    console.log('Student login successful:', userData);
-    
-    // Redirect to student dashboard (shared for all group members)
-    window.location.href = 'student-dashboard.html';
-    
-  } catch (error) {
-    console.error('Student login error:', error);
-    
-    if (error.code === 'auth/wrong-password') {
-      throw new Error('Invalid group password. Please check with your group members.');
-    } else if (error.code === 'auth/user-not-found') {
-      throw new Error('Account not found. Please contact administrator.');
-    } else if (error.code === 'auth/too-many-requests') {
-      throw new Error('Too many failed attempts. Please try again later.');
-    } else {
-      throw error;
-    }
-  }
-}
-
-// Staff login function (admin/supervisor)
-async function loginStaff(email, password, role) {
-  try {
     // Authenticate with Firebase Auth
     const userCredential = await firebase.auth().signInWithEmailAndPassword(email, password);
     const user = userCredential.user;
     
-    // Get user data from Firestore
-    const userDoc = await firebase.firestore().collection('users').doc(user.uid).get();
-    const userData = userDoc.data();
-    
-    // Verify role matches
-    if (userData.role !== role) {
-      throw new Error(`This account is registered as ${userData.role}, not ${role}.`);
-    }
-    
-    // Check if account is active
-    if (!userData.isActive) {
-      throw new Error('Account is not active. Please contact administrator.');
-    }
+    console.log('✅ Firebase Auth successful for:', user.email);
     
     // Store user data in localStorage
     localStorage.setItem('uid', user.uid);
-    localStorage.setItem('role', userData.role);
-    localStorage.setItem('displayName', userData.displayName);
-    localStorage.setItem('email', userData.email);
+    localStorage.setItem('role', role);
+    localStorage.setItem('displayName', user.displayName || email);
+    localStorage.setItem('email', email);
     
-    console.log('Staff login successful:', userData);
+    // Student-specific data
+    if (role === 'student' && userData) {
+      localStorage.setItem('groupId', userData.groupId || user.uid);
+      localStorage.setItem('loginId', userData.loginId || registrationNumber);
+      localStorage.setItem('isGroupLeader', userData.isGroupLeader || false);
+    }
     
-    // Redirect to appropriate dashboard
-    if (role === 'admin') {
-      window.location.href = 'admin-dashboard.html';
-    } else if (role === 'supervisor') {
-      window.location.href = 'supervisor-dashboard.html';
+    console.log('🎉 Login successful! Redirecting to', role + ' dashboard');
+    
+    // Redirect based on role
+    switch (role) {
+      case 'student':
+        window.location.href = 'student-dashboard.html';
+        break;
+      case 'admin':
+        window.location.href = 'admin-dashboard.html';
+        break;
+      case 'supervisor':
+        window.location.href = 'supervisor-dashboard.html';
+        break;
+      default:
+        throw new Error('Invalid role selected');
     }
     
   } catch (error) {
-    console.error('Staff login error:', error);
+    console.error('❌ Login error:', error);
     
+    // Handle specific Firebase Auth errors
     if (error.code === 'auth/wrong-password') {
-      throw new Error('Invalid password. Please try again.');
+      alert('Invalid password. Please check your credentials.');
     } else if (error.code === 'auth/user-not-found') {
-      throw new Error('Email not found. Please check your email or register.');
+      alert('Account not found. Please contact administrator.');
     } else if (error.code === 'auth/too-many-requests') {
-      throw new Error('Too many failed attempts. Please try again later.');
+      alert('Too many failed attempts. Please try again later.');
     } else {
-      throw error;
+      alert('Login failed: ' + error.message);
     }
   }
 }
