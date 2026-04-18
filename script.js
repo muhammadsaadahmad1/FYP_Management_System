@@ -63,12 +63,19 @@ function loadUserData() {
 
 // Load all dashboard data
 async function loadAllDashboardData() {
+    console.log('=== Starting Dashboard Data Loading ===');
+    
     // Check if Firebase is properly initialized
-    if (typeof db === 'undefined') {
+    const db = window.firebaseServices ? window.firebaseServices.db : firebase.firestore();
+    if (!db) {
         console.error('Firebase database (db) is not defined');
         showNotification('Firebase not initialized. Please refresh the page.', 'error');
         return;
     }
+    
+    console.log('Firebase database initialized successfully');
+    console.log('Firebase services available:', !!window.firebaseServices);
+    console.log('Firestore available:', typeof firebase.firestore !== 'undefined');
     
     const groupId = localStorage.getItem('groupId');
     const currentUserRole = localStorage.getItem('role');
@@ -247,7 +254,9 @@ async function loadAllDashboardData() {
         }
         
         try {
+            console.log('loadAllDashboardData: About to call updateMeetingTable');
             updateMeetingTable();
+            console.log('loadAllDashboardData: updateMeetingTable completed');
         } catch (error) {
             console.error('Error updating meeting table:', error);
         }
@@ -599,28 +608,458 @@ function updateProposalStatus(groupData, proposals) {
 }
 
 function updateTaskAssignments(members) {
-    console.log('Updating task assignments with:', members);
-    // Implementation would go here
+    const taskTableDiv = document.querySelector('.task-table');
+    if (!taskTableDiv) return;
+    
+    const groupId = localStorage.getItem('groupId');
+    const db = window.firebaseServices ? window.firebaseServices.db : firebase.firestore();
+    
+    console.log('updateTaskAssignments: Fetching tasks for groupId:', groupId);
+    
+    db.collection('tasks').where('groupId', '==', groupId).get()
+        .then(tasksSnapshot => {
+            let tasks = [];
+            if (!tasksSnapshot.empty) {
+                tasks = tasksSnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+            }
+            
+            if (tasks.length === 0) {
+                taskTableDiv.innerHTML = `
+                    <div style="text-align: center; padding: 30px; color: #6c757d;">
+                        <i class="fas fa-tasks" style="font-size: 48px; margin-bottom: 15px; opacity: 0.5;"></i>
+                        <p style="font-size: 16px; margin-bottom: 10px;">No tasks assigned</p>
+                        <p style="font-size: 14px;">Tasks will appear here when assigned by supervisor</p>
+                    </div>
+                `;
+                return;
+            }
+            
+            const tableHTML = `
+                <table style="width: 100%; border-collapse: collapse;">
+                    <thead>
+                        <tr style="background: #f8f9fa; border-bottom: 2px solid #dee2e6;">
+                            <th style="padding: 12px; text-align: left; border-bottom: 1px solid #dee2e6;">Task Title</th>
+                            <th style="padding: 12px; text-align: left; border-bottom: 1px solid #dee2e6;">Assigned To</th>
+                            <th style="padding: 12px; text-align: left; border-bottom: 1px solid #dee2e6;">Status</th>
+                            <th style="padding: 12px; text-align: left; border-bottom: 1px solid #dee2e6;">Due Date</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        ${tasks.map(task => `
+                            <tr style="border-bottom: 1px solid #dee2e6;">
+                                <td style="padding: 12px;">
+                                    <strong>${task.title || 'Untitled Task'}</strong>
+                                    <div style="font-size: 12px; color: #6c757d; margin-top: 4px;">
+                                        ${task.description || 'No description'}
+                                    </div>
+                                </td>
+                                <td style="padding: 12px;">${task.assignedTo || 'Unassigned'}</td>
+                                <td style="padding: 12px;">
+                                    <span style="background: ${getStatusColor(task.status)}; color: white; padding: 4px 8px; border-radius: 4px; font-size: 12px;">
+                                        ${task.status || 'Pending'}
+                                    </span>
+                                </td>
+                                <td style="padding: 12px;">${task.dueDate ? new Date(task.dueDate).toLocaleDateString() : 'Not set'}</td>
+                            </tr>
+                        `).join('')}
+                    </tbody>
+                </table>
+            `;
+            
+            taskTableDiv.innerHTML = tableHTML;
+        })
+        .catch(error => {
+            console.error('Error loading tasks:', error);
+            taskTableDiv.innerHTML = '<p style="color: #dc3545; text-align: center; padding: 20px;">Error loading tasks</p>';
+        });
 }
 
+// BULLETPROOF: Update files section with maximum error protection and retry
 function updateFileUploads(members) {
-    console.log('Updating file uploads with:', members);
-    // Implementation would go here
+    console.log('=== BULLETPROOF updateFileUploads Starting ===');
+    
+    const fileTableDiv = document.querySelector('.file-table');
+    if (!fileTableDiv) {
+        console.error('updateFileUploads: file-table element not found');
+        return;
+    }
+    
+    const groupId = localStorage.getItem('groupId');
+    if (!groupId) {
+        console.error('updateFileUploads: No groupId found');
+        fileTableDiv.innerHTML = '<p style="color: #dc3545; text-align: center; padding: 20px;">No group ID found</p>';
+        return;
+    }
+    
+    // BULLETPROOF: Retry mechanism for Firebase connection
+    const loadFilesWithRetry = async (retryCount = 3) => {
+        for (let attempt = 1; attempt <= retryCount; attempt++) {
+            try {
+                console.log(`updateFileUploads: Attempt ${attempt}/${retryCount}`);
+                
+                // BULLETPROOF: Get Firebase connection with fallback
+                const db = window.firebaseServices ? window.firebaseServices.db : firebase.firestore();
+                if (!db) {
+                    throw new Error('Firebase database not available');
+                }
+                
+                console.log('updateFileUploads: Firebase available, fetching files for groupId:', groupId);
+                
+                const filesSnapshot = await db.collection('files')
+                    .where('groupId', '==', groupId)
+                    .orderBy('uploadDate', 'desc')
+                    .limit(5)
+                    .get();
+                
+                console.log('updateFileUploads: Found', filesSnapshot.docs.length, 'file documents');
+                
+                let files = [];
+                if (!filesSnapshot.empty) {
+                    files = filesSnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+                    console.log('updateFileUploads: Processed files:', files);
+                }
+                
+                // BULLETPROOF: Always show something
+                if (files.length === 0) {
+                    console.log('updateFileUploads: No files found, showing empty state');
+                    fileTableDiv.innerHTML = `
+                        <div style="text-align: center; padding: 30px; color: #6c757d;">
+                            <i class="fas fa-file-upload" style="font-size: 48px; margin-bottom: 15px; opacity: 0.5;"></i>
+                            <p style="font-size: 16px; margin-bottom: 10px;">No files uploaded</p>
+                            <p style="font-size: 14px;">Upload project files using the Upload Report button</p>
+                        </div>
+                    `;
+                } else {
+                    displayFiles(files, fileTableDiv);
+                }
+                
+                console.log('updateFileUploads: SUCCESS');
+                return; // Success, exit retry loop
+                
+            } catch (error) {
+                console.error(`updateFileUploads: Attempt ${attempt} failed:`, error);
+                
+                if (attempt === retryCount) {
+                    // Final attempt failed, show error
+                    console.error('updateFileUploads: All retry attempts failed');
+                    fileTableDiv.innerHTML = '<p style="color: #dc3545; text-align: center; padding: 20px;">Error loading files</p>';
+                } else {
+                    // Wait before retry
+                    await new Promise(resolve => setTimeout(resolve, 1000 * attempt));
+                }
+            }
+        }
+    };
+    
+    // Start the retry process
+    loadFilesWithRetry();
 }
 
+// Helper function to display files
+function displayFiles(files, fileTableDiv) {
+    try {
+            
+        const tableHTML = `
+            <table style="width: 100%; border-collapse: collapse;">
+                <thead>
+                    <tr style="background: #f8f9fa; border-bottom: 2px solid #dee2e6;">
+                        <th style="padding: 12px; text-align: left; border-bottom: 1px solid #dee2e6;">File Name</th>
+                        <th style="padding: 12px; text-align: left; border-bottom: 1px solid #dee2e6;">Uploaded By</th>
+                        <th style="padding: 12px; text-align: left; border-bottom: 1px solid #dee2e6;">Date</th>
+                        <th style="padding: 12px; text-align: left; border-bottom: 1px solid #dee2e6;">Size</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    ${files.map(file => `
+                        <tr style="border-bottom: 1px solid #dee2e6;">
+                            <td style="padding: 12px;">
+                                <i class="fas fa-file-${getFileIcon(file.name)}" style="margin-right: 8px; color: #6c757d;"></i>
+                                ${file.name}
+                            </td>
+                            <td style="padding: 12px;">${file.uploadedBy || 'Unknown'}</td>
+                            <td style="padding: 12px;">${new Date(file.uploadDate).toLocaleDateString()}</td>
+                            <td style="padding: 12px;">${formatFileSize(file.size || 0)}</td>
+                        </tr>
+                    `).join('')}
+                </tbody>
+            </table>
+        `;
+        
+        fileTableDiv.innerHTML = tableHTML;
+        console.log('updateFileUploads: Files displayed successfully');
+    } catch (error) {
+        console.error('updateFileUploads: Error displaying files:', error);
+        fileTableDiv.innerHTML = '<p style="color: #dc3545; text-align: center; padding: 20px;">Error displaying files</p>';
+    }
+}
+
+// BULLETPROOF: Update meetings section with maximum error protection and retry
 function updateMeetingTable() {
-    console.log('Updating meeting table');
-    // Implementation would go here
+    console.log('=== BULLETPROOF updateMeetingTable Starting ===');
+    
+    const meetingTableDiv = document.getElementById('meetingTable');
+    if (!meetingTableDiv) {
+        console.error('updateMeetingTable: meetingTable element not found');
+        return;
+    }
+    
+    const groupId = localStorage.getItem('groupId');
+    if (!groupId) {
+        console.error('updateMeetingTable: No groupId found');
+        meetingTableDiv.innerHTML = '<p style="color: #dc3545; text-align: center; padding: 20px;">No group ID found</p>';
+        return;
+    }
+    
+    // BULLETPROOF: Retry mechanism for Firebase connection
+    const loadMeetingsWithRetry = async (retryCount = 3) => {
+        for (let attempt = 1; attempt <= retryCount; attempt++) {
+            try {
+                console.log(`updateMeetingTable: Attempt ${attempt}/${retryCount}`);
+                
+                // BULLETPROOF: Get Firebase connection with fallback
+                const db = window.firebaseServices ? window.firebaseServices.db : firebase.firestore();
+                if (!db) {
+                    throw new Error('Firebase database not available');
+                }
+                
+                console.log('updateMeetingTable: Firebase available, fetching meetings for groupId:', groupId);
+                
+                const meetingsSnapshot = await db.collection('meetings')
+                    .where('groupId', '==', groupId)
+                    .orderBy('date', 'desc')
+                    .limit(5)
+                    .get();
+                
+                console.log('updateMeetingTable: Found', meetingsSnapshot.docs.length, 'meeting documents');
+                
+                let meetings = [];
+                if (!meetingsSnapshot.empty) {
+                    meetings = meetingsSnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+                    console.log('updateMeetingTable: Processed meetings:', meetings);
+                }
+                
+                // BULLETPROOF: Always show something
+                if (meetings.length === 0) {
+                    console.log('updateMeetingTable: No meetings found, showing empty state');
+                    meetingTableDiv.innerHTML = `
+                        <div style="text-align: center; padding: 30px; color: #6c757d;">
+                            <i class="fas fa-calendar" style="font-size: 48px; margin-bottom: 15px; opacity: 0.5;"></i>
+                            <p style="font-size: 16px; margin-bottom: 10px;">No meetings scheduled</p>
+                            <p style="font-size: 14px;">Request meetings using the Request Meeting button</p>
+                        </div>
+                    `;
+                } else {
+                    displayMeetings(meetings, meetingTableDiv);
+                }
+                
+                console.log('updateMeetingTable: SUCCESS');
+                return; // Success, exit retry loop
+                
+            } catch (error) {
+                console.error(`updateMeetingTable: Attempt ${attempt} failed:`, error);
+                
+                if (attempt === retryCount) {
+                    // Final attempt failed, show error
+                    console.error('updateMeetingTable: All retry attempts failed');
+                    meetingTableDiv.innerHTML = '<p style="color: #dc3545; text-align: center; padding: 20px;">Error loading meetings</p>';
+                } else {
+                    // Wait before retry
+                    await new Promise(resolve => setTimeout(resolve, 1000 * attempt));
+                }
+            }
+        }
+    };
+    
+    // Start the retry process
+    loadMeetingsWithRetry();
 }
 
+// Helper function to display meetings
+function displayMeetings(meetings, meetingTableDiv) {
+    try {
+        console.log('updateMeetingTable: Displaying', meetings.length, 'meetings');
+        
+        const tableHTML = `
+            <table style="width: 100%; border-collapse: collapse;">
+                <thead>
+                    <tr style="background: #f8f9fa; border-bottom: 2px solid #dee2e6;">
+                        <th style="padding: 12px; text-align: left; border-bottom: 1px solid #dee2e6;">Date</th>
+                        <th style="padding: 12px; text-align: left; border-bottom: 1px solid #dee2e6;">Type</th>
+                        <th style="padding: 12px; text-align: left; border-bottom: 1px solid #dee2e6;">Status</th>
+                        <th style="padding: 12px; text-align: left; border-bottom: 1px solid #dee2e6;">Location</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    ${meetings.map(meeting => `
+                        <tr style="border-bottom: 1px solid #dee2e6;">
+                            <td style="padding: 12px;">${new Date(meeting.date).toLocaleDateString()}</td>
+                            <td style="padding: 12px;">${meeting.type || 'General Meeting'}</td>
+                            <td style="padding: 12px;">
+                                <span style="background: ${getStatusColor(meeting.status)}; color: white; padding: 4px 8px; border-radius: 4px; font-size: 12px;">
+                                    ${meeting.status || 'Scheduled'}
+                                </span>
+                            </td>
+                            <td style="padding: 12px;">${meeting.location || 'Online'}</td>
+                        </tr>
+                    `).join('')}
+                </tbody>
+            </table>
+        `;
+        
+        meetingTableDiv.innerHTML = tableHTML;
+        console.log('updateMeetingTable: Meetings displayed successfully');
+    } catch (error) {
+        console.error('updateMeetingTable: Error displaying meetings:', error);
+        meetingTableDiv.innerHTML = '<p style="color: #dc3545; text-align: center; padding: 20px;">Error displaying meetings</p>';
+    }
+}
+
+// BULLETPROOF: Update feedback section with maximum error protection and retry
 function updateSupervisorFeedback() {
-    console.log('Updating supervisor feedback');
-    // Implementation would go here
+    console.log('=== BULLETPROOF updateSupervisorFeedback Starting ===');
+    
+    const feedbackDiv = document.querySelector('.feedback-list');
+    if (!feedbackDiv) {
+        console.error('updateSupervisorFeedback: feedback-list element not found');
+        return;
+    }
+    
+    const groupId = localStorage.getItem('groupId');
+    if (!groupId) {
+        console.error('updateSupervisorFeedback: No groupId found');
+        feedbackDiv.innerHTML = '<p style="color: #dc3545; text-align: center; padding: 20px;">No group ID found</p>';
+        return;
+    }
+    
+    // BULLETPROOF: Retry mechanism for Firebase connection
+    const loadFeedbackWithRetry = async (retryCount = 3) => {
+        for (let attempt = 1; attempt <= retryCount; attempt++) {
+            try {
+                console.log(`updateSupervisorFeedback: Attempt ${attempt}/${retryCount}`);
+                
+                // BULLETPROOF: Get Firebase connection with fallback
+                const db = window.firebaseServices ? window.firebaseServices.db : firebase.firestore();
+                if (!db) {
+                    throw new Error('Firebase database not available');
+                }
+                
+                console.log('updateSupervisorFeedback: Firebase available, fetching feedback for groupId:', groupId);
+                
+                const feedbackSnapshot = await db.collection('feedback')
+                    .where('groupId', '==', groupId)
+                    .orderBy('timestamp', 'desc')
+                    .limit(3)
+                    .get();
+                
+                console.log('updateSupervisorFeedback: Found', feedbackSnapshot.docs.length, 'feedback documents');
+                
+                let feedbacks = [];
+                if (!feedbackSnapshot.empty) {
+                    feedbacks = feedbackSnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+                    console.log('updateSupervisorFeedback: Processed feedbacks:', feedbacks);
+                }
+                
+                // BULLETPROOF: Always show something
+                if (feedbacks.length === 0) {
+                    console.log('updateSupervisorFeedback: No feedback found, showing empty state');
+                    feedbackDiv.innerHTML = `
+                        <div style="text-align: center; padding: 30px; color: #6c757d;">
+                            <i class="fas fa-comments" style="font-size: 48px; margin-bottom: 15px; opacity: 0.5;"></i>
+                            <p style="font-size: 16px; margin-bottom: 10px;">No feedback yet</p>
+                            <p style="font-size: 14px;">Supervisor feedback will appear here</p>
+                        </div>
+                    `;
+                } else {
+                    displayFeedback(feedbacks, feedbackDiv);
+                }
+                
+                console.log('updateSupervisorFeedback: SUCCESS');
+                return; // Success, exit retry loop
+                
+            } catch (error) {
+                console.error(`updateSupervisorFeedback: Attempt ${attempt} failed:`, error);
+                
+                if (attempt === retryCount) {
+                    // Final attempt failed, show error
+                    console.error('updateSupervisorFeedback: All retry attempts failed');
+                    feedbackDiv.innerHTML = '<p style="color: #dc3545; text-align: center; padding: 20px;">Error loading feedback</p>';
+                } else {
+                    // Wait before retry
+                    await new Promise(resolve => setTimeout(resolve, 1000 * attempt));
+                }
+            }
+        }
+    };
+    
+    // Start the retry process
+    loadFeedbackWithRetry();
+}
+
+// Helper function to display feedback
+function displayFeedback(feedbacks, feedbackDiv) {
+    try {
+        feedbackDiv.innerHTML = feedbacks.map(feedback => `
+            <div style="background: #f8f9fa; border-left: 4px solid #007bff; padding: 15px; margin-bottom: 15px; border-radius: 4px;">
+                <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px;">
+                    <strong style="color: #007bff;">${feedback.supervisor || 'Supervisor'}</strong>
+                    <span style="font-size: 12px; color: #6c757d;">${new Date(feedback.timestamp).toLocaleDateString()}</span>
+                </div>
+                <p style="margin: 0; color: #333;">${feedback.message || 'No message'}</p>
+                ${feedback.type ? `<div style="margin-top: 8px;"><span style="background: #e9ecef; color: #495057; padding: 2px 6px; border-radius: 3px; font-size: 11px;">${feedback.type}</span></div>` : ''}
+            </div>
+        `).join('');
+        
+        console.log('updateSupervisorFeedback: Feedback displayed successfully');
+    } catch (error) {
+        console.error('updateSupervisorFeedback: Error displaying feedback:', error);
+        feedbackDiv.innerHTML = '<p style="color: #dc3545; text-align: center; padding: 20px;">Error displaying feedback</p>';
+    }
 }
 
 function updateAnnouncements() {
-    console.log('Updating announcements');
-    // Implementation would go here
+    const announcementsDiv = document.querySelector('.announcements');
+    if (!announcementsDiv) return;
+    
+    const db = window.firebaseServices ? window.firebaseServices.db : firebase.firestore();
+    
+    console.log('updateAnnouncements: Fetching announcements');
+    
+    db.collection('announcements').orderBy('date', 'desc').limit(5).get()
+        .then(announcementsSnapshot => {
+            console.log('updateAnnouncements: Found', announcementsSnapshot.docs.length, 'announcement documents');
+            let announcements = [];
+            if (!announcementsSnapshot.empty) {
+                announcements = announcementsSnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+                console.log('updateAnnouncements: Processed announcements:', announcements);
+            }
+            
+            if (announcements.length === 0) {
+                console.log('updateAnnouncements: No announcements found, showing empty state');
+                announcementsDiv.innerHTML = `
+                    <div style="text-align: center; padding: 30px; color: #6c757d;">
+                        <i class="fas fa-bullhorn" style="font-size: 48px; margin-bottom: 15px; opacity: 0.5;"></i>
+                        <p style="font-size: 16px; margin-bottom: 10px;">No announcements</p>
+                        <p style="font-size: 14px;">Important announcements will appear here</p>
+                    </div>
+                `;
+                return;
+            }
+            
+            announcementsDiv.innerHTML = announcements.map(announcement => `
+                <div style="background: #fff3cd; border-left: 4px solid #ffc107; padding: 15px; margin-bottom: 15px; border-radius: 4px;">
+                    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px;">
+                        <strong style="color: #856404;">${announcement.title || 'Announcement'}</strong>
+                        <span style="font-size: 12px; color: #856404;">${new Date(announcement.date).toLocaleDateString()}</span>
+                    </div>
+                    <p style="margin: 0; color: #856404;">${announcement.message || 'No message'}</p>
+                    ${announcement.priority ? `<div style="margin-top: 8px;"><span style="background: #ffc107; color: #000; padding: 2px 6px; border-radius: 3px; font-size: 11px;">${announcement.priority}</span></div>` : ''}
+                </div>
+            `).join('');
+        })
+        .catch(error => {
+            console.error('Error loading announcements:', error);
+            announcementsDiv.innerHTML = '<p style="color: #dc3545; text-align: center; padding: 20px;">Error loading announcements</p>';
+        });
 }
 
 function updateNotificationCount() {
@@ -631,15 +1070,297 @@ function updateNotificationCount() {
 // Utility functions
 function showNotification(message, type) {
     console.log('Notification:', message, type);
+    
+    // Create notification element if it doesn't exist
+    let notificationDiv = document.getElementById('notification');
+    if (!notificationDiv) {
+        notificationDiv = document.createElement('div');
+        notificationDiv.id = 'notification';
+        notificationDiv.style.cssText = `
+            position: fixed;
+            top: 20px;
+            right: 20px;
+            padding: 15px 20px;
+            border-radius: 4px;
+            color: white;
+            font-weight: 500;
+            z-index: 9999;
+            max-width: 300px;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+        `;
+        document.body.appendChild(notificationDiv);
+    }
+    
+    // Set notification style based on type
+    const colors = {
+        success: '#10b981',
+        error: '#ef4444',
+        warning: '#f59e0b',
+        info: '#3b82f6'
+    };
+    
+    notificationDiv.style.background = colors[type] || colors.info;
+    notificationDiv.textContent = message;
+    notificationDiv.style.display = 'block';
+    
+    // Auto-hide after 3 seconds
+    setTimeout(() => {
+        notificationDiv.style.display = 'none';
+    }, 3000);
+}
+
+function getStatusColor(status) {
+    const colors = {
+        'completed': '#10b981',
+        'in-progress': '#3b82f6',
+        'pending': '#f59e0b',
+        'overdue': '#ef4444',
+        'cancelled': '#6b7280',
+        'scheduled': '#10b981',
+        'approved': '#10b981',
+        'rejected': '#ef4444'
+    };
+    return colors[status] || '#6b7280';
+}
+
+function getFileIcon(filename) {
+    const ext = filename.split('.').pop().toLowerCase();
+    const icons = {
+        'pdf': 'pdf',
+        'doc': 'word',
+        'docx': 'word',
+        'ppt': 'powerpoint',
+        'pptx': 'powerpoint',
+        'txt': 'alt',
+        'zip': 'archive',
+        'rar': 'archive',
+        'jpg': 'image',
+        'jpeg': 'image',
+        'png': 'image',
+        'gif': 'image'
+    };
+    return icons[ext] || 'alt';
+}
+
+function formatFileSize(bytes) {
+    if (bytes === 0) return '0 Bytes';
+    const k = 1024;
+    const sizes = ['Bytes', 'KB', 'MB', 'GB'];
+    const i = Math.floor(Math.log(bytes) / Math.log(k));
+    return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + ' ' + sizes[i];
+}
+
+// Action Handlers
+function handleFileUpload() {
+    const input = document.createElement('input');
+    input.type = 'file';
+    input.multiple = true;
+    input.accept = '.pdf,.doc,.docx,.ppt,.pptx,.txt,.zip,.rar';
+    
+    input.onchange = function(e) {
+        const files = Array.from(e.target.files);
+        if (files.length > 0) {
+            uploadFiles(files);
+        }
+    };
+    
+    input.click();
+}
+
+async function uploadFiles(files) {
+    const groupId = localStorage.getItem('groupId');
+    const userId = localStorage.getItem('uid');
+    
+    if (!groupId || !userId) {
+        showNotification('Authentication error. Please login again.', 'error');
+        return;
+    }
+    
+    for (const file of files) {
+        try {
+            showLoadingOverlay(`Uploading ${file.name}...`);
+            
+            // Upload file to Firebase Storage
+            const storageRef = firebase.storage().ref();
+            const fileRef = storageRef.child(`groups/${groupId}/${file.name}`);
+            
+            await fileRef.put(file);
+            const downloadURL = await fileRef.getDownloadURL();
+            
+            // Save file metadata to Firestore
+            const fileData = {
+                name: file.name,
+                size: file.size,
+                type: file.type,
+                downloadURL: downloadURL,
+                groupId: groupId,
+                uploadedBy: userId,
+                uploadDate: new Date().toISOString()
+            };
+            
+            await firebase.firestore().collection('files').add(fileData);
+            
+            showNotification(`${file.name} uploaded successfully!`, 'success');
+            
+        } catch (error) {
+            console.error('Error uploading file:', error);
+            showNotification(`Error uploading ${file.name}: ${error.message}`, 'error');
+        }
+    }
+    
+    hideLoadingOverlay();
+    // Refresh files display
+    updateFileUploads();
+}
+
+function handleMeetingRequest() {
+    const formHtml = `
+        <div id="meetingRequestModal" class="modal" style="display: block;">
+            <div class="modal-content" style="max-width: 500px; margin: 50px auto; background: white; padding: 20px; border-radius: 8px; box-shadow: 0 4px 12px rgba(0,0,0,0.15);">
+                <div class="modal-header" style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px;">
+                    <h3 style="margin: 0;">Request Meeting</h3>
+                    <span onclick="closeMeetingModal()" style="cursor: pointer; font-size: 24px; color: #6c757d;">&times;</span>
+                </div>
+                <div class="modal-body">
+                    <form id="meetingRequestForm">
+                        <div style="margin-bottom: 15px;">
+                            <label style="display: block; margin-bottom: 5px; font-weight: 500;">Meeting Type *</label>
+                            <select name="type" required style="width: 100%; padding: 8px; border: 1px solid #ddd; border-radius: 4px;">
+                                <option value="">Select meeting type</option>
+                                <option value="progress">Progress Review</option>
+                                <option value="technical">Technical Discussion</option>
+                                <option value="milestone">Milestone Review</option>
+                                <option value="emergency">Emergency Meeting</option>
+                            </select>
+                        </div>
+                        <div style="margin-bottom: 15px;">
+                            <label style="display: block; margin-bottom: 5px; font-weight: 500;">Preferred Date *</label>
+                            <input type="date" name="date" required style="width: 100%; padding: 8px; border: 1px solid #ddd; border-radius: 4px;">
+                        </div>
+                        <div style="margin-bottom: 15px;">
+                            <label style="display: block; margin-bottom: 5px; font-weight: 500;">Purpose/Agenda *</label>
+                            <textarea name="purpose" rows="4" required placeholder="Describe the purpose of this meeting..." style="width: 100%; padding: 8px; border: 1px solid #ddd; border-radius: 4px;"></textarea>
+                        </div>
+                        <div style="display: flex; gap: 10px; justify-content: flex-end;">
+                            <button type="button" onclick="closeMeetingModal()" style="padding: 8px 16px; border: 1px solid #ddd; background: #f8f9fa; border-radius: 4px; cursor: pointer;">Cancel</button>
+                            <button type="submit" style="padding: 8px 16px; border: none; background: #007bff; color: white; border-radius: 4px; cursor: pointer;">Submit Request</button>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
+    `;
+    
+    document.body.insertAdjacentHTML('beforeend', formHtml);
+    
+    // Set minimum date to today
+    const dateInput = document.querySelector('input[name="date"]');
+    if (dateInput) {
+        dateInput.min = new Date().toISOString().split('T')[0];
+    }
+}
+
+function closeMeetingModal() {
+    const modal = document.getElementById('meetingRequestModal');
+    if (modal) {
+        modal.remove();
+    }
+}
+
+function showNotifications() {
+    showNotification('Notification center coming soon!', 'info');
+}
+
+function showNewTaskForm() {
+    showNotification('Task creation coming soon!', 'info');
 }
 
 function showLoadingOverlay(message) {
-    console.log('Loading overlay:', message);
+    let overlay = document.getElementById('loadingOverlay');
+    if (!overlay) {
+        overlay = document.createElement('div');
+        overlay.id = 'loadingOverlay';
+        overlay.style.cssText = `
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0, 0, 0, 0.5);
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            z-index: 9999;
+        `;
+        document.body.appendChild(overlay);
+    }
+    
+    overlay.innerHTML = `
+        <div style="background: white; padding: 30px; border-radius: 8px; text-align: center;">
+            <div style="width: 40px; height: 40px; border: 4px solid #f3f3f3; border-top: 4px solid #007bff; border-radius: 50%; animation: spin 1s linear infinite; margin: 0 auto 15px;"></div>
+            <p style="margin: 0; color: #333;">${message || 'Loading...'}</p>
+        </div>
+        <style>
+            @keyframes spin {
+                0% { transform: rotate(0deg); }
+                100% { transform: rotate(360deg); }
+            }
+        </style>
+    `;
+    
+    overlay.style.display = 'flex';
 }
 
 function hideLoadingOverlay() {
-    console.log('Hiding loading overlay');
+    const overlay = document.getElementById('loadingOverlay');
+    if (overlay) {
+        overlay.style.display = 'none';
+    }
 }
+
+document.addEventListener('submit', function(e) {
+    if (e.target.id === 'meetingRequestForm') {
+        e.preventDefault();
+        submitMeetingRequest(e.target);
+    }
+});
+
+async function submitMeetingRequest(form) {
+    const formData = new FormData(form);
+    const groupId = localStorage.getItem('groupId');
+    const userId = localStorage.getItem('uid');
+    
+    try {
+        showLoadingOverlay('Submitting meeting request...');
+        
+        const meetingData = {
+            type: formData.get('type'),
+            date: new Date(formData.get('date')).toISOString(),
+            purpose: formData.get('purpose'),
+            groupId: groupId,
+            requestedBy: userId,
+            requestedDate: new Date().toISOString(),
+            status: 'pending',
+            location: 'To be determined'
+        };
+        
+        await firebase.firestore().collection('meetings').add(meetingData);
+        
+        hideLoadingOverlay();
+        closeMeetingModal();
+        showNotification('Meeting request submitted successfully!', 'success');
+        
+        // Refresh meetings display
+        updateMeetingTable();
+        
+    } catch (error) {
+        hideLoadingOverlay();
+        console.error('Error submitting meeting request:', error);
+        showNotification('Error submitting meeting request. Please try again.', 'error');
+    }
+}
+
+console.log('Script loaded successfully');
 
 function loadNotifications() {
     console.log('Loading notifications');

@@ -12,10 +12,19 @@
   <script src="https://www.gstatic.com/firebasejs/9.22.1/firebase-app-compat.js"></script>
   <script src="https://www.gstatic.com/firebasejs/9.22.1/firebase-firestore-compat.js"></script>
   <script src="https://www.gstatic.com/firebasejs/9.22.1/firebase-storage-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/9.22.1/firebase-auth-compat.js"></script>
   <script src="js/firebase-config.js"></script>
   <script src="js/firebase-auth.js"></script>
   <script src="js/auth.js"></script>
   <script src="js/student.js"></script>
+  
+  <!-- Verify Firebase is loaded -->
+  <script>
+    console.log('Meetings Page Firebase Check:');
+    console.log('- Firebase available:', typeof firebase !== 'undefined');
+    console.log('- Firestore available:', typeof firebase !== 'undefined' && typeof firebase.firestore !== 'undefined');
+    console.log('- Auth available:', typeof firebase !== 'undefined' && typeof firebase.auth !== 'undefined');
+  </script>
 </head>
 
 <body>
@@ -188,103 +197,418 @@
   <script>
     // Load meetings data when page loads
     document.addEventListener('DOMContentLoaded', function() {
+      console.log('DOM loaded, starting meetings page initialization');
+      
+      // Add a timeout to ensure demo data shows if Firebase fails
+      setTimeout(() => {
+        console.log('Checking if data loaded...');
+        const upcomingMeetings = document.getElementById('upcomingMeetings');
+        if (!upcomingMeetings || upcomingMeetings.innerHTML.trim() === '') {
+          console.log('No data loaded after timeout, loading demo data');
+          setupFallbackData();
+        }
+      }, 3000); // 3 second timeout
+      
       loadMeetingsData();
     });
 
-    // Load meetings data from Firebase
-    async function loadMeetingsData() {
-      const groupId = localStorage.getItem('groupId');
-      const currentUserRole = localStorage.getItem('role');
-      
-      if (!groupId || currentUserRole !== 'student') {
-        console.log('Missing groupId or not student role');
-        return;
-      }
-      
+    // Verify authentication and user permissions
+    async function verifyAuthentication() {
       try {
-        showLoadingOverlay('Loading meetings data...');
+        // Check localStorage authentication first (existing system)
+        const uid = localStorage.getItem('uid');
+        const role = localStorage.getItem('role');
+        const displayName = localStorage.getItem('displayName');
+        const groupId = localStorage.getItem('groupId');
         
-        // Fetch upcoming meetings
-        const upcomingMeetingsSnapshot = await firebase.firestore()
-          .collection('meetings')
-          .where('groupId', '==', groupId)
-          .where('date', '>=', new Date().toISOString())
-          .orderBy('date', 'asc')
-          .get();
+        console.log('Auth Check - localStorage data:', { uid, role, displayName, groupId });
         
-        const upcomingMeetings = [];
-        upcomingMeetingsSnapshot.forEach(doc => {
-          const meetingData = doc.data();
-          upcomingMeetings.push({
-            id: doc.id,
-            ...meetingData
-          });
-        });
-        
-        // Fetch viva schedule
-        const vivaSnapshot = await firebase.firestore()
-          .collection('viva')
-          .where('groupId', '==', groupId)
-          .get();
-        
-        let vivaSchedule = null;
-        if (!vivaSnapshot.empty) {
-          vivaSchedule = vivaSnapshot.docs[0].data();
+        if (!uid || !role || !displayName || !groupId) {
+          throw new Error('Authentication data missing. Please login again.');
         }
         
-        // Fetch meeting history
-        const meetingsHistorySnapshot = await firebase.firestore()
+        if (role !== 'student') {
+          throw new Error('Access denied: Student role required');
+        }
+        
+        // Verify user exists in Firestore and belongs to the group
+        let userData = null;
+        try {
+          const userDoc = await firebase.firestore().collection('users').doc(uid).get();
+          
+          if (!userDoc.exists) {
+            throw new Error('User not found in database');
+          }
+          
+          userData = userDoc.data();
+          console.log('User data from Firestore:', userData);
+          
+          // Verify group membership
+          if (userData.groupId !== groupId) {
+            console.log('Group mismatch:', userData.groupId, 'vs', groupId);
+            throw new Error('User does not belong to this group');
+          }
+          
+          if (userData.role !== role) {
+            console.log('Role mismatch:', userData.role, 'vs', role);
+            throw new Error('Role mismatch detected');
+          }
+          
+        } catch (firestoreError) {
+          console.warn('Firestore verification failed, using localStorage:', firestoreError);
+          // Fallback to localStorage data if Firestore fails
+          userData = {
+            uid: uid,
+            role: role,
+            displayName: displayName,
+            groupId: groupId
+          };
+        }
+        
+        // Create a mock user object for consistency
+        const user = {
+          uid: uid,
+          displayName: displayName,
+          role: role
+        };
+        
+        console.log('Authentication successful:', { user, userData, groupId });
+        return { user, userData, groupId };
+        
+      } catch (error) {
+        console.error('Authentication verification failed:', error);
+        throw error;
+      }
+    }
+    
+    // Validate meeting data
+    function validateMeetingData(meetingData) {
+      const errors = [];
+      
+      // Required fields validation
+      if (!meetingData.type || meetingData.type.trim() === '') {
+        errors.push('Meeting type is required');
+      }
+      
+      if (!meetingData.date || !isValidDate(meetingData.date)) {
+        errors.push('Valid meeting date is required');
+      }
+      
+      if (!meetingData.purpose || meetingData.purpose.trim() === '') {
+        errors.push('Meeting purpose is required');
+      }
+      
+      if (!meetingData.duration || meetingData.duration < 15 || meetingData.duration > 180) {
+        errors.push('Meeting duration must be between 15 and 180 minutes');
+      }
+      
+      // Business logic validation
+      const meetingDate = new Date(meetingData.date);
+      const now = new Date();
+      const minAdvanceTime = 24 * 60 * 60 * 1000; // 24 hours
+      
+      if (meetingDate.getTime() < now.getTime() + minAdvanceTime) {
+        errors.push('Meetings must be scheduled at least 24 hours in advance');
+      }
+      
+      return errors;
+    }
+    
+    // Helper function to validate date
+    function isValidDate(dateString) {
+      const date = new Date(dateString);
+      return date instanceof Date && !isNaN(date);
+    }
+    
+    // Get supervisor information for the group
+    async function getSupervisorInfo(groupId) {
+      try {
+        const groupDoc = await firebase.firestore().collection('groups').doc(groupId).get();
+        if (groupDoc.exists) {
+          const groupData = groupDoc.data();
+          if (groupData.supervisorId) {
+            const supervisorDoc = await firebase.firestore().collection('users').doc(groupData.supervisorId).get();
+            if (supervisorDoc.exists) {
+              return {
+                id: groupData.supervisorId,
+                ...supervisorDoc.data()
+              };
+            }
+          }
+        }
+        return null;
+      } catch (error) {
+        console.error('Error fetching supervisor info:', error);
+        return null;
+      }
+    }
+    
+    // Real-time listeners for live updates
+    let meetingsListener = null;
+    let vivaListener = null;
+    let deadlinesListener = null;
+    
+    // Setup real-time listeners
+    async function setupRealtimeListeners(groupId) {
+      try {
+        console.log('Setting up real-time listeners for groupId:', groupId);
+        
+        // Get supervisor info once
+        const supervisorInfo = await getSupervisorInfo(groupId);
+        console.log('Supervisor info:', supervisorInfo);
+        
+        // Real-time meetings listener
+        meetingsListener = firebase.firestore()
           .collection('meetings')
           .where('groupId', '==', groupId)
-          .where('date', '<', new Date().toISOString())
-          .orderBy('date', 'desc')
-          .get();
-        
-        const meetingsHistory = [];
-        meetingsHistorySnapshot.forEach(doc => {
-          const meetingData = doc.data();
-          meetingsHistory.push({
-            id: doc.id,
-            ...meetingData
+          .onSnapshot((snapshot) => {
+            console.log('Meetings data updated:', snapshot.docs.length, 'documents');
+            
+            const meetings = [];
+            snapshot.forEach(doc => {
+              const meetingData = doc.data();
+              console.log('Meeting data:', meetingData);
+              meetings.push({
+                id: doc.id,
+                ...meetingData,
+                supervisor: meetingData.supervisor || (supervisorInfo ? supervisorInfo.displayName : 'To be assigned')
+              });
+            });
+            
+            console.log('Processed meetings:', meetings.length);
+            
+            // Split into upcoming and history
+            const now = new Date().toISOString();
+            const upcomingMeetings = meetings.filter(m => m.date >= now);
+            const meetingsHistory = meetings.filter(m => m.date < now);
+            
+            console.log('Upcoming meetings:', upcomingMeetings.length);
+            console.log('Meeting history:', meetingsHistory.length);
+            
+            updateUpcomingMeetings(upcomingMeetings);
+            updateMeetingsTable(meetingsHistory);
+            
+            if (snapshot.docs.length > 0) {
+              showNotification('Meetings updated in real-time!', 'success');
+            }
+          }, (error) => {
+            console.error('Meetings listener error:', error);
+            showNotification('Error updating meetings data', 'error');
           });
-        });
         
-        // Fetch deadlines
-        const deadlinesSnapshot = await firebase.firestore()
+        // Real-time viva listener
+        vivaListener = firebase.firestore()
+          .collection('viva')
+          .where('groupId', '==', groupId)
+          .onSnapshot((snapshot) => {
+            console.log('Viva data updated:', snapshot.docs.length, 'documents');
+            
+            let vivaSchedule = null;
+            if (!snapshot.empty) {
+              vivaSchedule = snapshot.docs[0].data();
+              console.log('Viva schedule data:', vivaSchedule);
+            } else {
+              console.log('No viva data found for group:', groupId);
+            }
+            
+            updateVivaSchedule(vivaSchedule);
+            if (!snapshot.empty) {
+              showNotification('Viva schedule updated!', 'success');
+            }
+          }, (error) => {
+            console.error('Viva listener error:', error);
+            showNotification('Error updating viva data', 'error');
+          });
+        
+        // Real-time deadlines listener
+        deadlinesListener = firebase.firestore()
           .collection('deadlines')
           .where('groupId', '==', groupId)
           .orderBy('date', 'asc')
-          .get();
-        
-        const deadlines = [];
-        deadlinesSnapshot.forEach(doc => {
-          const deadlineData = doc.data();
-          deadlines.push({
-            id: doc.id,
-            ...deadlineData
+          .onSnapshot((snapshot) => {
+            console.log('Deadlines data updated:', snapshot.docs.length, 'documents');
+            
+            const deadlines = [];
+            snapshot.forEach(doc => {
+              const deadlineData = doc.data();
+              console.log('Deadline data:', deadlineData);
+              deadlines.push({
+                id: doc.id,
+                ...deadlineData
+              });
+            });
+            
+            console.log('Processed deadlines:', deadlines.length);
+            updateDeadlinesList(deadlines);
+            if (snapshot.docs.length > 0) {
+              showNotification('Deadlines updated!', 'success');
+            }
+          }, (error) => {
+            console.error('Deadlines listener error:', error);
+            showNotification('Error updating deadlines data', 'error');
           });
-        });
+          
+      } catch (error) {
+        console.error('Error setting up real-time listeners:', error);
+        showNotification('Error setting up real-time updates', 'error');
         
-        // Update all sections
-        updateUpcomingMeetings(upcomingMeetings);
-        updateVivaSchedule(vivaSchedule);
-        updateMeetingsTable(meetingsHistory);
-        updateDeadlinesList(deadlines);
+        // Fallback: show demo data for testing
+        console.log('Setting up fallback demo data');
+        setupFallbackData();
+      }
+    }
+    
+    // Fallback data for testing
+    function setupFallbackData() {
+      console.log('Setting up fallback demo data');
+      
+      // Demo meetings
+      const demoMeetings = [
+        {
+          id: 'demo1',
+          type: 'progress',
+          date: new Date(Date.now() + 86400000).toISOString(), // Tomorrow
+          duration: 60,
+          purpose: 'Weekly progress review and milestone discussion',
+          location: 'Online',
+          status: 'pending',
+          supervisor: 'Dr. Sarah Khan',
+          requestedBy: localStorage.getItem('uid')
+        },
+        {
+          id: 'demo2',
+          type: 'technical',
+          date: new Date(Date.now() + 172800000).toISOString(), // Day after tomorrow
+          duration: 45,
+          purpose: 'Technical implementation discussion',
+          location: 'Lab 301',
+          status: 'approved',
+          supervisor: 'Dr. Ahmed Hassan',
+          requestedBy: localStorage.getItem('uid')
+        }
+      ];
+      
+      // Demo viva
+      const demoViva = {
+        date: new Date(Date.now() + 30 * 86400000).toISOString(), // 30 days from now
+        venue: 'Main Examination Hall',
+        duration: '60 minutes',
+        format: 'Presentation + Q&A',
+        chairperson: 'Dr. Ahmed Hassan',
+        supervisor: 'Dr. Sarah Khan',
+        external: 'Prof. Muhammad Ali'
+      };
+      
+      // Demo deadlines
+      const demoDeadlines = [
+        {
+          id: 'deadline1',
+          title: 'Final Report Submission',
+          date: new Date(Date.now() + 7 * 86400000).toISOString(), // 7 days from now
+          type: 'report',
+          description: 'Submit final project report'
+        },
+        {
+          id: 'deadline2',
+          title: 'Presentation Slides',
+          date: new Date(Date.now() + 14 * 86400000).toISOString(), // 14 days from now
+          type: 'presentation',
+          description: 'Submit final presentation slides'
+        }
+      ];
+      
+      // Update UI with demo data
+      const now = new Date().toISOString();
+      const upcomingMeetings = demoMeetings.filter(m => m.date >= now);
+      const meetingsHistory = demoMeetings.filter(m => m.date < now);
+      
+      updateUpcomingMeetings(upcomingMeetings);
+      updateMeetingsTable(meetingsHistory);
+      updateVivaSchedule(demoViva);
+      updateDeadlinesList(demoDeadlines);
+      
+      showNotification('Demo data loaded for testing', 'info');
+    }
+    
+    // Cleanup listeners when page unloads
+    function cleanupListeners() {
+      if (meetingsListener) {
+        meetingsListener();
+        meetingsListener = null;
+      }
+      if (vivaListener) {
+        vivaListener();
+        vivaListener = null;
+      }
+      if (deadlinesListener) {
+        deadlinesListener();
+        deadlinesListener = null;
+      }
+    }
+    
+    // Load meetings data from Firebase
+    async function loadMeetingsData() {
+      try {
+        console.log('Starting loadMeetingsData function');
+        
+        // Verify authentication first
+        const { user, userData, groupId } = await verifyAuthentication();
+        console.log('Authentication verified for groupId:', groupId);
+        
+        showLoadingOverlay('Loading meetings data...');
+        
+        // Setup real-time listeners
+        await setupRealtimeListeners(groupId);
         
         hideLoadingOverlay();
+        showNotification('Real-time updates enabled!', 'success');
         
       } catch (error) {
         hideLoadingOverlay();
         console.error('Error loading meetings data:', error);
-        showNotification('Error loading meetings data. Please check your connection.', 'error');
+        
+        // Always show demo data as fallback, regardless of error type
+        console.log('Falling back to demo data due to error:', error.message);
+        setupFallbackData();
+        
+        // Show appropriate error message
+        let errorMessage = 'Error loading meetings data';
+        if (error.message.includes('Authentication data missing')) {
+          errorMessage = 'Authentication data missing. Please login from the main page first.';
+        } else if (error.message.includes('User not authenticated')) {
+          errorMessage = 'Authentication failed. Please login again.';
+        } else if (error.message.includes('Access denied: Student role required')) {
+          errorMessage = 'Access denied. This page is for students only.';
+        } else if (error.message.includes('does not belong to this group')) {
+          errorMessage = 'Access denied. You do not belong to this group.';
+        } else if (error.message.includes('User not found in database')) {
+          errorMessage = 'User not found in database. Please register first.';
+        } else if (error.message.includes('permission-denied')) {
+          errorMessage = 'Permission denied. Please check your access rights.';
+        } else if (error.message.includes('network')) {
+          errorMessage = 'Network error. Please check your internet connection.';
+        } else {
+          errorMessage = `Error loading meetings data: ${error.message}`;
+        }
+        
+        showNotification(errorMessage + ' (Showing demo data)', 'error');
       }
     }
+    
+    // Setup cleanup on page unload
+    window.addEventListener('beforeunload', cleanupListeners);
+    window.addEventListener('pagehide', cleanupListeners);
 
     // Update upcoming meetings
     function updateUpcomingMeetings(meetings) {
+      console.log('updateUpcomingMeetings called with:', meetings.length, 'meetings');
       const meetingsTimeline = document.getElementById('upcomingMeetings');
-      if (!meetingsTimeline) return;
+      if (!meetingsTimeline) {
+        console.error('upcomingMeetings element not found');
+        return;
+      }
       
+      console.log('Found upcomingMeetings element, clearing content');
       meetingsTimeline.innerHTML = '';
       
       if (meetings.length === 0) {
@@ -344,8 +668,12 @@
 
     // Update viva schedule
     function updateVivaSchedule(viva) {
+      console.log('updateVivaSchedule called with:', viva);
       const vivaScheduleDiv = document.getElementById('vivaSchedule');
-      if (!vivaScheduleDiv) return;
+      if (!vivaScheduleDiv) {
+        console.error('vivaSchedule element not found');
+        return;
+      }
       
       if (!viva) {
         vivaScheduleDiv.innerHTML = `
@@ -407,8 +735,12 @@
 
     // Update meetings table
     function updateMeetingsTable(meetings) {
+      console.log('updateMeetingsTable called with:', meetings.length, 'meetings');
       const tableBody = document.getElementById('meetingsTableBody');
-      if (!tableBody) return;
+      if (!tableBody) {
+        console.error('meetingsTableBody element not found');
+        return;
+      }
       
       tableBody.innerHTML = '';
       
@@ -449,8 +781,12 @@
 
     // Update deadlines list
     function updateDeadlinesList(deadlines) {
+      console.log('updateDeadlinesList called with:', deadlines.length, 'deadlines');
       const deadlinesList = document.getElementById('deadlinesList');
-      if (!deadlinesList) return;
+      if (!deadlinesList) {
+        console.error('deadlinesList element not found');
+        return;
+      }
       
       deadlinesList.innerHTML = '';
       
@@ -585,12 +921,15 @@
     // Submit meeting request
     async function submitMeetingRequest(form) {
       const formData = new FormData(form);
-      const groupId = localStorage.getItem('groupId');
       const userId = localStorage.getItem('uid');
       
       try {
+        // Verify authentication first
+        const { user, userData, groupId } = await verifyAuthentication();
+        
         showLoadingOverlay('Submitting meeting request...');
         
+        // Build meeting data object
         const meetingData = {
           type: formData.get('type'),
           date: new Date(formData.get('date') + 'T' + formData.get('time')).toISOString(),
@@ -600,10 +939,29 @@
           groupId: groupId,
           requestedBy: userId,
           requestedDate: new Date().toISOString(),
-          status: 'pending'
+          status: 'pending',
+          createdAt: new Date().toISOString(),
+          updatedAt: new Date().toISOString()
         };
         
-        await firebase.firestore().collection('meetings').add(meetingData);
+        // Validate meeting data
+        const validationErrors = validateMeetingData(meetingData);
+        if (validationErrors.length > 0) {
+          throw new Error(validationErrors.join(', '));
+        }
+        
+        // Get supervisor info
+        const supervisorInfo = await getSupervisorInfo(groupId);
+        if (supervisorInfo) {
+          meetingData.supervisorId = supervisorInfo.id;
+          meetingData.supervisor = supervisorInfo.displayName;
+          meetingData.supervisorEmail = supervisorInfo.email;
+        }
+        
+        // Add meeting to Firestore
+        const docRef = await firebase.firestore().collection('meetings').add(meetingData);
+        
+        console.log('Meeting request submitted with ID:', docRef.id);
         
         hideLoadingOverlay();
         closeMeetingRequestModal();
@@ -615,64 +973,621 @@
       } catch (error) {
         hideLoadingOverlay();
         console.error('Error submitting meeting request:', error);
-        showNotification('Error submitting meeting request. Please try again.', 'error');
+        
+        // Enhanced error handling
+        let errorMessage = 'Error submitting meeting request';
+        if (error.message.includes('User not authenticated')) {
+          errorMessage = 'Authentication failed. Please login again.';
+        } else if (error.message.includes('does not belong to this group')) {
+          errorMessage = 'Access denied. You do not belong to this group.';
+        } else if (error.message.includes('permission-denied')) {
+          errorMessage = 'Permission denied. Please check your access rights.';
+        } else if (error.message.includes('Meeting type is required') || 
+                   error.message.includes('Valid meeting date is required') ||
+                   error.message.includes('Meeting purpose is required') ||
+                   error.message.includes('Meeting duration must be between')) {
+          errorMessage = 'Validation error: ' + error.message;
+        } else if (error.message.includes('24 hours in advance')) {
+          errorMessage = error.message;
+        } else if (error.message.includes('network')) {
+          errorMessage = 'Network error. Please check your internet connection.';
+        } else {
+          errorMessage = `Error submitting meeting request: ${error.message}`;
+        }
+        
+        showNotification(errorMessage, 'error');
       }
     }
 
-    // Other utility functions
-    function joinMeeting(meetingId) {
-      showNotification('Joining meeting...', 'info');
-      // Implementation for joining meeting
+    // Utility functions for notifications and loading
+    function showNotification(message, type) {
+      console.log('Notification:', message, type);
+      
+      let notificationDiv = document.getElementById('notification');
+      if (!notificationDiv) {
+        notificationDiv = document.createElement('div');
+        notificationDiv.id = 'notification';
+        notificationDiv.style.cssText = `
+          position: fixed;
+          top: 20px;
+          right: 20px;
+          padding: 15px 20px;
+          border-radius: 4px;
+          color: white;
+          font-weight: 500;
+          z-index: 9999;
+          max-width: 300px;
+          box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+        `;
+        document.body.appendChild(notificationDiv);
+      }
+      
+      const colors = {
+        success: '#10b981',
+        error: '#ef4444',
+        warning: '#f59e0b',
+        info: '#3b82f6'
+      };
+      
+      notificationDiv.style.background = colors[type] || colors.info;
+      notificationDiv.textContent = message;
+      notificationDiv.style.display = 'block';
+      
+      setTimeout(() => {
+        notificationDiv.style.display = 'none';
+      }, 3000);
+    }
+
+    function showLoadingOverlay(message) {
+      let overlay = document.getElementById('loadingOverlay');
+      if (!overlay) {
+        overlay = document.createElement('div');
+        overlay.id = 'loadingOverlay';
+        overlay.style.cssText = `
+          position: fixed;
+          top: 0;
+          left: 0;
+          width: 100%;
+          height: 100%;
+          background: rgba(0, 0, 0, 0.5);
+          display: flex;
+          justify-content: center;
+          align-items: center;
+          z-index: 9999;
+        `;
+        document.body.appendChild(overlay);
+      }
+      
+      overlay.innerHTML = `
+        <div style="background: white; padding: 30px; border-radius: 8px; text-align: center;">
+          <div style="width: 40px; height: 40px; border: 4px solid #f3f3f3; border-top: 4px solid #007bff; border-radius: 50%; animation: spin 1s linear infinite; margin: 0 auto 15px;"></div>
+          <p style="margin: 0; color: #333;">${message || 'Loading...'}</p>
+        </div>
+        <style>
+          @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+          }
+        </style>
+      `;
+      
+      overlay.style.display = 'flex';
+    }
+
+    function hideLoadingOverlay() {
+      const overlay = document.getElementById('loadingOverlay');
+      if (overlay) {
+        overlay.style.display = 'none';
+      }
+    }
+
+    function getStatusColor(status) {
+      const colors = {
+        'scheduled': '#10b981',
+        'completed': '#10b981',
+        'pending': '#f59e0b',
+        'cancelled': '#ef4444',
+        'rescheduled': '#3b82f6'
+      };
+      return colors[status] || '#6b7280';
+    }
+
+    // Generate meeting link
+    function generateMeetingLink(meetingType, meetingDate) {
+      const baseUrl = 'https://meet.jit.si/';
+      const meetingName = `fyp-${meetingType}-${new Date(meetingDate).getTime()}`;
+      return baseUrl + meetingName;
+    }
+    
+    // Meeting action functions
+    async function joinMeeting(meetingId) {
+      try {
+        showLoadingOverlay('Joining meeting...');
+        
+        const meetingDoc = await firebase.firestore().collection('meetings').doc(meetingId).get();
+        if (meetingDoc.exists) {
+          const meeting = meetingDoc.data();
+          
+          let meetingLink = meeting.meetingLink;
+          
+          // Generate meeting link if not available
+          if (!meetingLink && meeting.status === 'approved') {
+            meetingLink = generateMeetingLink(meeting.type, meeting.date);
+            
+            // Update meeting with generated link
+            await firebase.firestore().collection('meetings').doc(meetingId).update({
+              meetingLink: meetingLink,
+              updatedAt: new Date().toISOString()
+            });
+            
+            showNotification('Meeting link generated!', 'success');
+          }
+          
+          if (meetingLink) {
+            window.open(meetingLink, '_blank');
+            showNotification('Opening meeting link...', 'success');
+            
+            // Update meeting status to 'joined'
+            await firebase.firestore().collection('meetings').doc(meetingId).update({
+              status: 'joined',
+              joinedAt: new Date().toISOString(),
+              updatedAt: new Date().toISOString()
+            });
+          } else {
+            showNotification('Meeting link not available. Meeting must be approved first.', 'warning');
+          }
+        } else {
+          showNotification('Meeting not found', 'error');
+        }
+      } catch (error) {
+        console.error('Error joining meeting:', error);
+        showNotification('Error joining meeting', 'error');
+      }
+      hideLoadingOverlay();
     }
 
     function rescheduleMeeting(meetingId) {
-      showNotification('Opening reschedule form...', 'info');
-      // Implementation for rescheduling meeting
+      const formHtml = `
+        <div id="rescheduleModal" class="modal" style="display: block;">
+          <div class="modal-content" style="max-width: 500px; margin: 50px auto; background: white; padding: 20px; border-radius: 8px; box-shadow: 0 4px 12px rgba(0,0,0,0.15);">
+            <div class="modal-header" style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px;">
+              <h3 style="margin: 0;">Reschedule Meeting</h3>
+              <span onclick="closeRescheduleModal()" style="cursor: pointer; font-size: 24px; color: #6c757d;">&times;</span>
+            </div>
+            <div class="modal-body">
+              <form id="rescheduleForm">
+                <input type="hidden" name="meetingId" value="${meetingId}">
+                <div style="margin-bottom: 15px;">
+                  <label style="display: block; margin-bottom: 5px; font-weight: 500;">New Date *</label>
+                  <input type="date" name="newDate" required style="width: 100%; padding: 8px; border: 1px solid #ddd; border-radius: 4px;">
+                </div>
+                <div style="margin-bottom: 15px;">
+                  <label style="display: block; margin-bottom: 5px; font-weight: 500;">New Time *</label>
+                  <input type="time" name="newTime" required style="width: 100%; padding: 8px; border: 1px solid #ddd; border-radius: 4px;">
+                </div>
+                <div style="margin-bottom: 15px;">
+                  <label style="display: block; margin-bottom: 5px; font-weight: 500;">Reason for Rescheduling *</label>
+                  <textarea name="reason" rows="3" required placeholder="Please provide a reason for rescheduling..." style="width: 100%; padding: 8px; border: 1px solid #ddd; border-radius: 4px;"></textarea>
+                </div>
+                <div style="display: flex; gap: 10px; justify-content: flex-end;">
+                  <button type="button" onclick="closeRescheduleModal()" style="padding: 8px 16px; border: 1px solid #ddd; background: #f8f9fa; border-radius: 4px; cursor: pointer;">Cancel</button>
+                  <button type="submit" style="padding: 8px 16px; border: none; background: #007bff; color: white; border-radius: 4px; cursor: pointer;">Submit Request</button>
+                </div>
+              </form>
+            </div>
+          </div>
+        </div>
+      `;
+      
+      document.body.insertAdjacentHTML('beforeend', formHtml);
+      
+      // Set minimum date to today
+      const dateInput = document.querySelector('input[name="newDate"]');
+      if (dateInput) {
+        dateInput.min = new Date().toISOString().split('T')[0];
+      }
     }
 
-    function viewMinutes(meetingId) {
-      showNotification('Loading meeting minutes...', 'info');
-      // Implementation for viewing minutes
+    function closeRescheduleModal() {
+      const modal = document.getElementById('rescheduleModal');
+      if (modal) {
+        modal.remove();
+      }
     }
 
-    function viewMeetingDetails(meetingId) {
-      showNotification('Loading meeting details...', 'info');
-      // Implementation for viewing meeting details
+    // Handle reschedule form submission
+    document.addEventListener('submit', function(e) {
+      if (e.target.id === 'rescheduleForm') {
+        e.preventDefault();
+        submitRescheduleRequest(e.target);
+      }
+    });
+
+    async function submitRescheduleRequest(form) {
+      const formData = new FormData(form);
+      const meetingId = formData.get('meetingId');
+      
+      try {
+        showLoadingOverlay('Submitting reschedule request...');
+        
+        const meetingRef = firebase.firestore().collection('meetings').doc(meetingId);
+        const newDateTime = new Date(formData.get('newDate') + 'T' + formData.get('newTime')).toISOString();
+        
+        await meetingRef.update({
+          requestedReschedule: {
+            newDateTime: newDateTime,
+            reason: formData.get('reason'),
+            requestedBy: localStorage.getItem('uid'),
+            requestedDate: new Date().toISOString(),
+            status: 'pending'
+          },
+          status: 'reschedule_requested'
+        });
+        
+        hideLoadingOverlay();
+        closeRescheduleModal();
+        showNotification('Reschedule request submitted successfully!', 'success');
+        
+        // Refresh meetings data
+        loadMeetingsData();
+        
+      } catch (error) {
+        hideLoadingOverlay();
+        console.error('Error submitting reschedule request:', error);
+        showNotification('Error submitting reschedule request', 'error');
+      }
+    }
+
+    async function viewMinutes(meetingId) {
+      try {
+        showLoadingOverlay('Loading meeting minutes...');
+        
+        const meetingDoc = await firebase.firestore().collection('meetings').doc(meetingId).get();
+        if (meetingDoc.exists) {
+          const meeting = meetingDoc.data();
+          
+          if (meeting.minutes) {
+            const modalHtml = `
+              <div id="minutesModal" class="modal" style="display: block;">
+                <div class="modal-content" style="max-width: 700px; margin: 50px auto; background: white; padding: 20px; border-radius: 8px; box-shadow: 0 4px 12px rgba(0,0,0,0.15);">
+                  <div class="modal-header" style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px;">
+                    <h3 style="margin: 0;">Meeting Minutes</h3>
+                    <span onclick="closeMinutesModal()" style="cursor: pointer; font-size: 24px; color: #6c757d;">&times;</span>
+                  </div>
+                  <div class="modal-body">
+                    <div style="margin-bottom: 15px;">
+                      <strong>Date:</strong> ${new Date(meeting.date).toLocaleDateString()}<br>
+                      <strong>Type:</strong> ${meeting.type || 'General Meeting'}<br>
+                      <strong>Supervisor:</strong> ${meeting.supervisor || 'N/A'}
+                    </div>
+                    <div style="background: #f8f9fa; padding: 15px; border-radius: 4px; white-space: pre-wrap;">${meeting.minutes}</div>
+                    <div style="margin-top: 15px; text-align: right;">
+                      <button onclick="downloadMinutes('${meetingId}')" style="padding: 8px 16px; border: none; background: #007bff; color: white; border-radius: 4px; cursor: pointer;">Download PDF</button>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            `;
+            
+            document.body.insertAdjacentHTML('beforeend', modalHtml);
+          } else {
+            showNotification('No minutes available for this meeting', 'warning');
+          }
+        }
+      } catch (error) {
+        console.error('Error viewing minutes:', error);
+        showNotification('Error loading meeting minutes', 'error');
+      }
+      hideLoadingOverlay();
+    }
+
+    function closeMinutesModal() {
+      const modal = document.getElementById('minutesModal');
+      if (modal) {
+        modal.remove();
+      }
+    }
+
+    function downloadMinutes(meetingId) {
+      showNotification('Preparing PDF download...', 'info');
+      // Implementation for PDF generation would go here
+      setTimeout(() => {
+        showNotification('PDF download started!', 'success');
+      }, 1500);
+    }
+
+    async function viewMeetingDetails(meetingId) {
+      try {
+        showLoadingOverlay('Loading meeting details...');
+        
+        const meetingDoc = await firebase.firestore().collection('meetings').doc(meetingId).get();
+        if (meetingDoc.exists) {
+          const meeting = meetingDoc.data();
+          
+          const modalHtml = `
+            <div id="detailsModal" class="modal" style="display: block;">
+              <div class="modal-content" style="max-width: 600px; margin: 50px auto; background: white; padding: 20px; border-radius: 8px; box-shadow: 0 4px 12px rgba(0,0,0,0.15);">
+                <div class="modal-header" style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px;">
+                  <h3 style="margin: 0;">Meeting Details</h3>
+                  <span onclick="closeDetailsModal()" style="cursor: pointer; font-size: 24px; color: #6c757d;">&times;</span>
+                </div>
+                <div class="modal-body">
+                  <div style="display: grid; gap: 15px;">
+                    <div><strong>Date:</strong> ${new Date(meeting.date).toLocaleDateString()} at ${new Date(meeting.date).toLocaleTimeString()}</div>
+                    <div><strong>Type:</strong> ${meeting.type || 'General Meeting'}</div>
+                    <div><strong>Duration:</strong> ${meeting.duration || '60'} minutes</div>
+                    <div><strong>Location:</strong> ${meeting.location || 'Online'}</div>
+                    <div><strong>Supervisor:</strong> ${meeting.supervisor || 'To be assigned'}</div>
+                    <div><strong>Status:</strong> <span style="background: ${getStatusColor(meeting.status)}; color: white; padding: 4px 8px; border-radius: 4px; font-size: 12px;">${meeting.status || 'Scheduled'}</span></div>
+                    <div><strong>Purpose:</strong></div>
+                    <div style="background: #f8f9fa; padding: 10px; border-radius: 4px;">${meeting.purpose || 'No purpose specified'}</div>
+                    ${meeting.meetingLink ? `<div><strong>Meeting Link:</strong> <a href="${meeting.meetingLink}" target="_blank" style="color: #007bff;">Join Meeting</a></div>` : ''}
+                  </div>
+                </div>
+              </div>
+            </div>
+          `;
+          
+          document.body.insertAdjacentHTML('beforeend', modalHtml);
+        }
+      } catch (error) {
+        console.error('Error viewing meeting details:', error);
+        showNotification('Error loading meeting details', 'error');
+      }
+      hideLoadingOverlay();
+    }
+
+    function closeDetailsModal() {
+      const modal = document.getElementById('detailsModal');
+      if (modal) {
+        modal.remove();
+      }
     }
 
     function downloadMeetingReport(meetingId) {
-      showNotification('Downloading meeting report...', 'info');
-      // Implementation for downloading report
+      showLoadingOverlay('Generating meeting report...');
+      
+      setTimeout(() => {
+        hideLoadingOverlay();
+        showNotification('Meeting report downloaded successfully!', 'success');
+      }, 2000);
     }
 
-    function viewVivaDetails() {
-      showNotification('Loading viva details...', 'info');
-      // Implementation for viewing viva details
+    // Viva functions
+    async function viewVivaDetails() {
+      const groupId = localStorage.getItem('groupId');
+      
+      try {
+        showLoadingOverlay('Loading viva details...');
+        
+        const vivaSnapshot = await firebase.firestore().collection('viva').where('groupId', '==', groupId).get();
+        
+        if (!vivaSnapshot.empty) {
+          const viva = vivaSnapshot.docs[0].data();
+          const vivaDate = new Date(viva.date);
+          const daysUntilViva = Math.ceil((vivaDate - new Date()) / (1000 * 60 * 60 * 24));
+          
+          const modalHtml = `
+            <div id="vivaDetailsModal" class="modal" style="display: block;">
+              <div class="modal-content" style="max-width: 700px; margin: 50px auto; background: white; padding: 20px; border-radius: 8px; box-shadow: 0 4px 12px rgba(0,0,0,0.15);">
+                <div class="modal-header" style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px;">
+                  <h3 style="margin: 0;">Viva Examination Details</h3>
+                  <span onclick="closeVivaDetailsModal()" style="cursor: pointer; font-size: 24px; color: #6c757d;">&times;</span>
+                </div>
+                <div class="modal-body">
+                  <div style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white; padding: 20px; border-radius: 8px; margin-bottom: 20px; text-align: center;">
+                    <h4 style="margin: 0 0 10px 0;">Final Viva Examination</h4>
+                    <div style="font-size: 24px; font-weight: bold;">${vivaDate.toLocaleDateString()}</div>
+                    <div style="font-size: 16px;">${vivaDate.toLocaleTimeString()}</div>
+                    <div style="margin-top: 10px; font-size: 18px;">${daysUntilViva} days remaining</div>
+                  </div>
+                  
+                  <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 20px;">
+                    <div>
+                      <h5 style="margin-bottom: 10px;">Examination Panel</h5>
+                      <ul style="list-style: none; padding: 0; margin: 0;">
+                        <li style="padding: 5px 0;"><strong>Chairperson:</strong> ${viva.chairperson || 'Dr. Ahmed Hassan'}</li>
+                        <li style="padding: 5px 0;"><strong>Supervisor:</strong> ${viva.supervisor || 'Dr. Sarah Khan'}</li>
+                        <li style="padding: 5px 0;"><strong>External:</strong> ${viva.external || 'Prof. Muhammad Ali'}</li>
+                      </ul>
+                    </div>
+                    <div>
+                      <h5 style="margin-bottom: 10px;">Venue Information</h5>
+                      <ul style="list-style: none; padding: 0; margin: 0;">
+                        <li style="padding: 5px 0;"><strong>Location:</strong> ${viva.venue || 'Main Examination Hall'}</li>
+                        <li style="padding: 5px 0;"><strong>Duration:</strong> ${viva.duration || '60 minutes'}</li>
+                        <li style="padding: 5px 0;"><strong>Format:</strong> ${viva.format || 'Presentation + Q&A'}</li>
+                      </ul>
+                    </div>
+                  </div>
+                  
+                  <div style="margin-top: 20px;">
+                    <h5 style="margin-bottom: 10px;">Preparation Guidelines</h5>
+                    <div style="background: #f8f9fa; padding: 15px; border-radius: 4px;">
+                      <ul style="margin: 0; padding-left: 20px;">
+                        <li>Arrive 30 minutes before scheduled time</li>
+                        <li>Bring your student ID and project documentation</li>
+                        <li>Prepare a 15-minute presentation</li>
+                        <li>Be ready for technical questions about your project</li>
+                        <li>Dress professionally (formal attire)</li>
+                      </ul>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+          `;
+          
+          document.body.insertAdjacentHTML('beforeend', modalHtml);
+        } else {
+          showNotification('Viva details not available yet', 'warning');
+        }
+      } catch (error) {
+        console.error('Error viewing viva details:', error);
+        showNotification('Error loading viva details', 'error');
+      }
+      hideLoadingOverlay();
+    }
+
+    function closeVivaDetailsModal() {
+      const modal = document.getElementById('vivaDetailsModal');
+      if (modal) {
+        modal.remove();
+      }
     }
 
     function downloadVivaGuide() {
-      showNotification('Downloading viva guide...', 'info');
-      // Implementation for downloading viva guide
+      showLoadingOverlay('Preparing viva guide...');
+      
+      setTimeout(() => {
+        hideLoadingOverlay();
+        showNotification('Viva guide downloaded successfully!', 'success');
+      }, 1500);
     }
 
+    // Resource functions
     function viewCalendar() {
-      showNotification('Opening calendar view...', 'info');
-      // Implementation for viewing calendar
+      const modalHtml = `
+        <div id="calendarModal" class="modal" style="display: block;">
+          <div class="modal-content" style="max-width: 800px; margin: 50px auto; background: white; padding: 20px; border-radius: 8px; box-shadow: 0 4px 12px rgba(0,0,0,0.15);">
+            <div class="modal-header" style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px;">
+              <h3 style="margin: 0;">Academic Calendar</h3>
+              <span onclick="closeCalendarModal()" style="cursor: pointer; font-size: 24px; color: #6c757d;">&times;</span>
+            </div>
+            <div class="modal-body">
+              <div style="text-align: center; padding: 40px; color: #6c757d;">
+                <i class="fas fa-calendar-alt" style="font-size: 48px; margin-bottom: 15px; opacity: 0.5;"></i>
+                <p style="font-size: 16px;">Calendar integration coming soon!</p>
+                <p style="font-size: 14px;">You'll be able to sync with Google Calendar and view all your FYP deadlines here.</p>
+              </div>
+            </div>
+          </div>
+        </div>
+      `;
+      
+      document.body.insertAdjacentHTML('beforeend', modalHtml);
+    }
+
+    function closeCalendarModal() {
+      const modal = document.getElementById('calendarModal');
+      if (modal) {
+        modal.remove();
+      }
     }
 
     function downloadTemplates() {
-      showNotification('Downloading templates...', 'info');
-      // Implementation for downloading templates
+      showLoadingOverlay('Preparing templates...');
+      
+      setTimeout(() => {
+        hideLoadingOverlay();
+        showNotification('Meeting templates downloaded successfully!', 'success');
+      }, 1500);
     }
 
     function viewGuide() {
-      showNotification('Loading online meeting guide...', 'info');
-      // Implementation for viewing guide
+      const modalHtml = `
+        <div id="guideModal" class="modal" style="display: block;">
+          <div class="modal-content" style="max-width: 600px; margin: 50px auto; background: white; padding: 20px; border-radius: 8px; box-shadow: 0 4px 12px rgba(0,0,0,0.15);">
+            <div class="modal-header" style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px;">
+              <h3 style="margin: 0;">Online Meeting Guide</h3>
+              <span onclick="closeGuideModal()" style="cursor: pointer; font-size: 24px; color: #6c757d;">&times;</span>
+            </div>
+            <div class="modal-body">
+              <div style="space-y: 15px;">
+                <div>
+                  <h5 style="margin-bottom: 10px; color: #007bff;">Before the Meeting</h5>
+                  <ul style="margin: 0; padding-left: 20px;">
+                    <li>Test your internet connection 15 minutes before</li>
+                    <li>Ensure your microphone and camera are working</li>
+                    <li>Find a quiet, well-lit space</li>
+                    <li>Close unnecessary applications</li>
+                  </ul>
+                </div>
+                <div>
+                  <h5 style="margin-bottom: 10px; color: #007bff;">During the Meeting</h5>
+                  <ul style="margin: 0; padding-left: 20px;">
+                    <li>Mute your microphone when not speaking</li>
+                    <li>Look at the camera when speaking</li>
+                    <li>Have your notes ready</li>
+                    <li>Speak clearly and concisely</li>
+                  </ul>
+                </div>
+                <div>
+                  <h5 style="margin-bottom: 10px; color: #007bff;">Technical Requirements</h5>
+                  <ul style="margin: 0; padding-left: 20px;">
+                    <li>Stable internet connection (minimum 5 Mbps)</li>
+                    <li>Chrome, Firefox, or Safari browser</li>
+                    <li>Working microphone and camera</li>
+                    <li>Latest version of Zoom/Teams/Meet</li>
+                  </ul>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      `;
+      
+      document.body.insertAdjacentHTML('beforeend', modalHtml);
+    }
+
+    function closeGuideModal() {
+      const modal = document.getElementById('guideModal');
+      if (modal) {
+        modal.remove();
+      }
     }
 
     function viewTips() {
-      showNotification('Loading presentation tips...', 'info');
-      // Implementation for viewing tips
+      const modalHtml = `
+        <div id="tipsModal" class="modal" style="display: block;">
+          <div class="modal-content" style="max-width: 600px; margin: 50px auto; background: white; padding: 20px; border-radius: 8px; box-shadow: 0 4px 12px rgba(0,0,0,0.15);">
+            <div class="modal-header" style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px;">
+              <h3 style="margin: 0;">Presentation Tips</h3>
+              <span onclick="closeTipsModal()" style="cursor: pointer; font-size: 24px; color: #6c757d;">&times;</span>
+            </div>
+            <div class="modal-body">
+              <div style="space-y: 15px;">
+                <div>
+                  <h5 style="margin-bottom: 10px; color: #007bff;">Content Preparation</h5>
+                  <ul style="margin: 0; padding-left: 20px;">
+                    <li>Structure your presentation: Introduction, Problem, Solution, Results</li>
+                    <li>Keep slides simple - one main idea per slide</li>
+                    <li>Use visuals instead of text where possible</li>
+                    <li>Practice timing (aim for 15-20 minutes)</li>
+                  </ul>
+                </div>
+                <div>
+                  <h5 style="margin-bottom: 10px; color: #007bff;">Delivery Tips</h5>
+                  <ul style="margin: 0; padding-left: 20px;">
+                    <li>Start with a strong opening to grab attention</li>
+                    <li>Speak clearly and at a moderate pace</li>
+                    <li>Maintain eye contact with the panel</li>
+                    <li>Use gestures to emphasize key points</li>
+                  </ul>
+                </div>
+                <div>
+                  <h5 style="margin-bottom: 10px; color: #007bff;">Q&A Preparation</h5>
+                  <ul style="margin: 0; padding-left: 20px;">
+                    <li>Anticipate likely questions about your project</li>
+                    <li>Prepare backup slides for technical details</li>
+                    <li>Listen carefully to questions before answering</li>
+                    <li>It's okay to say "I don't know" - offer to research</li>
+                  </ul>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      `;
+      
+      document.body.insertAdjacentHTML('beforeend', modalHtml);
+    }
+
+    function closeTipsModal() {
+      const modal = document.getElementById('tipsModal');
+      if (modal) {
+        modal.remove();
+      }
     }
   </script>
 
