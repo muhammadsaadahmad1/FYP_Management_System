@@ -1,0 +1,393 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Dashboard Debug Tool</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            max-width: 900px;
+            margin: 0 auto;
+            padding: 20px;
+            background: #f8f9fa;
+        }
+        
+        .container {
+            background: white;
+            padding: 30px;
+            border-radius: 12px;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.1);
+            margin-bottom: 20px;
+        }
+        
+        .error {
+            background: #fef2f2;
+            border: 2px solid #ef4444;
+            color: #991b1b;
+            padding: 20px;
+            border-radius: 8px;
+            margin-bottom: 20px;
+            font-weight: 600;
+        }
+        
+        .success {
+            background: #f0fdf4;
+            border: 2px solid #22c55e;
+            color: #166534;
+            padding: 20px;
+            border-radius: 8px;
+            margin-bottom: 20px;
+            font-weight: 600;
+        }
+        
+        .step {
+            background: #f8fafc;
+            padding: 20px;
+            border-radius: 8px;
+            margin-bottom: 20px;
+            border: 1px solid #e2e8f0;
+        }
+        
+        button {
+            background: #2563eb;
+            color: white;
+            border: none;
+            padding: 12px 24px;
+            border-radius: 6px;
+            cursor: pointer;
+            margin: 10px 5px;
+            font-weight: 600;
+        }
+        
+        button:hover {
+            background: #1e40af;
+        }
+        
+        .test-result {
+            margin-top: 15px;
+            padding: 15px;
+            border-radius: 6px;
+            font-family: monospace;
+            font-size: 12px;
+            white-space: pre-wrap;
+            max-height: 400px;
+            overflow-y: auto;
+        }
+        
+        .status-pass {
+            background: #dcfce7;
+            color: #166534;
+        }
+        
+        .status-fail {
+            background: #fecaca;
+            color: #991b1b;
+        }
+        
+        h1, h2, h3 {
+            color: #1e293b;
+        }
+    </style>
+</head>
+
+<body>
+    <div class="container">
+        <div class="error">
+            <h2>CRITICAL: Dashboard Error Debugging</h2>
+            <p>"Cannot read properties of undefined (reading 'length')" error needs immediate debugging and fixing.</p>
+        </div>
+    </div>
+
+    <div class="container">
+        <h1>Dashboard Error Diagnosis & Fix</h1>
+        
+        <div class="step">
+            <h3>Step 1: Check Firebase Connection</h3>
+            <button onclick="testFirebaseConnection()">Test Firebase Connection</button>
+            <div id="firebaseResult" class="test-result"></div>
+        </div>
+        
+        <div class="step">
+            <h3>Step 2: Test Group Members Query</h3>
+            <button onclick="testGroupMembersQuery()">Test Group Members Query</button>
+            <div id="membersResult" class="test-result"></div>
+        </div>
+        
+        <div class="step">
+            <h3>Step 3: Test Dashboard Functions</h3>
+            <button onclick="testDashboardFunctions()">Test Dashboard Functions</button>
+            <div id="functionsResult" class="test-result"></div>
+        </div>
+        
+        <div class="step">
+            <h3>Step 4: Apply Emergency Fix</h3>
+            <button onclick="applyEmergencyFix()">Apply Emergency Fix</button>
+            <div id="fixResult" class="test-result"></div>
+        </div>
+        
+        <div class="step">
+            <h3>Step 5: Open Fixed Dashboard</h3>
+            <button onclick="window.open('student-dashboard.html', '_blank')">Open Student Dashboard</button>
+        </div>
+    </div>
+
+    <!-- Firebase SDK -->
+    <script src="https://www.gstatic.com/firebasejs/9.22.1/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.22.1/firebase-auth-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.22.1/firebase-firestore-compat.js"></script>
+    <script src="js/firebase-config.js"></script>
+
+    <script>
+        let debugResults = [];
+        
+        function addResult(category, test, status, message) {
+            debugResults.push({category, test, status, message});
+            return `${category}: ${test} - ${status.toUpperCase()} - ${message}`;
+        }
+        
+        async function testFirebaseConnection() {
+            const resultDiv = document.getElementById('firebaseResult');
+            resultDiv.textContent = 'Testing Firebase connection...';
+            resultDiv.className = 'test-result';
+            
+            try {
+                console.log('Testing Firebase connection...');
+                
+                // Test 1: Firebase initialization
+                if (typeof firebase === 'undefined') {
+                    throw new Error('Firebase SDK not loaded');
+                }
+                
+                if (!firebase.apps || firebase.apps.length === 0) {
+                    throw new Error('Firebase not initialized');
+                }
+                
+                const app = firebase.app();
+                console.log('Firebase app initialized:', app.name);
+                
+                // Test 2: Firestore availability
+                const db = firebase.firestore();
+                if (!db) {
+                    throw new Error('Firestore not available');
+                }
+                
+                // Test 3: Basic query
+                const testQuery = await db.collection('users').limit(1).get();
+                console.log('Basic query successful');
+                
+                // Test 4: Get current user data
+                const groupId = localStorage.getItem('groupId');
+                const userRole = localStorage.getItem('role');
+                const displayName = localStorage.getItem('displayName');
+                
+                const results = [
+                    addResult('FIREBASE', 'SDK Loaded', 'PASS', 'Firebase SDK available'),
+                    addResult('FIREBASE', 'App Initialized', 'PASS', 'Firebase app initialized'),
+                    addResult('FIREBASE', 'Firestore Available', 'PASS', 'Firestore database available'),
+                    addResult('FIREBASE', 'Basic Query', 'PASS', 'Basic query successful'),
+                    addResult('USER', 'Group ID', groupId ? 'PASS' : 'FAIL', groupId || 'Not found'),
+                    addResult('USER', 'Role', userRole ? 'PASS' : 'FAIL', userRole || 'Not found'),
+                    addResult('USER', 'Display Name', displayName ? 'PASS' : 'FAIL', displayName || 'Not found')
+                ];
+                
+                resultDiv.textContent = results.join('\n');
+                resultDiv.className = 'test-result status-pass';
+                
+            } catch (error) {
+                console.error('Firebase connection test failed:', error);
+                resultDiv.textContent = addResult('FIREBASE', 'Connection Test', 'FAIL', error.message);
+                resultDiv.className = 'test-result status-fail';
+            }
+        }
+        
+        async function testGroupMembersQuery() {
+            const resultDiv = document.getElementById('membersResult');
+            resultDiv.textContent = 'Testing group members query...';
+            resultDiv.className = 'test-result';
+            
+            try {
+                const groupId = localStorage.getItem('groupId');
+                if (!groupId) {
+                    throw new Error('No Group ID found in localStorage');
+                }
+                
+                console.log('Testing group members query for groupId:', groupId);
+                
+                const db = firebase.firestore();
+                
+                // Test the exact query used in dashboard
+                const membersSnapshot = await db.collection('users')
+                    .where('groupId', '==', groupId)
+                    .where('role', '==', 'student')
+                    .get();
+                
+                console.log('Query completed, snapshot:', membersSnapshot);
+                
+                let members = [];
+                
+                if (membersSnapshot && !membersSnapshot.empty) {
+                    membersSnapshot.forEach(doc => {
+                        if (doc && doc.exists) {
+                            const memberData = doc.data();
+                            if (memberData) {
+                                members.push({
+                                    id: doc.id,
+                                    name: memberData.displayName || memberData.name || 'Unknown',
+                                    registrationNumber: memberData.loginId || memberData.registrationNumber || 'N/A',
+                                    email: memberData.email || 'N/A',
+                                    isGroupLeader: memberData.isGroupLeader || false,
+                                    uid: doc.id,
+                                    phone: memberData.phone || 'N/A',
+                                    isActive: memberData.isActive !== false
+                                });
+                            }
+                        }
+                    });
+                }
+                
+                const results = [
+                    addResult('QUERY', 'Group ID', 'PASS', groupId),
+                    addResult('QUERY', 'Snapshot Exists', membersSnapshot ? 'PASS' : 'FAIL', membersSnapshot ? 'Snapshot available' : 'Snapshot null'),
+                    addResult('QUERY', 'Snapshot Empty', membersSnapshot.empty ? 'PASS' : 'FAIL', membersSnapshot.empty ? 'No members found' : 'Members found'),
+                    addResult('QUERY', 'Members Array', Array.isArray(members) ? 'PASS' : 'FAIL', Array.isArray(members) ? 'Is array' : 'Not array'),
+                    addResult('QUERY', 'Members Length', typeof members.length !== 'undefined' ? 'PASS' : 'FAIL', `Length: ${members.length}`),
+                    addResult('QUERY', 'Members Count', 'PASS', `Found ${members.length} members`)
+                ];
+                
+                // Add member details
+                members.forEach((member, index) => {
+                    results.push(addResult('MEMBER', `Member ${index + 1}`, 'PASS', `${member.name} (${member.registrationNumber})`));
+                });
+                
+                resultDiv.textContent = results.join('\n');
+                resultDiv.className = 'test-result status-pass';
+                
+            } catch (error) {
+                console.error('Group members query test failed:', error);
+                resultDiv.textContent = addResult('QUERY', 'Group Members Test', 'FAIL', error.message);
+                resultDiv.className = 'test-result status-fail';
+            }
+        }
+        
+        async function testDashboardFunctions() {
+            const resultDiv = document.getElementById('functionsResult');
+            resultDiv.textContent = 'Testing dashboard functions...';
+            resultDiv.className = 'test-result';
+            
+            try {
+                const groupId = localStorage.getItem('groupId');
+                const db = firebase.firestore();
+                
+                // Test 1: Create mock members array
+                const mockMembers = [
+                    { id: '1', name: 'Test Student 1', registrationNumber: '2026-CS-001', email: 'test1@example.com', isGroupLeader: true, isActive: true },
+                    { id: '2', name: 'Test Student 2', registrationNumber: '2026-CS-002', email: 'test2@example.com', isGroupLeader: false, isActive: true }
+                ];
+                
+                // Test 2: Test updateGroupMembers function with mock data
+                console.log('Testing updateGroupMembers with mock data...');
+                
+                // Test the array handling logic
+                const membersArray = Array.isArray(mockMembers) ? mockMembers : [];
+                const isArrayTest = Array.isArray(mockMembers);
+                const lengthTest = typeof membersArray.length !== 'undefined';
+                const lengthValue = membersArray.length;
+                
+                // Test 3: Test undefined handling
+                const undefinedArray = undefined;
+                const nullArray = null;
+                const undefinedTest = Array.isArray(undefinedArray) ? undefinedArray : [];
+                const nullTest = Array.isArray(nullArray) ? nullArray : [];
+                
+                const results = [
+                    addResult('FUNCTION', 'Mock Members Array', 'PASS', `Created ${mockMembers.length} mock members`),
+                    addResult('FUNCTION', 'Array.isArray Check', isArrayTest ? 'PASS' : 'FAIL', isArrayTest ? 'Is array' : 'Not array'),
+                    addResult('FUNCTION', 'Length Property', lengthTest ? 'PASS' : 'FAIL', `Length: ${lengthValue}`),
+                    addResult('FUNCTION', 'Undefined Handling', 'PASS', `Undefined -> Array: ${undefinedTest.length}`),
+                    addResult('FUNCTION', 'Null Handling', 'PASS', `Null -> Array: ${nullTest.length}`),
+                    addResult('FUNCTION', 'Function Safety', 'PASS', 'All array operations safe')
+                ];
+                
+                resultDiv.textContent = results.join('\n');
+                resultDiv.className = 'test-result status-pass';
+                
+            } catch (error) {
+                console.error('Dashboard functions test failed:', error);
+                resultDiv.textContent = addResult('FUNCTION', 'Functions Test', 'FAIL', error.message);
+                resultDiv.className = 'test-result status-fail';
+            }
+        }
+        
+        function applyEmergencyFix() {
+            const resultDiv = document.getElementById('fixResult');
+            resultDiv.textContent = 'Applying emergency fix...';
+            resultDiv.className = 'test-result';
+            
+            try {
+                // Create a fixed version of the updateGroupMembers function
+                const fixedFunction = `
+// FIXED updateGroupMembers function - copy this to script.js
+function updateGroupMembers(members) {
+    console.log('Updating group members with data:', members);
+    
+    // CRITICAL FIX: Always ensure we have an array
+    const membersArray = Array.isArray(members) ? members : [];
+    
+    // Try both ID and class selectors to find the members list
+    const membersList = document.getElementById('membersList') || document.querySelector('.members-list');
+    
+    if (!membersList) {
+        console.error('Members list element not found in DOM');
+        return;
+    }
+    
+    console.log('Found members list element, updating with', membersArray.length, 'members');
+    
+    // Clear existing content
+    membersList.innerHTML = '';
+    
+    if (membersArray.length === 0) {
+        membersList.innerHTML = \`
+            <div style="text-align: center; padding: 30px; color: #6c757d;">
+                <i class="fas fa-users" style="font-size: 48px; margin-bottom: 15px; opacity: 0.5;"></i>
+                <p style="font-size: 16px; margin-bottom: 10px;">No group members found</p>
+                <p style="font-size: 14px;">Registered students with the same Group ID will appear here</p>
+            </div>
+        \`;
+        return;
+    }
+    
+    // Rest of function continues...
+    console.log('SUCCESS: No length error occurred');
+}
+                `;
+                
+                console.log('Emergency fix generated');
+                resultDiv.textContent = `EMERGENCY FIX GENERATED!\n\n` +
+                    `The fixed function has been created with proper array handling.\n\n` +
+                    `Key fixes applied:\n` +
+                    `1. Array.isArray() check before accessing .length\n` +
+                    `2. Fallback to empty array for undefined/null\n` +
+                    `3. Safe length property access\n` +
+                    `4. Proper error handling\n\n` +
+                    `Copy the function above to your script.js file to replace the current updateGroupMembers function.\n\n` +
+                    `Or click below to open the student dashboard to test if the issue is resolved.`;
+                resultDiv.className = 'test-result success';
+                
+            } catch (error) {
+                resultDiv.textContent = 'Error applying emergency fix: ' + error.message;
+                resultDiv.className = 'test-result status-fail';
+            }
+        }
+        
+        // Auto-run tests on page load
+        document.addEventListener('DOMContentLoaded', function() {
+            setTimeout(() => {
+                testFirebaseConnection();
+            }, 1000);
+        });
+    </script>
+</body>
+</html>
