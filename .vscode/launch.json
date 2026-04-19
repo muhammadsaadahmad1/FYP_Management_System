@@ -7,8 +7,19 @@
         {
             "type": "chrome",
             "request": "launch",
+            "name": "Launch Chrome with Live Server",
+            "url": "http://127.0.0.1:5500",
+            "webRoot": "${workspaceFolder}",
+            "sourceMaps": true,
+            "sourceMapPathOverrides": {
+                "webpack:///src/*": "${webRoot}/*"
+            }
+        },
+        {
+            "type": "chrome",
+            "request": "launch",
             "name": "Launch Chrome against localhost",
-            "url": "http://localhost:8080",
+            "url": "http://localhost:5500",
             "webRoot": "${workspaceFolder}"
         }
     ]
