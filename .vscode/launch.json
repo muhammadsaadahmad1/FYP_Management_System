@@ -13,14 +13,16 @@
             "sourceMaps": true,
             "sourceMapPathOverrides": {
                 "webpack:///src/*": "${webRoot}/*"
-            }
+            },
+            "preLaunchTask": "Start Live Server"
         },
         {
             "type": "chrome",
             "request": "launch",
             "name": "Launch Chrome against localhost",
             "url": "http://localhost:5500",
-            "webRoot": "${workspaceFolder}"
+            "webRoot": "${workspaceFolder}",
+            "preLaunchTask": "Start Live Server"
         }
     ]
 }
