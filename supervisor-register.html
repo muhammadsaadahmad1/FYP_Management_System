@@ -1,0 +1,336 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="light">
+<head>
+  <meta charset="UTF-8">
+  <title>Supervisor Registration | FYP Management System</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="description" content="Supervisor registration for FYP Management System">
+  <meta name="keywords" content="supervisor, registration, FYP, management, university">
+  
+  <!-- 🎨 Modern CSS -->
+  <link rel="stylesheet" href="css/modern.css">
+  <link rel="stylesheet" href="css/style.css">
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+  
+  <style>
+    .registration-container {
+      max-width: 800px;
+      margin: 40px auto;
+      padding: 40px;
+      background: rgba(255, 255, 255, 0.95);
+      backdrop-filter: blur(10px);
+      -webkit-backdrop-filter: blur(10px);
+      border-radius: 16px;
+      box-shadow: 0 20px 40px rgba(0, 0, 0, 0.1);
+    }
+    
+    .registration-header {
+      text-align: center;
+      margin-bottom: 30px;
+    }
+    
+    .registration-header h1 {
+      color: #1e3a8a;
+      font-size: 28px;
+      font-weight: 700;
+      margin-bottom: 10px;
+    }
+    
+    .registration-header p {
+      color: #64748b;
+      font-size: 16px;
+      opacity: 0.8;
+    }
+    
+    .form-section {
+      margin-bottom: 30px;
+    }
+    
+    .form-section h3 {
+      color: #1e3a8a;
+      font-size: 18px;
+      font-weight: 600;
+      margin-bottom: 15px;
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
+    
+    .form-section h3::before {
+      content: '';
+      width: 4px;
+      height: 4px;
+      background: #2563eb;
+      border-radius: 50%;
+      margin-right: 10px;
+    }
+    
+    .form-row {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 15px;
+      margin-bottom: 15px;
+    }
+    
+    .form-group {
+      display: flex;
+      flex-direction: column;
+    }
+    
+    .form-group label {
+      color: #374151;
+      font-weight: 500;
+      margin-bottom: 8px;
+      font-size: 14px;
+    }
+    
+    .form-control {
+      width: 100%;
+      padding: 12px 16px;
+      border: 2px solid #e2e8f0;
+      border-radius: 8px;
+      font-size: 14px;
+      transition: all 0.3s ease;
+      background: rgba(255, 255, 255, 0.05);
+    }
+    
+    .form-control:focus {
+      outline: none;
+      border-color: #2563eb;
+      box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.2);
+    }
+    
+    .form-row .form-control {
+      margin-bottom: 0;
+    }
+    
+    select.form-control {
+      cursor: pointer;
+    }
+    
+    textarea.form-control {
+      resize: vertical;
+      min-height: 100px;
+    }
+    
+    .file-upload {
+      border: 2px dashed #cbd5e0;
+      border-radius: 8px;
+      padding: 20px;
+      text-align: center;
+      background: rgba(255, 255, 255, 0.02);
+      transition: all 0.3s ease;
+    }
+    
+    .file-upload:hover {
+      border-color: #2563eb;
+      background: rgba(37, 99, 235, 0.05);
+    }
+    
+    .file-upload input {
+      display: none;
+    }
+    
+    .file-upload label {
+      display: block;
+      padding: 12px 20px;
+      background: #2563eb;
+      color: white;
+      border-radius: 6px;
+      cursor: pointer;
+      transition: all 0.3s ease;
+    }
+    
+    .file-upload label:hover {
+      background: #1e40af;
+    }
+    
+    .btn-primary {
+      background: linear-gradient(135deg, #2563eb, #1e40af);
+      color: white;
+      border: none;
+      padding: 14px 28px;
+      border-radius: 8px;
+      font-size: 15px;
+      font-weight: 600;
+      cursor: pointer;
+      transition: all 0.3s ease;
+      width: 100%;
+    }
+    
+    .btn-primary:hover {
+      transform: translateY(-2px);
+      box-shadow: 0 8px 24px rgba(37, 99, 235, 0.4);
+    }
+    
+    .btn-secondary {
+      background: transparent;
+      color: #2563eb;
+      border: 2px solid #2563eb;
+      padding: 12px 24px;
+      border-radius: 8px;
+      font-size: 15px;
+      font-weight: 600;
+      cursor: pointer;
+      transition: all 0.3s ease;
+    }
+    
+    .btn-secondary:hover {
+      background: #2563eb;
+      color: white;
+    }
+    
+    .back-link {
+      text-align: center;
+      margin-top: 30px;
+    }
+    
+    .back-link a {
+      color: #64748b;
+      text-decoration: none;
+      font-weight: 500;
+      transition: color 0.3s ease;
+    }
+    
+    .back-link a:hover {
+      color: #2563eb;
+    }
+    
+    @media (max-width: 768px) {
+      .registration-container {
+        margin: 20px;
+        padding: 20px;
+      }
+      
+      .form-row {
+        grid-template-columns: 1fr;
+        gap: 10px;
+      }
+    }
+  </style>
+</head>
+<body>
+  <div class="registration-container">
+    <div class="registration-header">
+      <h1>Supervisor Registration</h1>
+      <p>Join our academic supervision platform</p>
+    </div>
+    
+    <form id="supervisorRegistrationForm">
+      <!-- Personal Information Section -->
+      <div class="form-section">
+        <h3><i class="fas fa-user"></i> Personal Information</h3>
+        
+        <div class="form-row">
+          <div class="form-group">
+            <label for="fullName">Full Name *</label>
+            <input type="text" id="fullName" name="fullName" class="form-control" required>
+          </div>
+          
+          <div class="form-group">
+            <label for="email">Email Address *</label>
+            <input type="email" id="email" name="email" class="form-control" required>
+          </div>
+          
+          <div class="form-group">
+            <label for="phone">Phone Number</label>
+            <input type="tel" id="phone" name="phone" class="form-control">
+          </div>
+          
+          <div class="form-group">
+            <label for="employeeId">Employee ID *</label>
+            <input type="text" id="employeeId" name="employeeId" class="form-control" required>
+          </div>
+        </div>
+      </div>
+      
+      <!-- Professional Details Section -->
+      <div class="form-section">
+        <h3><i class="fas fa-briefcase"></i> Professional Details</h3>
+        
+        <div class="form-row">
+          <div class="form-group">
+            <label for="department">Department *</label>
+            <select id="department" name="department" class="form-control" required>
+              <option value="">Select Department</option>
+              <option value="cs">Computer Science</option>
+              <option value="se">Software Engineering</option>
+              <option value="it">Information Technology</option>
+              <option value="ce">Computer Engineering</option>
+              <option value="ee">Electrical Engineering</option>
+              <option value="me">Mechanical Engineering</option>
+              <option value="bba">Business Administration</option>
+            </select>
+          </div>
+          
+          <div class="form-group">
+            <label for="designation">Designation *</label>
+            <input type="text" id="designation" name="designation" class="form-control" required placeholder="e.g., Senior Lecturer">
+          </div>
+        </div>
+        
+        <div class="form-group">
+          <label for="expertise">Areas of Expertise *</label>
+          <textarea id="expertise" name="expertise" class="form-control" required placeholder="e.g., Machine Learning, Web Development, Database Systems, Software Engineering..."></textarea>
+        </div>
+      </div>
+      
+      <!-- Qualification Document Section -->
+      <div class="form-section">
+        <h3><i class="fas fa-graduation-cap"></i> Qualification Document</h3>
+        
+        <div class="file-upload">
+          <input type="file" id="qualificationDoc" name="qualificationDoc" accept=".pdf,.doc,.docx" class="form-control">
+          <label for="qualificationDoc">
+            <i class="fas fa-upload"></i>
+            Upload Qualification Document (PDF, DOC, DOCX)
+          </label>
+        </div>
+      </div>
+      
+      <!-- Account Setup Section -->
+      <div class="form-section">
+        <h3><i class="fas fa-lock"></i> Account Setup</h3>
+        
+        <div class="form-row">
+          <div class="form-group">
+            <label for="password">Password *</label>
+            <input type="password" id="password" name="password" class="form-control" required>
+          </div>
+          
+          <div class="form-group">
+            <label for="confirmPassword">Confirm Password *</label>
+            <input type="password" id="confirmPassword" name="confirmPassword" class="form-control" required>
+          </div>
+        </div>
+      </div>
+      
+      <!-- Submit Button -->
+      <div class="form-section">
+        <button type="submit" class="btn-primary">
+          <i class="fas fa-user-plus"></i>
+          Register as Supervisor
+        </button>
+      </div>
+    </form>
+    
+    <div class="back-link">
+      <a href="index.html">
+        <i class="fas fa-arrow-left"></i>
+        Back to Home
+      </a>
+    </div>
+  </div>
+
+  <!-- Firebase SDK -->
+  <script src="https://www.gstatic.com/firebasejs/9.22.1/firebase-app-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/9.22.1/firebase-auth-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/9.22.1/firebase-firestore-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/9.22.1/firebase-storage-compat.js"></script>
+  <script src="js/firebase-config.js"></script>
+  <script src="js/firebase-auth.js"></script>
+  <script src="js/auth.js"></script>
+  <script src="js/student.js"></script>
+  <script src="js/supervisor-register.js"></script>
+</body>
+</html>

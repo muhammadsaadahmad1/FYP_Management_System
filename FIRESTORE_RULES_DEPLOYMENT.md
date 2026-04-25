@@ -1,3 +1,20 @@
+# 🔥 Firestore Rules Deployment Instructions
+
+## 🚨 Issue: "Missing or insufficient permissions" Error
+
+The registration is failing because Firestore security rules don't allow writes to `supervisors` and `admins` collections.
+
+## ✅ Solution: Update Firestore Rules
+
+### Step 1: Go to Firebase Console
+1. Visit: https://console.firebase.google.com/
+2. Select project: `fypmanagementsystem-29faf`
+3. Navigate to: **Firestore Database** → **Rules** tab
+
+### Step 2: Replace Rules
+Copy and paste the complete rules below:
+
+```javascript
 rules_version = '2';
 service cloud.firestore {
   match /databases/{database}/documents {
@@ -78,3 +95,41 @@ service cloud.firestore {
     }
   }
 }
+```
+
+### Step 3: Publish Rules
+1. Click **Publish** button
+2. Wait for confirmation that rules are published
+
+## 🎯 What This Fixes
+
+- ✅ Supervisor registration can write to `supervisors` collection
+- ✅ Admin registration can write to `admins` collection
+- ✅ Student registration can write to `users` collection
+- ✅ Group registration can write to `groups` collection
+- ✅ All registration types will work without permission errors
+
+## 🚀 After Deployment
+
+Once rules are published:
+1. Test supervisor registration
+2. Test admin registration  
+3. Test student group registration
+4. All should work without "Missing or insufficient permissions" error
+
+## 📝 Alternative: CLI Deployment (If Console Not Working)
+
+If you prefer CLI, try these commands:
+```bash
+firebase logout
+firebase login
+firebase deploy --only firestore
+```
+
+## 🔍 Troubleshooting
+
+If still getting errors:
+1. Check Firebase project ID is correct: `fypmanagementsystem-29faf`
+2. Ensure you're logged into correct Google account
+3. Try clearing browser cache and re-login to Firebase Console
+4. Verify rules syntax has no errors before publishing

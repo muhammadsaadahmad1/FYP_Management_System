@@ -1046,14 +1046,24 @@
         
         <!-- Supervisor Fields -->
         <div id="supervisorFields" class="role-fields" style="display: none;">
+          <input type="text" id="fullNameSup" placeholder="Full Name" oninput="validateField(this)">
+          <input type="email" id="emailSup" placeholder="Email Address" oninput="validateField(this)">
           <input type="text" id="employeeId" placeholder="Employee ID" oninput="validateField(this)">
           
-          <div class="department-suggest">
-            <input type="text" id="departmentSup" placeholder="Medium" oninput="validateField(this); suggestDepartments(this.value)">
-            <div id="departmentDropdownSup" class="dropdown" style="display: none;"></div>
-          </div>
+          <select id="departmentSup" onchange="validateField(this)">
+            <option value="">Select Department</option>
+            <option value="cs">Computer Science</option>
+            <option value="se">Software Engineering</option>
+            <option value="it">Information Technology</option>
+            <option value="ce">Computer Engineering</option>
+            <option value="ee">Electrical Engineering</option>
+            <option value="me">Mechanical Engineering</option>
+            <option value="bba">Business Administration</option>
+          </select>
           
           <input type="text" id="designation" placeholder="Designation" oninput="validateField(this)">
+          
+          <textarea id="expertise" placeholder="Areas of Expertise (e.g., Machine Learning, Web Development, Database Systems...)" oninput="validateField(this)" style="width: 100%; padding: 11px 12px; margin-bottom: 14px; border-radius: 10px; border: 1px solid #cbd5e1; font-size: 14px; outline: none; transition: border 0.2s ease, box-shadow 0.2s ease; resize: vertical; min-height: 80px;"></textarea>
           
           <div class="phone-input">
             <select id="countryCodeSup" class="country-code">
@@ -1713,8 +1723,10 @@ async function register() {
     
     if (role === 'student') {
       await registerGroup();
-    } else {
-      await registerIndividual();
+    } else if (role === 'supervisor') {
+      await registerSupervisor();
+    } else if (role === 'admin') {
+      await registerAdmin();
     }
     
   } catch (error) {
@@ -1988,53 +2000,104 @@ async function registerGroup() {
   }
 }
 
-// Register individual (supervisor/admin)
-async function registerIndividual() {
-  const formData = {
-    role: document.getElementById('role').value,
-    displayName: document.getElementById('displayName').value,
-    email: document.getElementById('email').value,
-    password: document.getElementById('password').value,
-    timestamp: new Date().toISOString()
-  };
-  
-  // Add role-specific data
-  if (formData.role === 'supervisor') {
-    formData.employeeId = document.getElementById('employeeId').value;
-    formData.medium = document.getElementById('departmentSup').value;
-    formData.designation = document.getElementById('designation').value;
-  } else if (formData.role === 'admin') {
-    formData.adminId = document.getElementById('adminId').value;
-    formData.office = document.getElementById('office').value;
-  }
-  
+// Register supervisor
+async function registerSupervisor() {
   try {
-    // Create Firebase user account
-    const userCredential = await firebase.auth().createUserWithEmailAndPassword(formData.email, formData.password);
+    console.log('Registering supervisor...');
+    
+    const fullName = document.getElementById('fullNameSup').value;
+    const email = document.getElementById('emailSup').value;
+    const employeeId = document.getElementById('employeeId').value;
+    const department = document.getElementById('departmentSup').value;
+    const designation = document.getElementById('designation').value;
+    const expertise = document.getElementById('expertise').value;
+    const phone = (document.getElementById('countryCodeSup').value || '+92') + (document.getElementById('phoneSup').value || '');
+    const password = document.getElementById('password').value;
+    
+    // Validate required fields
+    if (!fullName || !email || !employeeId || !department || !designation || !expertise || !password) {
+      throw new Error('Please fill in all required fields');
+    }
+    
+    // Validate email format
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    if (!emailRegex.test(email)) {
+      throw new Error('Invalid email address');
+    }
+    
+    // Create Firebase Auth account
+    const userCredential = await firebase.auth().createUserWithEmailAndPassword(email, password);
     const user = userCredential.user;
     
     // Update user profile
     await user.updateProfile({
-      displayName: formData.displayName
+      displayName: fullName
     });
     
-    // Store user data in Firestore
-    await firebase.firestore().collection('users').doc(user.uid).set({
+    // Send email verification
+    await user.sendEmailVerification();
+    
+    // Store supervisor data in Firestore
+    const supervisorData = {
       uid: user.uid,
-      email: formData.email,
-      displayName: formData.displayName,
-      role: formData.role,
-      createdAt: firebase.firestore.FieldValue.serverTimestamp(),
-      isActive: true,
-      ...formData
-    });
+      fullName: fullName,
+      email: email,
+      phone: phone,
+      employeeId: employeeId,
+      department: department,
+      designation: designation,
+      expertise: expertise,
+      status: 'pending_approval',
+      registeredAt: new Date().toISOString(),
+      emailVerified: false,
+      approvedBy: null,
+      approvedAt: null,
+      role: 'supervisor',
+      isActive: false // Will be activated after admin approval
+    };
     
-    alert('Registration successful! Redirecting to login page...');
+    try {
+      await firebase.firestore().collection('supervisors').doc(user.uid).set(supervisorData);
+      console.log('Supervisor document created successfully');
+    } catch (supervisorError) {
+      console.error('Error creating supervisor document:', supervisorError);
+      // If supervisors collection fails, try to write to users only as fallback
+      const fallbackSupervisorData = {
+        ...supervisorData,
+        isSupervisor: true,
+        registrationType: 'supervisor'
+      };
+      await firebase.firestore().collection('users').doc(user.uid).set(fallbackSupervisorData);
+      console.log('Supervisor data stored in users collection as fallback');
+    }
+    
+    // Also create user document for authentication purposes
+    const userData = {
+      uid: user.uid,
+      email: email,
+      loginId: employeeId, // Use employee ID as login ID
+      displayName: fullName,
+      role: 'supervisor',
+      createdAt: firebase.firestore.FieldValue.serverTimestamp(),
+      isActive: false
+    };
+    
+    try {
+      await firebase.firestore().collection('users').doc(user.uid).set(userData);
+      console.log('User document created successfully');
+    } catch (userError) {
+      console.error('Error creating user document:', userError);
+      throw new Error('Failed to create user account. Please check your Firebase permissions.');
+    }
+    
+    alert(`Supervisor Registration Successful!\n\nWelcome, ${fullName}!\n\nYour registration has been submitted for admin approval.\n\nLogin ID: ${employeeId}\nEmail: ${email}\n\nPlease check your email for verification.\n\nYou will be notified once your account is approved.\n\nRedirecting to login page...`);
+    
+    // Redirect to login
     window.location.href = 'login.html';
     
   } catch (error) {
-    console.error('Registration error:', error);
-    let errorMessage = 'Registration failed. Please try again.';
+    console.error('Supervisor registration error:', error);
+    let errorMessage = 'Supervisor registration failed. Please try again.';
     
     if (error.code === 'auth/email-already-in-use') {
       errorMessage = 'This email is already registered. Please use a different email or login.';
@@ -2042,9 +2105,107 @@ async function registerIndividual() {
       errorMessage = 'Password is too weak. Please choose a stronger password.';
     } else if (error.code === 'auth/invalid-email') {
       errorMessage = 'Invalid email address. Please check and try again.';
+    } else {
+      errorMessage = error.message;
     }
     
-    alert(errorMessage);
+    throw new Error(errorMessage);
+  }
+}
+
+// Register admin
+async function registerAdmin() {
+  try {
+    console.log('Registering admin...');
+    
+    const adminId = document.getElementById('adminId').value;
+    const office = document.getElementById('office').value;
+    const phone = (document.getElementById('countryCodeAdmin').value || '+92') + (document.getElementById('phoneAdmin').value || '');
+    const password = document.getElementById('password').value;
+    
+    // Validate required fields
+    if (!adminId || !office || !password) {
+      throw new Error('Please fill in all required fields');
+    }
+    
+    // Create Firebase Auth account with admin email
+    const adminEmail = `admin${adminId}@fyp.aup.edu.pk`;
+    const userCredential = await firebase.auth().createUserWithEmailAndPassword(adminEmail, password);
+    const user = userCredential.user;
+    
+    // Update user profile
+    await user.updateProfile({
+      displayName: `Admin ${adminId}`
+    });
+    
+    // Send email verification
+    await user.sendEmailVerification();
+    
+    // Store admin data in Firestore
+    const adminData = {
+      uid: user.uid,
+      adminId: adminId,
+      email: adminEmail,
+      phone: phone,
+      office: office,
+      status: 'active',
+      registeredAt: new Date().toISOString(),
+      role: 'admin',
+      isActive: true
+    };
+    
+    try {
+      await firebase.firestore().collection('admins').doc(user.uid).set(adminData);
+      console.log('Admin document created successfully');
+    } catch (adminError) {
+      console.error('Error creating admin document:', adminError);
+      // If admins collection fails, try to write to users only as fallback
+      const fallbackAdminData = {
+        ...adminData,
+        isAdmin: true,
+        registrationType: 'admin'
+      };
+      await firebase.firestore().collection('users').doc(user.uid).set(fallbackAdminData);
+      console.log('Admin data stored in users collection as fallback');
+    }
+    
+    // Also create user document for authentication purposes
+    const userData = {
+      uid: user.uid,
+      email: adminEmail,
+      loginId: adminId, // Use admin ID as login ID
+      displayName: `Admin ${adminId}`,
+      role: 'admin',
+      createdAt: firebase.firestore.FieldValue.serverTimestamp(),
+      isActive: true
+    };
+    
+    try {
+      await firebase.firestore().collection('users').doc(user.uid).set(userData);
+      console.log('User document created successfully');
+    } catch (userError) {
+      console.error('Error creating user document:', userError);
+      throw new Error('Failed to create user account. Please check your Firebase permissions.');
+    }
+    
+    alert(`Admin Registration Successful!\n\nWelcome, Admin ${adminId}!\n\nYour account has been created and activated.\n\nLogin ID: ${adminId}\nEmail: ${adminEmail}\n\nPlease check your email for verification.\n\nRedirecting to login page...`);
+    
+    // Redirect to login
+    window.location.href = 'login.html';
+    
+  } catch (error) {
+    console.error('Admin registration error:', error);
+    let errorMessage = 'Admin registration failed. Please try again.';
+    
+    if (error.code === 'auth/email-already-in-use') {
+      errorMessage = 'This admin ID is already registered. Please use a different admin ID.';
+    } else if (error.code === 'auth/weak-password') {
+      errorMessage = 'Password is too weak. Please choose a stronger password.';
+    } else {
+      errorMessage = error.message;
+    }
+    
+    throw new Error(errorMessage);
   }
 }
 
