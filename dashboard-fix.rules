@@ -1,0 +1,61 @@
+rules_version = '2';
+
+service cloud.firestore {
+  match /databases/{database}/documents {
+    // Allow authenticated users to read/write their own user data
+    match /users/{userId} {
+      allow read, write: if request.auth != null && request.auth.uid == userId;
+    }
+    
+    // Groups collection - allow authenticated users to access
+    match /groups/{groupId} {
+      allow read: if request.auth != null;
+      allow write: if request.auth != null;
+      
+      // Group members subcollection
+      match /members/{memberId} {
+        allow read, write: if request.auth != null;
+      }
+      
+      // Group supervisors subcollection
+      match /supervisors/{supervisorId} {
+        allow read, write: if request.auth != null;
+      }
+    }
+    
+    // Files collection - allow authenticated users to access
+    match /files/{fileId} {
+      allow read, write: if request.auth != null;
+    }
+    
+    // Reports collection - allow authenticated users to access
+    match /reports/{reportId} {
+      allow read, write: if request.auth != null;
+    }
+    
+    // Proposals collection - allow authenticated users to access
+    match /proposals/{proposalId} {
+      allow read, write: if request.auth != null;
+    }
+    
+    // Meetings collection - allow authenticated users to access
+    match /meetings/{meetingId} {
+      allow read, write: if request.auth != null;
+    }
+    
+    // Feedback collection - allow authenticated users to access
+    match /feedback/{feedbackId} {
+      allow read, write: if request.auth != null;
+    }
+    
+    // Deadlines collection - allow authenticated users to access
+    match /deadlines/{deadlineId} {
+      allow read, write: if request.auth != null;
+    }
+    
+    // Announcements collection - allow authenticated users to access
+    match /announcements/{announcementId} {
+      allow read, write: if request.auth != null;
+    }
+  }
+}
