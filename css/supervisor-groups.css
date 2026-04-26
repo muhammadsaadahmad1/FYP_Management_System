@@ -1,0 +1,253 @@
+/* =========================
+   SUPERVISOR GROUPS PAGE STYLES
+========================= */
+
+/* Search and Filter Section */
+.search-filter-section {
+  display: flex;
+  gap: 15px;
+  align-items: center;
+  flex-wrap: wrap;
+}
+
+.search-box {
+  flex: 1;
+  min-width: 250px;
+  position: relative;
+}
+
+.search-box i {
+  position: absolute;
+  left: 12px;
+  top: 50%;
+  transform: translateY(-50%);
+  color: #9ca3af;
+}
+
+.search-box input {
+  width: 100%;
+  padding: 10px 12px 10px 40px;
+  border: 1px solid #e5e7eb;
+  border-radius: 8px;
+  font-size: 14px;
+  transition: border-color 0.2s ease, box-shadow 0.2s ease;
+}
+
+.search-box input:focus {
+  outline: none;
+  border-color: #2563eb;
+  box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.1);
+}
+
+.filter-dropdown select {
+  padding: 10px 15px;
+  border: 1px solid #e5e7eb;
+  border-radius: 8px;
+  font-size: 14px;
+  background: white;
+  cursor: pointer;
+  min-width: 150px;
+}
+
+.filter-dropdown select:focus {
+  outline: none;
+  border-color: #2563eb;
+}
+
+/* Groups List Container */
+.groups-list-container {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(350px, 1fr));
+  gap: 20px;
+}
+
+/* Group Card */
+.group-card {
+  background: #ffffff;
+  border: 1px solid #e5e7eb;
+  border-radius: 12px;
+  padding: 20px;
+  transition: transform 0.2s ease, box-shadow 0.2s ease;
+}
+
+.group-card:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 8px 20px rgba(0, 0, 0, 0.1);
+}
+
+.group-card-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  margin-bottom: 15px;
+}
+
+.group-info h4 {
+  margin: 0 0 5px 0;
+  font-size: 18px;
+  color: #1f2937;
+}
+
+.group-id {
+  font-size: 12px;
+  color: #9ca3af;
+}
+
+.group-card-body {
+  margin-bottom: 15px;
+}
+
+.group-detail {
+  display: flex;
+  align-items: flex-start;
+  gap: 12px;
+  margin-bottom: 12px;
+}
+
+.group-detail i {
+  width: 20px;
+  text-align: center;
+  color: #6b7280;
+  margin-top: 3px;
+}
+
+.group-detail label {
+  display: block;
+  font-size: 12px;
+  color: #9ca3af;
+  margin-bottom: 2px;
+}
+
+.group-detail p {
+  margin: 0;
+  font-size: 14px;
+  color: #4b5563;
+}
+
+.group-progress-section {
+  margin-bottom: 15px;
+}
+
+.progress-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 8px;
+}
+
+.progress-header span {
+  font-size: 13px;
+  color: #6b7280;
+}
+
+.progress-percentage {
+  font-weight: 600;
+  color: #1f2937 !important;
+}
+
+.group-card-actions {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.group-card-actions .btn {
+  flex: 1;
+  min-width: 100px;
+  padding: 8px 12px;
+  font-size: 13px;
+}
+
+/* Activity List */
+.activity-list {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.activity-item {
+  display: flex;
+  align-items: flex-start;
+  gap: 12px;
+  padding: 12px;
+  background: #f8fafc;
+  border-radius: 8px;
+  transition: background 0.2s ease;
+}
+
+.activity-item:hover {
+  background: #f1f5f9;
+}
+
+.activity-icon {
+  width: 40px;
+  height: 40px;
+  border-radius: 10px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
+
+.activity-content {
+  flex: 1;
+}
+
+.activity-title {
+  margin: 0 0 4px 0;
+  font-size: 14px;
+  color: #1f2937;
+  font-weight: 500;
+}
+
+.activity-meta {
+  margin: 0;
+  font-size: 12px;
+  color: #6b7280;
+  display: flex;
+  gap: 10px;
+}
+
+.activity-group {
+  color: #2563eb;
+  font-weight: 500;
+}
+
+.activity-date {
+  color: #9ca3af;
+}
+
+/* Empty State */
+.empty-state {
+  text-align: center;
+  padding: 60px 20px;
+}
+
+.empty-state h4 {
+  margin: 15px 0 8px 0;
+  color: #6b7280;
+  font-size: 18px;
+}
+
+/* Responsive */
+@media (max-width: 768px) {
+  .groups-list-container {
+    grid-template-columns: 1fr;
+  }
+  
+  .search-filter-section {
+    flex-direction: column;
+  }
+  
+  .search-box {
+    width: 100%;
+  }
+  
+  .group-card-actions {
+    flex-direction: column;
+  }
+  
+  .group-card-actions .btn {
+    width: 100%;
+  }
+}

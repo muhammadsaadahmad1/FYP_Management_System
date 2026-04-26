@@ -2,236 +2,219 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8" />
-  <title>Supervisor Dashboard | FYP Management System</title>
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-
+  <title>Supervisor Dashboard - FYP Management System</title>
   <link rel="stylesheet" href="css/style.css" />
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" />
 
-  <style>
-    .tabs { display: flex; gap: 12px; margin-bottom: 25px; flex-wrap: wrap; }
-
-    .tab-btn {
-      padding: 10px 18px;
-      border: 1px solid rgba(148,163,184,0.5);
-      background: #0f0000;
-      border-radius: 10px;
-      cursor: pointer;
-      font-weight: 700;
-      transition: transform 0.2s ease, box-shadow 0.2s ease, background 0.2s ease;
-    }
-
-    .tab-btn:hover {
-      box-shadow: 0 10px 18px rgba(15,23,42,0.08);
-      transform: translateY(-1px);
-      background: #000306;
-    }
-
-    .tab-btn.active { background: #2563eb; color: #0c0000; border-color: #2563eb; }
-
-    .section {
-      display: none;
-      background: #ffffff;
-      padding: 20px;
-      border-radius: 14px;
-      border: 1px solid rgba(148,163,184,0.35);
-      box-shadow: 0 10px 22px rgba(15,23,42,0.08);
-    }
-    .section.active { display: block; }
-
-    table { width: 100%; border-collapse: collapse; }
-
-    th, td { padding: 12px; border-bottom: 1px solid #e5e7eb; text-align: left; }
-
-    th { background: #f5f8ff; color: #1e3a8a; }
-
-    button {
-      padding: 7px 12px;
-      border: none;
-      border-radius: 10px;
-      cursor: pointer;
-      font-weight: 800;
-      transition: transform 0.2s ease, box-shadow 0.2s ease, opacity 0.2s ease;
-    }
-
-    button:hover { transform: translateY(-1px); box-shadow: 0 10px 16px rgba(15,23,42,0.10); }
-
-    .accept { background: #16a34a; color: #fff; }
-    .reject { background: #dc2626; color: #fff; }
-    .save { background: #2563eb; color: #fff; }
-
-    input, textarea {
-      width: 100%;
-      padding: 10px 12px;
-      margin-top: 6px;
-      border-radius: 10px;
-      border: 1px solid #cbd5e1;
-    }
-
-    textarea { resize: vertical; }
-
-    .student-card { border-bottom: 1px solid #e5e7eb; padding: 15px 0; }
-  </style>
+  <!-- Firebase SDK -->
+  <script src="https://www.gstatic.com/firebasejs/9.22.1/firebase-app-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/9.22.1/firebase-firestore-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/9.22.1/firebase-storage-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/9.22.1/firebase-auth-compat.js"></script>
+  
+  <!-- Firebase Configuration -->
+  <script src="js/firebase-config.js"></script>
+  <script src="js/firebase-auth.js"></script>
+  <script src="js/auth.js"></script>
+  <script src="js/supervisor.js"></script>
+  
+  <!-- Initialize Dashboard -->
+  <script>
+    document.addEventListener('DOMContentLoaded', function() {
+      console.log('Supervisor Dashboard Loaded');
+      
+      const waitForFirebase = () => {
+        if (typeof db !== 'undefined' && typeof auth !== 'undefined') {
+          console.log('Firebase is ready, loading supervisor dashboard data...');
+          if (typeof loadSupervisorDashboard === 'function') {
+            loadSupervisorDashboard();
+          }
+        } else {
+          console.log('Waiting for Firebase to initialize...');
+          setTimeout(waitForFirebase, 500);
+        }
+      };
+      
+      setTimeout(waitForFirebase, 1000);
+    });
+  </script>
 </head>
 
 <body>
 
-  <aside class="sidebar">
-    <h2>Supervisor</h2>
-    <ul>
-      <li class="active">Dashboard</li>
-      <li onclick="logout()">Logout</li>
-    </ul>
-  </aside>
+  <div class="dashboard-container">
+    <!-- Sidebar -->
+    <aside class="sidebar">
+      <div class="logo">
+        <img src="assets/images/university-logo.png" alt="University Logo" class="logo-img">
+      </div>
+      <nav class="nav-menu">
+        <a href="supervisor-dashboard.html" class="nav-item active">
+          <i class="fas fa-tachometer-alt"></i>
+          <span>Dashboard</span>
+        </a>
+        <a href="supervisor-groups.html" class="nav-item">
+          <i class="fas fa-users"></i>
+          <span>My Groups</span>
+        </a>
+        <a href="supervisor-proposals.html" class="nav-item">
+          <i class="fas fa-file-alt"></i>
+          <span>Proposals</span>
+        </a>
+        <a href="supervisor-meetings.html" class="nav-item">
+          <i class="fas fa-calendar-alt"></i>
+          <span>Meetings</span>
+        </a>
+        <a href="supervisor-reports.html" class="nav-item">
+          <i class="fas fa-file-pdf"></i>
+          <span>Reports</span>
+        </a>
+        <a href="supervisor-feedback.html" class="nav-item">
+          <i class="fas fa-comments"></i>
+          <span>Feedback</span>
+        </a>
+        <a href="index.html" class="nav-item logout">
+          <i class="fas fa-sign-out-alt"></i>
+          <span>Logout</span>
+        </a>
+      </nav>
+    </aside>
 
-  <main class="main-content">
-
-    <header class="top-bar">
-      <h1>Supervisor Dashboard</h1>
-      <p>Manage proposals, students, meetings and feedback</p>
-    </header>
-
-    <div class="tabs">
-      <button class="tab-btn active" onclick="showSection('proposals', this)">Proposals</button>
-      <button class="tab-btn" onclick="showSection('students', this)">Students</button>
-      <button class="tab-btn" onclick="showSection('feedback', this)">Weekly Feedback</button>
-    </div>
-
-    <section id="proposals" class="section active">
-      <h2>Assigned Proposals</h2>
-
-      <table>
-        <thead>
-          <tr>
-            <th>Student</th>
-            <th>Project Title</th>
-            <th>Action</th>
-          </tr>
-        </thead>
-        <tbody id="proposalTable"></tbody>
-      </table>
-    </section>
-
-    <section id="students" class="section">
-      <h2>Accepted Students</h2>
-      <div id="studentList"></div>
-    </section>
-
-    <section id="feedback" class="section">
-      <h2>Weekly Student Feedback (Sent to Admin)</h2>
-      <div id="feedbackList"></div>
-    </section>
-
-  </main>
-
-  <script>
-    if (localStorage.getItem("role") !== "supervisor") {
-      window.location.href = "login.html";
-    }
-
-    let proposals = [
-      { student: "Ali Raza", project: "Smart Attendance System", status: "Pending" },
-      { student: "Sara Khan", project: "Health Monitoring App", status: "Pending" }
-    ];
-
-    let acceptedStudents = [];
-
-    function showSection(id, btn) {
-      document.querySelectorAll(".section").forEach(s => s.classList.remove("active"));
-      document.querySelectorAll(".tab-btn").forEach(b => b.classList.remove("active"));
-
-      document.getElementById(id).classList.add("active");
-      btn.classList.add("active");
-    }
-
-    function loadProposals() {
-      const table = document.getElementById("proposalTable");
-      table.innerHTML = "";
-
-      proposals.forEach((p, i) => {
-        const row = document.createElement("tr");
-
-        row.innerHTML = `
-          <td>${p.student}</td>
-          <td>${p.project}</td>
-          <td>
-            <button class="accept" onclick="acceptProposal(${i})">Accept</button>
-            <button class="reject" onclick="rejectProposal(${i})">Reject</button>
-          </td>
-        `;
-        table.appendChild(row);
-      });
-    }
-
-    function acceptProposal(index) {
-      acceptedStudents.push({
-        student: proposals[index].student,
-        project: proposals[index].project,
-        meeting: "",
-        viva: ""
-      });
-      proposals.splice(index, 1);
-      loadProposals();
-      loadStudents();
-      loadFeedback();
-    }
-
-    function rejectProposal(index) {
-      proposals.splice(index, 1);
-      loadProposals();
-    }
-
-    function loadStudents() {
-      const container = document.getElementById("studentList");
-      container.innerHTML = "";
-
-      acceptedStudents.forEach((s, i) => {
-        const div = document.createElement("div");
-        div.className = "student-card";
-
-        div.innerHTML = `
-          <h3>${s.student}</h3>
-          <p><strong>Project:</strong> ${s.project}</p>
-
-          <label>Meeting Date</label>
-          <input type="date" onchange="acceptedStudents[${i}].meeting=this.value">
-
-          <label>Viva Date</label>
-          <input type="date" onchange="acceptedStudents[${i}].viva=this.value">
-        `;
-        container.appendChild(div);
-      });
-    }
-
-    function loadFeedback() {
-      const container = document.getElementById("feedbackList");
-      container.innerHTML = "";
-
-      acceptedStudents.forEach((s, i) => {
-        const div = document.createElement("div");
-        div.className = "student-card";
-
-        div.innerHTML = `
-          <h3>${s.student}</h3>
-          <textarea placeholder="Weekly feedback for admin"></textarea>
-          <button class="save" onclick="submitFeedback('${s.student}')">
-            Submit Feedback
+    <!-- Main Content -->
+    <main class="main-content">
+      <!-- Top Bar -->
+      <header class="top-bar">
+        <div class="welcome-section">
+          <h1>Welcome, <span id="supervisorName">Loading...</span>!</h1>
+        </div>
+        <div class="action-buttons">
+          <button class="btn btn-primary" onclick="handleScheduleMeeting()">
+            <i class="fas fa-calendar-plus"></i>
+            Schedule Meeting
           </button>
-        `;
-        container.appendChild(div);
-      });
-    }
+          <button class="btn btn-secondary" onclick="handleReviewProposals()">
+            <i class="fas fa-clipboard-check"></i>
+            Review Proposals
+          </button>
+          <div class="notification-bell" onclick="showNotifications()">
+            <i class="fas fa-bell"></i>
+            <span class="notification-badge" id="notificationCount">0</span>
+          </div>
+        </div>
+      </header>
 
-    function submitFeedback(student) {
-      alert("Feedback submitted for " + student + " and forwarded to Admin.");
-    }
+      <!-- Dashboard Content -->
+      <div class="dashboard-content">
+        <!-- Overview Stats Cards -->
+        <div class="stats-row">
+          <div class="stat-card">
+            <div class="stat-icon">
+              <i class="fas fa-users"></i>
+            </div>
+            <div class="stat-content">
+              <h3>Assigned Groups</h3>
+              <p class="stat-number" id="assignedGroupsCount">0</p>
+            </div>
+          </div>
+          <div class="stat-card">
+            <div class="stat-icon">
+              <i class="fas fa-file-alt"></i>
+            </div>
+            <div class="stat-content">
+              <h3>Pending Proposals</h3>
+              <p class="stat-number" id="pendingProposalsCount">0</p>
+            </div>
+          </div>
+          <div class="stat-card">
+            <div class="stat-icon">
+              <i class="fas fa-calendar-check"></i>
+            </div>
+            <div class="stat-content">
+              <h3>Upcoming Meetings</h3>
+              <p class="stat-number" id="upcomingMeetingsCount">0</p>
+            </div>
+          </div>
+          <div class="stat-card">
+            <div class="stat-icon">
+              <i class="fas fa-clock"></i>
+            </div>
+            <div class="stat-content">
+              <h3>Pending Reviews</h3>
+              <p class="stat-number" id="pendingReviewsCount">0</p>
+            </div>
+          </div>
+        </div>
 
-    function logout() {
-      localStorage.clear();
-      window.location.href = "login.html";
-    }
+        <!-- My Groups Card -->
+        <div class="card">
+          <h3>My Groups</h3>
+          <div class="groups-list" id="groupsList">
+            <p style="color: #6c757d; text-align: center; padding: 20px;">Loading groups...</p>
+          </div>
+        </div>
 
-    loadProposals();
-  </script>
+        <!-- Pending Proposals Card -->
+        <div class="card">
+          <h3>Pending Proposals</h3>
+          <div class="proposals-list" id="pendingProposalsList">
+            <p style="color: #6c757d; text-align: center; padding: 20px;">Loading proposals...</p>
+          </div>
+        </div>
+
+        <!-- Upcoming Meetings Card -->
+        <div class="card">
+          <h3>Upcoming Meetings</h3>
+          <div class="meetings-list" id="upcomingMeetingsList">
+            <p style="color: #6c757d; text-align: center; padding: 20px;">Loading meetings...</p>
+          </div>
+        </div>
+
+        <!-- Recent Reports Card -->
+        <div class="card">
+          <h3>Recent Reports</h3>
+          <div class="reports-list" id="recentReportsList">
+            <p style="color: #6c757d; text-align: center; padding: 20px;">Loading reports...</p>
+          </div>
+        </div>
+
+        <!-- Student Progress Card -->
+        <div class="card">
+          <h3>Student Progress Overview</h3>
+          <div class="progress-list" id="studentProgressList">
+            <p style="color: #6c757d; text-align: center; padding: 20px;">Loading progress data...</p>
+          </div>
+        </div>
+
+        <!-- Quick Actions Card -->
+        <div class="card">
+          <h3>Quick Actions</h3>
+          <div class="quick-actions">
+            <button class="btn btn-primary" onclick="handleScheduleMeeting()">
+              <i class="fas fa-calendar-plus"></i> Schedule Meeting
+            </button>
+            <button class="btn btn-secondary" onclick="handleReviewProposals()">
+              <i class="fas fa-clipboard-check"></i> Review Proposals
+            </button>
+            <button class="btn btn-success" onclick="handleSendFeedback()">
+              <i class="fas fa-comment-dots"></i> Send Feedback
+            </button>
+            <button class="btn btn-info" onclick="handleViewReports()">
+              <i class="fas fa-file-download"></i> View Reports
+            </button>
+          </div>
+        </div>
+
+        <!-- Announcements Card -->
+        <div class="card">
+          <h3>Announcements</h3>
+          <div class="announcements" id="announcements">
+            <p style="color: #6c757d; text-align: center; padding: 20px;">Loading announcements...</p>
+          </div>
+        </div>
+      </div>
+    </main>
+  </div>
 
 </body>
 </html>

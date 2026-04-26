@@ -394,11 +394,6 @@ window.modernUI = modernUI;
 // 📱 Auto-initialize when DOM is ready
 document.addEventListener('DOMContentLoaded', () => {
   console.log('🎨 Modern UI System Ready!');
-  
-  // Show welcome notification
-  setTimeout(() => {
-    modernUI.showNotification('Welcome to the modernized FYP Management System!', 'success', 2000);
-  }, 1000);
 });
 
 // 🎯 Global notification function (for compatibility)

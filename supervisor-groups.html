@@ -1,0 +1,181 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>My Groups - Supervisor Dashboard | FYP Management System</title>
+  <link rel="stylesheet" href="css/style.css" />
+  <link rel="stylesheet" href="css/supervisor-groups.css" />
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" />
+
+  <!-- Firebase SDK -->
+  <script src="https://www.gstatic.com/firebasejs/9.22.1/firebase-app-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/9.22.1/firebase-firestore-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/9.22.1/firebase-storage-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/9.22.1/firebase-auth-compat.js"></script>
+  
+  <!-- Firebase Configuration -->
+  <script src="js/firebase-config.js"></script>
+  <script src="js/firebase-auth.js"></script>
+  <script src="js/auth.js"></script>
+  <script src="js/supervisor-groups.js"></script>
+  
+  <!-- Initialize Page -->
+  <script>
+    document.addEventListener('DOMContentLoaded', function() {
+      console.log('Supervisor Groups Page Loaded');
+      
+      const waitForFirebase = () => {
+        if (typeof db !== 'undefined' && typeof auth !== 'undefined') {
+          console.log('Firebase is ready, loading groups data...');
+          if (typeof loadSupervisorGroupsPage === 'function') {
+            loadSupervisorGroupsPage();
+          }
+        } else {
+          console.log('Waiting for Firebase to initialize...');
+          setTimeout(waitForFirebase, 500);
+        }
+      };
+      
+      setTimeout(waitForFirebase, 1000);
+    });
+  </script>
+</head>
+
+<body>
+
+  <div class="dashboard-container">
+    <!-- Sidebar -->
+    <aside class="sidebar">
+      <div class="logo">
+        <img src="assets/images/university-logo.png" alt="University Logo" class="logo-img">
+      </div>
+      <nav class="nav-menu">
+        <a href="supervisor-dashboard.html" class="nav-item">
+          <i class="fas fa-tachometer-alt"></i>
+          <span>Dashboard</span>
+        </a>
+        <a href="supervisor-groups.html" class="nav-item active">
+          <i class="fas fa-users"></i>
+          <span>My Groups</span>
+        </a>
+        <a href="supervisor-proposals.html" class="nav-item">
+          <i class="fas fa-file-alt"></i>
+          <span>Proposals</span>
+        </a>
+        <a href="supervisor-meetings.html" class="nav-item">
+          <i class="fas fa-calendar-alt"></i>
+          <span>Meetings</span>
+        </a>
+        <a href="supervisor-reports.html" class="nav-item">
+          <i class="fas fa-file-pdf"></i>
+          <span>Reports</span>
+        </a>
+        <a href="supervisor-feedback.html" class="nav-item">
+          <i class="fas fa-comments"></i>
+          <span>Feedback</span>
+        </a>
+        <a href="index.html" class="nav-item logout">
+          <i class="fas fa-sign-out-alt"></i>
+          <span>Logout</span>
+        </a>
+      </nav>
+    </aside>
+
+    <!-- Main Content -->
+    <main class="main-content">
+      <!-- Top Bar -->
+      <header class="top-bar">
+        <div class="welcome-section">
+          <h1>My Groups</h1>
+          <p>Manage and view all your assigned student groups</p>
+        </div>
+        <div class="action-buttons">
+          <div class="notification-bell" onclick="showNotifications()">
+            <i class="fas fa-bell"></i>
+            <span class="notification-badge" id="notificationCount">0</span>
+          </div>
+        </div>
+      </header>
+
+      <!-- Page Content -->
+      <div class="dashboard-content">
+        <!-- Groups Overview Stats -->
+        <div class="stats-row">
+          <div class="stat-card">
+            <div class="stat-icon">
+              <i class="fas fa-users"></i>
+            </div>
+            <div class="stat-content">
+              <h3>Total Groups</h3>
+              <p class="stat-number" id="totalGroupsCount">0</p>
+            </div>
+          </div>
+          <div class="stat-card">
+            <div class="stat-icon">
+              <i class="fas fa-user-graduate"></i>
+            </div>
+            <div class="stat-content">
+              <h3>Total Students</h3>
+              <p class="stat-number" id="totalStudentsCount">0</p>
+            </div>
+          </div>
+          <div class="stat-card">
+            <div class="stat-icon">
+              <i class="fas fa-project-diagram"></i>
+            </div>
+            <div class="stat-content">
+              <h3>Active Projects</h3>
+              <p class="stat-number" id="activeProjectsCount">0</p>
+            </div>
+          </div>
+          <div class="stat-card">
+            <div class="stat-icon">
+              <i class="fas fa-check-circle"></i>
+            </div>
+            <div class="stat-content">
+              <h3>Completed</h3>
+              <p class="stat-number" id="completedProjectsCount">0</p>
+            </div>
+          </div>
+        </div>
+
+        <!-- Search and Filter -->
+        <div class="card">
+          <div class="search-filter-section">
+            <div class="search-box">
+              <i class="fas fa-search"></i>
+              <input type="text" id="groupSearchInput" placeholder="Search groups by name, project, or student..." onkeyup="filterGroups()">
+            </div>
+            <div class="filter-dropdown">
+              <select id="statusFilter" onchange="filterGroups()">
+                <option value="all">All Status</option>
+                <option value="active">Active</option>
+                <option value="in_progress">In Progress</option>
+                <option value="completed">Completed</option>
+              </select>
+            </div>
+          </div>
+        </div>
+
+        <!-- Groups List Card -->
+        <div class="card">
+          <h3>Assigned Groups</h3>
+          <div class="groups-list-container" id="groupsListContainer">
+            <p style="color: #6c757d; text-align: center; padding: 40px;">Loading groups...</p>
+          </div>
+        </div>
+
+        <!-- Group Activity Card -->
+        <div class="card">
+          <h3>Recent Group Activity</h3>
+          <div class="activity-list" id="groupActivityList">
+            <p style="color: #6c757d; text-align: center; padding: 20px;">Loading activity...</p>
+          </div>
+        </div>
+      </div>
+    </main>
+  </div>
+
+</body>
+</html>
