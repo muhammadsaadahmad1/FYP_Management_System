@@ -100,7 +100,11 @@
           <h1>Welcome, <span id="dynamicUserName">Loading...</span>!</h1>
         </div>
         <div class="action-buttons">
-          <button class="btn btn-primary" onclick="handleFileUpload()">
+          <button class="btn btn-primary" onclick="openSubmitProposalModal()">
+            <i class="fas fa-file-alt"></i>
+            Submit Proposal
+          </button>
+          <button class="btn btn-secondary" onclick="handleFileUpload()">
             <i class="fas fa-upload"></i>
             Upload Report
           </button>
@@ -184,6 +188,73 @@
         </div>
       </div>
     </main>
+  </div>
+
+  <!-- Submit Proposal Modal -->
+  <div id="submitProposalModal" class="modal">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h3>Submit Proposal</h3>
+        <span class="close" onclick="closeSubmitProposalModal()">&times;</span>
+      </div>
+      <div class="modal-body">
+        <form id="submitProposalForm">
+          <div class="form-group">
+            <label for="proposalTitle">Proposal Title *</label>
+            <input type="text" id="proposalTitle" required placeholder="Enter your proposal title">
+          </div>
+          
+          <div class="form-group">
+            <label for="proposalCategory">Category *</label>
+            <select id="proposalCategory" required>
+              <option value="">Select Category</option>
+              <option value="ai">AI & Machine Learning</option>
+              <option value="web">Web Development</option>
+              <option value="mobile">Mobile Development</option>
+              <option value="data">Data Science</option>
+              <option value="security">Cybersecurity</option>
+              <option value="other">Other</option>
+            </select>
+          </div>
+          
+          <div class="form-group">
+            <label for="proposalDescription">Description *</label>
+            <textarea id="proposalDescription" rows="6" required placeholder="Describe your proposal in detail..."></textarea>
+          </div>
+          
+          <div class="form-group">
+            <label for="proposalObjectives">Objectives *</label>
+            <textarea id="proposalObjectives" rows="4" required placeholder="List the main objectives of your project..."></textarea>
+          </div>
+          
+          <div class="form-group">
+            <label for="proposalMethodology">Methodology *</label>
+            <textarea id="proposalMethodology" rows="4" required placeholder="Describe the methodology and approach..."></textarea>
+          </div>
+          
+          <div class="form-group">
+            <label for="proposalTimeline">Timeline (weeks) *</label>
+            <input type="number" id="proposalTimeline" min="1" max="52" required placeholder="Expected duration in weeks">
+          </div>
+          
+          <div class="form-group">
+            <label for="proposalResources">Required Resources</label>
+            <textarea id="proposalResources" rows="3" placeholder="List any specific resources needed..."></textarea>
+          </div>
+          
+          <div class="form-group">
+            <label for="proposalFile">Attach File (Optional)</label>
+            <input type="file" id="proposalFile" accept=".pdf,.doc,.docx" onchange="handleFileSelect(event)">
+            <small id="fileInfo" style="color: #6b7280;">Supported formats: PDF, DOC, DOCX (Max 10MB)</small>
+          </div>
+          
+          <div class="form-actions">
+            <button type="button" class="btn btn-secondary" onclick="closeSubmitProposalModal()">Cancel</button>
+            <button type="submit" class="btn btn-primary">Submit Proposal</button>
+          </div>
+        </form>
+      </div>
+    </div>
   </div>
 
   <!-- Main JavaScript -->

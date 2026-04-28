@@ -261,6 +261,12 @@ function updateProjectInfo(projectData) {
       <p><strong>Progress:</strong> ${projectData.progress || 0}%</p>
       <div class="progress-bar">
         <div class="progress" style="width: ${projectData.progress || 0}%"></div>
+      </div>
+    </div>
+  `;
+}
+
+// Update proposal status section
 function updateProposalStatus(proposalData) {
   const proposalStatusElement = document.getElementById('proposalStatus');
   if (!proposalStatusElement) return;
@@ -271,7 +277,7 @@ function updateProposalStatus(proposalData) {
         <i class="fas fa-file-alt"></i>
         <h4>No Proposal Submitted</h4>
         <p>You haven't submitted any proposal yet.</p>
-        <button class="btn btn-primary" onclick="window.location.href='proposals.html'">Submit Proposal</button>
+        <button class="btn btn-primary" onclick="openSubmitProposalModal()">Submit Proposal</button>
       </div>
     `;
     return;
@@ -306,6 +312,10 @@ function updateProposalStatus(proposalData) {
     </div>
   `;
 }
+
+// Helper function to get status display text
+function getStatusDisplay(status) {
+  switch (status) {
     case 'pending':
       return 'Pending Review';
     case 'under_review':
@@ -500,8 +510,225 @@ async function logout() {
     window.location.href = "index.html";
   } catch (error) {
     console.error('Logout error:', error);
-    // Fallback to localStorage logout
     localStorage.clear();
     window.location.href = "index.html";
+  }
+}
+
+// =========================
+// PROPOSAL SUBMISSION FUNCTIONS
+// =========================
+
+// Global variable to store selected file
+let selectedProposalFile = null;
+
+// Open submit proposal modal
+function openSubmitProposalModal() {
+  document.getElementById('submitProposalModal').style.display = 'block';
+  document.getElementById('submitProposalForm').reset();
+  selectedProposalFile = null;
+  document.getElementById('fileInfo').textContent = 'Supported formats: PDF, DOC, DOCX (Max 10MB)';
+}
+
+// Close submit proposal modal
+function closeSubmitProposalModal() {
+  document.getElementById('submitProposalModal').style.display = 'none';
+  document.getElementById('submitProposalForm').reset();
+  selectedProposalFile = null;
+}
+
+// Handle file selection
+function handleFileSelect(event) {
+  const file = event.target.files[0];
+  const fileInfo = document.getElementById('fileInfo');
+  
+  if (file) {
+    // Check file size (10MB limit)
+    if (file.size > 10 * 1024 * 1024) {
+      fileInfo.textContent = 'Error: File size exceeds 10MB limit';
+      fileInfo.style.color = '#dc2626';
+      event.target.value = '';
+      selectedProposalFile = null;
+      return;
+    }
+    
+    // Check file type
+    const allowedTypes = ['application/pdf', 'application/msword', 'application/vnd.openxmlformats-officedocument.wordprocessingml.document'];
+    if (!allowedTypes.includes(file.type)) {
+      fileInfo.textContent = 'Error: Invalid file type. Please use PDF, DOC, or DOCX';
+      fileInfo.style.color = '#dc2626';
+      event.target.value = '';
+      selectedProposalFile = null;
+      return;
+    }
+    
+    selectedProposalFile = file;
+    fileInfo.textContent = `Selected: ${file.name} (${(file.size / 1024 / 1024).toFixed(2)} MB)`;
+    fileInfo.style.color = '#059669';
+  } else {
+    selectedProposalFile = null;
+    fileInfo.textContent = 'Supported formats: PDF, DOC, DOCX (Max 10MB)';
+    fileInfo.style.color = '#6b7280';
+  }
+}
+
+// Submit proposal form handler
+document.getElementById('submitProposalForm').addEventListener('submit', async function(e) {
+  e.preventDefault();
+  
+  try {
+    // Get form data
+    const title = document.getElementById('proposalTitle').value.trim();
+    const category = document.getElementById('proposalCategory').value;
+    const description = document.getElementById('proposalDescription').value.trim();
+    const objectives = document.getElementById('proposalObjectives').value.trim();
+    const methodology = document.getElementById('proposalMethodology').value.trim();
+    const timeline = parseInt(document.getElementById('proposalTimeline').value);
+    const resources = document.getElementById('proposalResources').value.trim();
+    
+    // Get student and group information
+    const studentId = localStorage.getItem('uid');
+    const groupId = localStorage.getItem('groupId');
+    
+    if (!studentId || !groupId) {
+      if (typeof showNotification !== 'undefined') {
+        showNotification('Missing student or group information. Please log in again.', 'error');
+      }
+      return;
+    }
+    
+    // AUTOMATIC SUPERVISOR ASSIGNMENT: Get supervisor from group data
+    const groupDoc = await db.collection('groups').doc(groupId).get();
+    if (!groupDoc.exists) {
+      if (typeof showNotification !== 'undefined') {
+        showNotification('Group information not found. Please contact administrator.', 'error');
+      }
+      return;
+    }
+    
+    const groupData = groupDoc.data();
+    const supervisorId = groupData.supervisorId;
+    
+    if (!supervisorId) {
+      if (typeof showNotification !== 'undefined') {
+        showNotification('No supervisor assigned to your group. Please contact administrator.', 'error');
+      }
+      return;
+    }
+    
+    console.log('✅ Automatic supervisor assignment:', supervisorId);
+    
+    // Show loading state
+    const submitBtn = e.target.querySelector('button[type="submit"]');
+    const originalText = submitBtn.textContent;
+    submitBtn.textContent = 'Submitting...';
+    submitBtn.disabled = true;
+    
+    // Upload file if selected
+    let attachmentUrl = '';
+    let attachmentName = '';
+    
+    if (selectedProposalFile) {
+      try {
+        const storageRef = storage.ref();
+        const fileRef = storageRef.child(`proposals/${groupId}/${Date.now()}_${selectedProposalFile.name}`);
+        
+        await fileRef.put(selectedProposalFile);
+        attachmentUrl = await fileRef.getDownloadURL();
+        attachmentName = selectedProposalFile.name;
+        
+        console.log('File uploaded successfully:', attachmentName);
+      } catch (uploadError) {
+        console.error('Error uploading file:', uploadError);
+        if (typeof showNotification !== 'undefined') {
+          showNotification('Error uploading file. Please try again.', 'error');
+        }
+        submitBtn.textContent = originalText;
+        submitBtn.disabled = false;
+        return;
+      }
+    }
+    
+    // Create proposal document
+    const proposalData = {
+      title: title,
+      category: category,
+      description: description,
+      objectives: objectives,
+      methodology: methodology,
+      timeline: timeline,
+      resources: resources,
+      groupId: groupId,
+      groupName: groupData.groupName || groupId,
+      supervisorId: supervisorId,
+      submittedBy: studentId,
+      submittedDate: new Date().toISOString(),
+      status: 'pending',
+      attachments: attachmentUrl ? [{
+        name: attachmentName,
+        url: attachmentUrl,
+        type: selectedProposalFile ? selectedProposalFile.type : 'document'
+      }] : [],
+      createdAt: new Date().toISOString()
+    };
+    
+    // Save proposal to Firestore
+    const proposalRef = await db.collection('proposals').add(proposalData);
+    console.log('Proposal submitted successfully with ID:', proposalRef.id);
+    
+    // Send notification to supervisor
+    await db.collection('notifications').add({
+      userId: supervisorId,
+      type: 'proposal_submitted',
+      title: 'New Proposal Submitted',
+      message: `A new proposal "${title}" has been submitted by ${groupData.groupName || 'your group'}.`,
+      proposalId: proposalRef.id,
+      groupId: groupId,
+      createdAt: new Date().toISOString(),
+      read: false
+    });
+    
+    // Send confirmation notification to student
+    await db.collection('notifications').add({
+      userId: studentId,
+      type: 'proposal_confirmation',
+      title: 'Proposal Submitted Successfully',
+      message: `Your proposal "${title}" has been submitted and is awaiting review.`,
+      proposalId: proposalRef.id,
+      createdAt: new Date().toISOString(),
+      read: false
+    });
+    
+    // Success message
+    if (typeof showNotification !== 'undefined') {
+      showNotification('Proposal submitted successfully! Your supervisor will review it soon.', 'success');
+    }
+    
+    // Close modal and reset form
+    closeSubmitProposalModal();
+    
+    // Refresh proposal status in dashboard
+    if (typeof loadProposalStatus === 'function') {
+      loadProposalStatus();
+    }
+    
+  } catch (error) {
+    console.error('Error submitting proposal:', error);
+    if (typeof showNotification !== 'undefined') {
+      showNotification('Error submitting proposal. Please try again.', 'error');
+    }
+  } finally {
+    // Reset button state
+    const submitBtn = e.target.querySelector('button[type="submit"]');
+    submitBtn.textContent = 'Submit Proposal';
+    submitBtn.disabled = false;
+  }
+});
+
+// Close modal when clicking outside
+window.onclick = function(event) {
+  const modal = document.getElementById('submitProposalModal');
+  if (event.target === modal) {
+    closeSubmitProposalModal();
   }
 }

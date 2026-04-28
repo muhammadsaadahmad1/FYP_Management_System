@@ -464,6 +464,23 @@
       try {
         showLoadingOverlay('Submitting proposal...');
         
+        // Get group information to find supervisor (AUTOMATIC ASSIGNMENT)
+        const groupDoc = await firebase.firestore().collection('groups').doc(groupId).get();
+        let supervisorId = null;
+        let groupData = null;
+        
+        if (groupDoc.exists) {
+          groupData = groupDoc.data();
+          supervisorId = groupData.supervisorId;
+        }
+        
+        // Validate supervisor is assigned to group
+        if (!supervisorId) {
+          hideLoadingOverlay();
+          showNotification('No supervisor assigned to your group. Please contact administrator.', 'error');
+          return;
+        }
+        
         const proposalData = {
           title: formData.get('title'),
           category: formData.get('category'),
@@ -473,6 +490,7 @@
           outcomes: formData.get('outcomes'),
           timeline: parseInt(formData.get('timeline')),
           groupId: groupId,
+          supervisorId: supervisorId,
           submittedBy: userId,
           submittedDate: new Date().toISOString(),
           lastUpdated: new Date().toISOString(),

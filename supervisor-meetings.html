@@ -1,0 +1,271 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Meetings - Supervisor Dashboard | FYP Management System</title>
+  <link rel="stylesheet" href="css/style.css" />
+  <link rel="stylesheet" href="css/supervisor-pages.css" />
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" />
+
+  <!-- Firebase SDK -->
+  <script src="https://www.gstatic.com/firebasejs/9.22.1/firebase-app-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/9.22.1/firebase-firestore-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/9.22.1/firebase-storage-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/9.22.1/firebase-auth-compat.js"></script>
+  
+  <!-- Firebase Configuration -->
+  <script src="js/firebase-config.js"></script>
+  <script src="js/firebase-auth.js"></script>
+  <script src="js/auth.js"></script>
+  <script src="js/supervisor-meetings.js"></script>
+  
+  <!-- Initialize Page -->
+  <script>
+    document.addEventListener('DOMContentLoaded', function() {
+      console.log('Supervisor Meetings Page Loaded');
+      
+      const waitForFirebase = () => {
+        if (typeof db !== 'undefined' && typeof auth !== 'undefined') {
+          console.log('Firebase is ready, loading meetings data...');
+          if (typeof loadSupervisorMeetingsPage === 'function') {
+            loadSupervisorMeetingsPage();
+          }
+        } else {
+          console.log('Waiting for Firebase to initialize...');
+          setTimeout(waitForFirebase, 500);
+        }
+      };
+      
+      setTimeout(waitForFirebase, 1000);
+    });
+  </script>
+</head>
+
+<body>
+
+  <div class="dashboard-container">
+    <!-- Sidebar -->
+    <aside class="sidebar">
+      <div class="logo">
+        <img src="assets/images/university-logo.png" alt="University Logo" class="logo-img">
+      </div>
+      <nav class="nav-menu">
+        <a href="supervisor-dashboard.html" class="nav-item">
+          <i class="fas fa-tachometer-alt"></i>
+          <span>Dashboard</span>
+        </a>
+        <a href="supervisor-groups.html" class="nav-item">
+          <i class="fas fa-users"></i>
+          <span>My Groups</span>
+        </a>
+        <a href="supervisor-proposals.html" class="nav-item">
+          <i class="fas fa-file-alt"></i>
+          <span>Proposals</span>
+        </a>
+        <a href="supervisor-meetings.html" class="nav-item active">
+          <i class="fas fa-calendar-alt"></i>
+          <span>Meetings</span>
+        </a>
+        <a href="supervisor-reports.html" class="nav-item">
+          <i class="fas fa-file-pdf"></i>
+          <span>Reports</span>
+        </a>
+        <a href="supervisor-feedback.html" class="nav-item">
+          <i class="fas fa-comments"></i>
+          <span>Feedback</span>
+        </a>
+        <a href="index.html" class="nav-item logout">
+          <i class="fas fa-sign-out-alt"></i>
+          <span>Logout</span>
+        </a>
+      </nav>
+    </aside>
+
+    <!-- Main Content -->
+    <main class="main-content">
+      <!-- Top Bar -->
+      <header class="top-bar">
+        <div class="welcome-section">
+          <h1>Meetings Management</h1>
+          <p>Schedule and manage meetings with student groups</p>
+        </div>
+        <div class="action-buttons">
+          <button class="btn btn-primary" onclick="openScheduleMeetingModal()">
+            <i class="fas fa-plus"></i> Schedule Meeting
+          </button>
+          <button class="btn btn-secondary" onclick="viewCalendar()">
+            <i class="fas fa-calendar"></i> Calendar View
+          </button>
+          <div class="notification-bell" onclick="showNotifications()">
+            <i class="fas fa-bell"></i>
+            <span class="notification-badge" id="notificationCount">0</span>
+          </div>
+        </div>
+      </header>
+
+      <!-- Page Content -->
+      <div class="dashboard-content">
+        <!-- Meetings Stats -->
+        <div class="stats-row">
+          <div class="stat-card">
+            <div class="stat-icon">
+              <i class="fas fa-clock"></i>
+            </div>
+            <div class="stat-content">
+              <h3>Upcoming</h3>
+              <p class="stat-number" id="upcomingCount">0</p>
+            </div>
+          </div>
+          <div class="stat-card">
+            <div class="stat-icon">
+              <i class="fas fa-video"></i>
+            </div>
+            <div class="stat-content">
+              <h3>Today</h3>
+              <p class="stat-number" id="todayCount">0</p>
+            </div>
+          </div>
+          <div class="stat-card">
+            <div class="stat-icon">
+              <i class="fas fa-check-circle"></i>
+            </div>
+            <div class="stat-content">
+              <h3>Completed</h3>
+              <p class="stat-number" id="completedCount">0</p>
+            </div>
+          </div>
+          <div class="stat-card">
+            <div class="stat-icon">
+              <i class="fas fa-times-circle"></i>
+            </div>
+            <div class="stat-content">
+              <h3>Cancelled</h3>
+              <p class="stat-number" id="cancelledCount">0</p>
+            </div>
+          </div>
+        </div>
+
+        <!-- Search and Filter -->
+        <div class="card">
+          <div class="search-filter-section">
+            <div class="search-box">
+              <i class="fas fa-search"></i>
+              <input type="text" id="meetingSearchInput" placeholder="Search meetings by title, group, or student..." onkeyup="filterMeetings()">
+            </div>
+            <div class="filter-dropdown">
+              <select id="statusFilter" onchange="filterMeetings()">
+                <option value="all">All Status</option>
+                <option value="scheduled">Scheduled</option>
+                <option value="in_progress">In Progress</option>
+                <option value="completed">Completed</option>
+                <option value="cancelled">Cancelled</option>
+              </select>
+            </div>
+            <div class="filter-dropdown">
+              <select id="typeFilter" onchange="filterMeetings()">
+                <option value="all">All Types</option>
+                <option value="proposal_review">Proposal Review</option>
+                <option value="progress_review">Progress Review</option>
+                <option value="final_review">Final Review</option>
+                <option value="general">General</option>
+              </select>
+            </div>
+            <div class="filter-dropdown">
+              <select id="dateFilter" onchange="filterMeetings()">
+                <option value="all">All Dates</option>
+                <option value="today">Today</option>
+                <option value="week">This Week</option>
+                <option value="month">This Month</option>
+                <option value="upcoming">Upcoming</option>
+              </select>
+            </div>
+          </div>
+        </div>
+
+        <!-- Meetings List -->
+        <div class="card">
+          <h3>Meetings List</h3>
+          <div class="meetings-list-container" id="meetingsListContainer">
+            <p style="color: #6c757d; text-align: center; padding: 40px;">Loading meetings...</p>
+          </div>
+        </div>
+      </div>
+    </main>
+  </div>
+
+  <!-- Schedule Meeting Modal -->
+  <div id="scheduleMeetingModal" class="modal">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h3>Schedule Meeting</h3>
+        <span class="close" onclick="closeScheduleMeetingModal()">&times;</span>
+      </div>
+      <div class="modal-body">
+        <form id="scheduleMeetingForm">
+          <div class="form-group">
+            <label for="meetingTitle">Meeting Title</label>
+            <input type="text" id="meetingTitle" required>
+          </div>
+          <div class="form-group">
+            <label for="meetingGroup">Group</label>
+            <select id="meetingGroup" required>
+              <option value="">Select Group</option>
+            </select>
+          </div>
+          <div class="form-row">
+            <div class="form-group">
+              <label for="meetingDate">Date</label>
+              <input type="date" id="meetingDate" required>
+            </div>
+            <div class="form-group">
+              <label for="meetingTime">Time</label>
+              <input type="time" id="meetingTime" required>
+            </div>
+          </div>
+          <div class="form-group">
+            <label for="meetingType">Meeting Type</label>
+            <select id="meetingType" required>
+              <option value="">Select Type</option>
+              <option value="proposal_review">Proposal Review</option>
+              <option value="progress_review">Progress Review</option>
+              <option value="final_review">Final Review</option>
+              <option value="general">General</option>
+            </select>
+          </div>
+          <div class="form-group">
+            <label for="meetingLocation">Location/Platform</label>
+            <input type="text" id="meetingLocation" placeholder="e.g., Room 101, Zoom, Teams">
+          </div>
+          <div class="form-group">
+            <label for="meetingAgenda">Agenda</label>
+            <textarea id="meetingAgenda" rows="4" placeholder="Meeting agenda and topics to discuss..."></textarea>
+          </div>
+          <div class="form-group">
+            <label for="meetingDuration">Duration (minutes)</label>
+            <input type="number" id="meetingDuration" value="60" min="15" max="180" required>
+          </div>
+          <div class="form-actions">
+            <button type="button" class="btn btn-secondary" onclick="closeScheduleMeetingModal()">Cancel</button>
+            <button type="submit" class="btn btn-primary">Schedule Meeting</button>
+          </div>
+        </form>
+      </div>
+    </div>
+  </div>
+
+  <!-- Meeting Details Modal -->
+  <div id="meetingDetailsModal" class="modal">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h3>Meeting Details</h3>
+        <span class="close" onclick="closeMeetingDetailsModal()">&times;</span>
+      </div>
+      <div class="modal-body" id="meetingDetailsContent">
+        <!-- Content will be loaded dynamically -->
+      </div>
+    </div>
+  </div>
+
+</body>
+</html>

@@ -1,0 +1,251 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Reports - Supervisor Dashboard | FYP Management System</title>
+  <link rel="stylesheet" href="css/style.css" />
+  <link rel="stylesheet" href="css/supervisor-pages.css" />
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" />
+
+  <!-- Firebase SDK -->
+  <script src="https://www.gstatic.com/firebasejs/9.22.1/firebase-app-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/9.22.1/firebase-firestore-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/9.22.1/firebase-storage-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/9.22.1/firebase-auth-compat.js"></script>
+  
+  <!-- Firebase Configuration -->
+  <script src="js/firebase-config.js"></script>
+  <script src="js/firebase-auth.js"></script>
+  <script src="js/auth.js"></script>
+  <script src="js/supervisor-reports.js"></script>
+  
+  <!-- Initialize Page -->
+  <script>
+    document.addEventListener('DOMContentLoaded', function() {
+      console.log('Supervisor Reports Page Loaded');
+      
+      const waitForFirebase = () => {
+        if (typeof db !== 'undefined' && typeof auth !== 'undefined') {
+          console.log('Firebase is ready, loading reports data...');
+          if (typeof loadSupervisorReportsPage === 'function') {
+            loadSupervisorReportsPage();
+          }
+        } else {
+          console.log('Waiting for Firebase to initialize...');
+          setTimeout(waitForFirebase, 500);
+        }
+      };
+      
+      setTimeout(waitForFirebase, 1000);
+    });
+  </script>
+</head>
+
+<body>
+
+  <div class="dashboard-container">
+    <!-- Sidebar -->
+    <aside class="sidebar">
+      <div class="logo">
+        <img src="assets/images/university-logo.png" alt="University Logo" class="logo-img">
+      </div>
+      <nav class="nav-menu">
+        <a href="supervisor-dashboard.html" class="nav-item">
+          <i class="fas fa-tachometer-alt"></i>
+          <span>Dashboard</span>
+        </a>
+        <a href="supervisor-groups.html" class="nav-item">
+          <i class="fas fa-users"></i>
+          <span>My Groups</span>
+        </a>
+        <a href="supervisor-proposals.html" class="nav-item">
+          <i class="fas fa-file-alt"></i>
+          <span>Proposals</span>
+        </a>
+        <a href="supervisor-meetings.html" class="nav-item">
+          <i class="fas fa-calendar-alt"></i>
+          <span>Meetings</span>
+        </a>
+        <a href="supervisor-reports.html" class="nav-item active">
+          <i class="fas fa-file-pdf"></i>
+          <span>Reports</span>
+        </a>
+        <a href="supervisor-feedback.html" class="nav-item">
+          <i class="fas fa-comments"></i>
+          <span>Feedback</span>
+        </a>
+        <a href="index.html" class="nav-item logout">
+          <i class="fas fa-sign-out-alt"></i>
+          <span>Logout</span>
+        </a>
+      </nav>
+    </aside>
+
+    <!-- Main Content -->
+    <main class="main-content">
+      <!-- Top Bar -->
+      <header class="top-bar">
+        <div class="welcome-section">
+          <h1>Reports Management</h1>
+          <p>Review and manage student project reports</p>
+        </div>
+        <div class="action-buttons">
+          <button class="btn btn-primary" onclick="openReportTemplateModal()">
+            <i class="fas fa-plus"></i> Create Template
+          </button>
+          <button class="btn btn-secondary" onclick="generateSummaryReport()">
+            <i class="fas fa-chart-bar"></i> Summary Report
+          </button>
+          <div class="notification-bell" onclick="showNotifications()">
+            <i class="fas fa-bell"></i>
+            <span class="notification-badge" id="notificationCount">0</span>
+          </div>
+        </div>
+      </header>
+
+      <!-- Page Content -->
+      <div class="dashboard-content">
+        <!-- Reports Stats -->
+        <div class="stats-row">
+          <div class="stat-card">
+            <div class="stat-icon">
+              <i class="fas fa-clock"></i>
+            </div>
+            <div class="stat-content">
+              <h3>Pending Review</h3>
+              <p class="stat-number" id="pendingCount">0</p>
+            </div>
+          </div>
+          <div class="stat-card">
+            <div class="stat-icon">
+              <i class="fas fa-eye"></i>
+            </div>
+            <div class="stat-content">
+              <h3>Under Review</h3>
+              <p class="stat-number" id="underReviewCount">0</p>
+            </div>
+          </div>
+          <div class="stat-card">
+            <div class="stat-icon">
+              <i class="fas fa-check-circle"></i>
+            </div>
+            <div class="stat-content">
+              <h3>Approved</h3>
+              <p class="stat-number" id="approvedCount">0</p>
+            </div>
+          </div>
+          <div class="stat-card">
+            <div class="stat-icon">
+              <i class="fas fa-download"></i>
+            </div>
+            <div class="stat-content">
+              <h3>Downloaded</h3>
+              <p class="stat-number" id="downloadedCount">0</p>
+            </div>
+          </div>
+        </div>
+
+        <!-- Search and Filter -->
+        <div class="card">
+          <div class="search-filter-section">
+            <div class="search-box">
+              <i class="fas fa-search"></i>
+              <input type="text" id="reportSearchInput" placeholder="Search reports by title, group, or student..." onkeyup="filterReports()">
+            </div>
+            <div class="filter-dropdown">
+              <select id="statusFilter" onchange="filterReports()">
+                <option value="all">All Status</option>
+                <option value="pending">Pending Review</option>
+                <option value="under_review">Under Review</option>
+                <option value="approved">Approved</option>
+                <option value="rejected">Rejected</option>
+              </select>
+            </div>
+            <div class="filter-dropdown">
+              <select id="typeFilter" onchange="filterReports()">
+                <option value="all">All Types</option>
+                <option value="progress">Progress Report</option>
+                <option value="interim">Interim Report</option>
+                <option value="final">Final Report</option>
+                <option value="other">Other</option>
+              </select>
+            </div>
+            <div class="filter-dropdown">
+              <select id="dateFilter" onchange="filterReports()">
+                <option value="all">All Dates</option>
+                <option value="today">Today</option>
+                <option value="week">This Week</option>
+                <option value="month">This Month</option>
+                <option value="quarter">This Quarter</option>
+              </select>
+            </div>
+          </div>
+        </div>
+
+        <!-- Reports List -->
+        <div class="card">
+          <h3>Reports List</h3>
+          <div class="reports-list-container" id="reportsListContainer">
+            <p style="color: #6c757d; text-align: center; padding: 40px;">Loading reports...</p>
+          </div>
+        </div>
+      </div>
+    </main>
+  </div>
+
+  <!-- Report Review Modal -->
+  <div id="reportReviewModal" class="modal">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h3>Review Report</h3>
+        <span class="close" onclick="closeReportReviewModal()">&times;</span>
+      </div>
+      <div class="modal-body" id="reportReviewContent">
+        <!-- Content will be loaded dynamically -->
+      </div>
+    </div>
+  </div>
+
+  <!-- Report Template Modal -->
+  <div id="reportTemplateModal" class="modal">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h3>Create Report Template</h3>
+        <span class="close" onclick="closeReportTemplateModal()">&times;</span>
+      </div>
+      <div class="modal-body">
+        <form id="reportTemplateForm">
+          <div class="form-group">
+            <label for="templateTitle">Template Title</label>
+            <input type="text" id="templateTitle" required>
+          </div>
+          <div class="form-group">
+            <label for="templateType">Report Type</label>
+            <select id="templateType" required>
+              <option value="">Select Type</option>
+              <option value="progress">Progress Report</option>
+              <option value="interim">Interim Report</option>
+              <option value="final">Final Report</option>
+              <option value="other">Other</option>
+            </select>
+          </div>
+          <div class="form-group">
+            <label for="templateDescription">Description</label>
+            <textarea id="templateDescription" rows="3" required></textarea>
+          </div>
+          <div class="form-group">
+            <label for="templateSections">Required Sections (one per line)</label>
+            <textarea id="templateSections" rows="5" placeholder="Introduction&#10;Methodology&#10;Results&#10;Conclusion"></textarea>
+          </div>
+          <div class="form-actions">
+            <button type="button" class="btn btn-secondary" onclick="closeReportTemplateModal()">Cancel</button>
+            <button type="submit" class="btn btn-primary">Create Template</button>
+          </div>
+        </form>
+      </div>
+    </div>
+  </div>
+
+</body>
+</html>

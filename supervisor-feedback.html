@@ -1,0 +1,297 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Feedback - Supervisor Dashboard | FYP Management System</title>
+  <link rel="stylesheet" href="css/style.css" />
+  <link rel="stylesheet" href="css/supervisor-pages.css" />
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" />
+
+  <!-- Firebase SDK -->
+  <script src="https://www.gstatic.com/firebasejs/9.22.1/firebase-app-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/9.22.1/firebase-firestore-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/9.22.1/firebase-storage-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/9.22.1/firebase-auth-compat.js"></script>
+  
+  <!-- Firebase Configuration -->
+  <script src="js/firebase-config.js"></script>
+  <script src="js/firebase-auth.js"></script>
+  <script src="js/auth.js"></script>
+  <script src="js/supervisor-feedback.js"></script>
+  
+  <!-- Initialize Page -->
+  <script>
+    document.addEventListener('DOMContentLoaded', function() {
+      console.log('Supervisor Feedback Page Loaded');
+      
+      const waitForFirebase = () => {
+        if (typeof db !== 'undefined' && typeof auth !== 'undefined') {
+          console.log('Firebase is ready, loading feedback data...');
+          if (typeof loadSupervisorFeedbackPage === 'function') {
+            loadSupervisorFeedbackPage();
+          }
+        } else {
+          console.log('Waiting for Firebase to initialize...');
+          setTimeout(waitForFirebase, 500);
+        }
+      };
+      
+      setTimeout(waitForFirebase, 1000);
+    });
+  </script>
+</head>
+
+<body>
+
+  <div class="dashboard-container">
+    <!-- Sidebar -->
+    <aside class="sidebar">
+      <div class="logo">
+        <img src="assets/images/university-logo.png" alt="University Logo" class="logo-img">
+      </div>
+      <nav class="nav-menu">
+        <a href="supervisor-dashboard.html" class="nav-item">
+          <i class="fas fa-tachometer-alt"></i>
+          <span>Dashboard</span>
+        </a>
+        <a href="supervisor-groups.html" class="nav-item">
+          <i class="fas fa-users"></i>
+          <span>My Groups</span>
+        </a>
+        <a href="supervisor-proposals.html" class="nav-item">
+          <i class="fas fa-file-alt"></i>
+          <span>Proposals</span>
+        </a>
+        <a href="supervisor-meetings.html" class="nav-item">
+          <i class="fas fa-calendar-alt"></i>
+          <span>Meetings</span>
+        </a>
+        <a href="supervisor-reports.html" class="nav-item">
+          <i class="fas fa-file-pdf"></i>
+          <span>Reports</span>
+        </a>
+        <a href="supervisor-feedback.html" class="nav-item active">
+          <i class="fas fa-comments"></i>
+          <span>Feedback</span>
+        </a>
+        <a href="index.html" class="nav-item logout">
+          <i class="fas fa-sign-out-alt"></i>
+          <span>Logout</span>
+        </a>
+      </nav>
+    </aside>
+
+    <!-- Main Content -->
+    <main class="main-content">
+      <!-- Top Bar -->
+      <header class="top-bar">
+        <div class="welcome-section">
+          <h1>Feedback Management</h1>
+          <p>Provide and manage feedback for students</p>
+        </div>
+        <div class="action-buttons">
+          <button class="btn btn-primary" onclick="openNewFeedbackModal()">
+            <i class="fas fa-plus"></i> Give Feedback
+          </button>
+          <button class="btn btn-secondary" onclick="viewFeedbackAnalytics()">
+            <i class="fas fa-chart-line"></i> Analytics
+          </button>
+          <div class="notification-bell" onclick="showNotifications()">
+            <i class="fas fa-bell"></i>
+            <span class="notification-badge" id="notificationCount">0</span>
+          </div>
+        </div>
+      </header>
+
+      <!-- Page Content -->
+      <div class="dashboard-content">
+        <!-- Feedback Stats -->
+        <div class="stats-row">
+          <div class="stat-card">
+            <div class="stat-icon">
+              <i class="fas fa-comment"></i>
+            </div>
+            <div class="stat-content">
+              <h3>Total Given</h3>
+              <p class="stat-number" id="totalGivenCount">0</p>
+            </div>
+          </div>
+          <div class="stat-card">
+            <div class="stat-icon">
+              <i class="fas fa-star"></i>
+            </div>
+            <div class="stat-content">
+              <h3>This Week</h3>
+              <p class="stat-number" id="weeklyCount">0</p>
+            </div>
+          </div>
+          <div class="stat-card">
+            <div class="stat-icon">
+              <i class="fas fa-users"></i>
+            </div>
+            <div class="stat-content">
+              <h3>Students Helped</h3>
+              <p class="stat-number" id="studentsHelpedCount">0</p>
+            </div>
+          </div>
+          <div class="stat-card">
+            <div class="stat-icon">
+              <i class="fas fa-clock"></i>
+            </div>
+            <div class="stat-content">
+              <h3>Pending Responses</h3>
+              <p class="stat-number" id="pendingCount">0</p>
+            </div>
+          </div>
+        </div>
+
+        <!-- Search and Filter -->
+        <div class="card">
+          <div class="search-filter-section">
+            <div class="search-box">
+              <i class="fas fa-search"></i>
+              <input type="text" id="feedbackSearchInput" placeholder="Search feedback by student, project, or content..." onkeyup="filterFeedback()">
+            </div>
+            <div class="filter-dropdown">
+              <select id="typeFilter" onchange="filterFeedback()">
+                <option value="all">All Types</option>
+                <option value="proposal">Proposal</option>
+                <option value="report">Report</option>
+                <option value="meeting">Meeting</option>
+                <option value="general">General</option>
+              </select>
+            </div>
+            <div class="filter-dropdown">
+              <select id="ratingFilter" onchange="filterFeedback()">
+                <option value="all">All Ratings</option>
+                <option value="5">5 Stars</option>
+                <option value="4">4 Stars</option>
+                <option value="3">3 Stars</option>
+                <option value="2">2 Stars</option>
+                <option value="1">1 Star</option>
+              </select>
+            </div>
+            <div class="filter-dropdown">
+              <select id="dateFilter" onchange="filterFeedback()">
+                <option value="all">All Dates</option>
+                <option value="today">Today</option>
+                <option value="week">This Week</option>
+                <option value="month">This Month</option>
+              </select>
+            </div>
+          </div>
+        </div>
+
+        <!-- Feedback Tabs -->
+        <div class="card">
+          <div class="feedback-tabs">
+            <button class="tab-btn active" onclick="switchTab('given')">Given Feedback</button>
+            <button class="tab-btn" onclick="switchTab('received')">Received Feedback</button>
+            <button class="tab-btn" onclick="switchTab('pending')">Pending Responses</button>
+          </div>
+          
+          <!-- Given Feedback Tab -->
+          <div id="givenTab" class="tab-content active">
+            <div class="feedback-list-container" id="givenFeedbackContainer">
+              <p style="color: #6c757d; text-align: center; padding: 40px;">Loading feedback...</p>
+            </div>
+          </div>
+          
+          <!-- Received Feedback Tab -->
+          <div id="receivedTab" class="tab-content">
+            <div class="feedback-list-container" id="receivedFeedbackContainer">
+              <p style="color: #6c757d; text-align: center; padding: 40px;">Loading feedback...</p>
+            </div>
+          </div>
+          
+          <!-- Pending Responses Tab -->
+          <div id="pendingTab" class="tab-content">
+            <div class="feedback-list-container" id="pendingFeedbackContainer">
+              <p style="color: #6c757d; text-align: center; padding: 40px;">Loading pending responses...</p>
+            </div>
+          </div>
+        </div>
+      </div>
+    </main>
+  </div>
+
+  <!-- New Feedback Modal -->
+  <div id="newFeedbackModal" class="modal">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h3>Give Feedback</h3>
+        <span class="close" onclick="closeNewFeedbackModal()">&times;</span>
+      </div>
+      <div class="modal-body">
+        <form id="newFeedbackForm">
+          <div class="form-group">
+            <label for="feedbackStudent">Student</label>
+            <select id="feedbackStudent" required>
+              <option value="">Select Student</option>
+            </select>
+          </div>
+          <div class="form-group">
+            <label for="feedbackType">Feedback Type</label>
+            <select id="feedbackType" required>
+              <option value="">Select Type</option>
+              <option value="proposal">Proposal Feedback</option>
+              <option value="report">Report Feedback</option>
+              <option value="meeting">Meeting Feedback</option>
+              <option value="general">General Feedback</option>
+            </select>
+          </div>
+          <div class="form-group">
+            <label for="feedbackProject">Related Project (Optional)</label>
+            <select id="feedbackProject">
+              <option value="">Select Project</option>
+            </select>
+          </div>
+          <div class="form-group">
+            <label for="feedbackRating">Rating</label>
+            <div class="rating-input" id="ratingInput">
+              <i class="fas fa-star" data-rating="1"></i>
+              <i class="fas fa-star" data-rating="2"></i>
+              <i class="fas fa-star" data-rating="3"></i>
+              <i class="fas fa-star" data-rating="4"></i>
+              <i class="fas fa-star" data-rating="5"></i>
+            </div>
+            <input type="hidden" id="feedbackRating" value="0" required>
+          </div>
+          <div class="form-group">
+            <label for="feedbackMessage">Feedback Message</label>
+            <textarea id="feedbackMessage" rows="6" placeholder="Provide detailed feedback..." required></textarea>
+          </div>
+          <div class="form-group">
+            <label for="feedbackSuggestions">Suggestions for Improvement</label>
+            <textarea id="feedbackSuggestions" rows="4" placeholder="Specific suggestions for improvement..."></textarea>
+          </div>
+          <div class="form-group">
+            <label>
+              <input type="checkbox" id="feedbackPrivate"> Private Feedback (only visible to student)
+            </label>
+          </div>
+          <div class="form-actions">
+            <button type="button" class="btn btn-secondary" onclick="closeNewFeedbackModal()">Cancel</button>
+            <button type="submit" class="btn btn-primary">Send Feedback</button>
+          </div>
+        </form>
+      </div>
+    </div>
+  </div>
+
+  <!-- Feedback Details Modal -->
+  <div id="feedbackDetailsModal" class="modal">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h3>Feedback Details</h3>
+        <span class="close" onclick="closeFeedbackDetailsModal()">&times;</span>
+      </div>
+      <div class="modal-body" id="feedbackDetailsContent">
+        <!-- Content will be loaded dynamically -->
+      </div>
+    </div>
+  </div>
+
+</body>
+</html>

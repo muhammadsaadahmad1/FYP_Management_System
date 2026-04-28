@@ -1,0 +1,784 @@
+/* =========================
+   SUPERVISOR PAGES SHARED STYLES
+========================= */
+
+/* Search and Filter Section */
+.search-filter-section {
+  display: flex;
+  gap: 15px;
+  align-items: center;
+  flex-wrap: wrap;
+}
+
+.search-box {
+  flex: 1;
+  min-width: 250px;
+  position: relative;
+}
+
+.search-box i {
+  position: absolute;
+  left: 12px;
+  top: 50%;
+  transform: translateY(-50%);
+  color: #9ca3af;
+}
+
+.search-box input {
+  width: 100%;
+  padding: 10px 12px 10px 40px;
+  border: 1px solid #e5e7eb;
+  border-radius: 8px;
+  font-size: 14px;
+  transition: border-color 0.2s ease, box-shadow 0.2s ease;
+}
+
+.search-box input:focus {
+  outline: none;
+  border-color: #2563eb;
+  box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.1);
+}
+
+.filter-dropdown select {
+  padding: 10px 15px;
+  border: 1px solid #e5e7eb;
+  border-radius: 8px;
+  font-size: 14px;
+  background: white;
+  cursor: pointer;
+  min-width: 150px;
+}
+
+.filter-dropdown select:focus {
+  outline: none;
+  border-color: #2563eb;
+}
+
+/* =========================
+   PROPOSALS PAGE STYLES
+========================= */
+
+.proposals-list-container {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(380px, 1fr));
+  gap: 20px;
+}
+
+.proposal-card {
+  background: #ffffff;
+  border: 1px solid #e5e7eb;
+  border-radius: 12px;
+  padding: 20px;
+  transition: transform 0.2s ease, box-shadow 0.2s ease;
+}
+
+.proposal-card:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 8px 20px rgba(0, 0, 0, 0.1);
+}
+
+.proposal-card-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  margin-bottom: 15px;
+}
+
+.proposal-info h4 {
+  margin: 0 0 5px 0;
+  font-size: 18px;
+  color: #1f2937;
+}
+
+.proposal-id {
+  font-size: 12px;
+  color: #9ca3af;
+}
+
+.proposal-card-body {
+  margin-bottom: 15px;
+}
+
+.proposal-detail {
+  display: flex;
+  align-items: flex-start;
+  gap: 12px;
+  margin-bottom: 12px;
+}
+
+.proposal-detail i {
+  width: 20px;
+  text-align: center;
+  color: #6b7280;
+  margin-top: 3px;
+}
+
+.proposal-detail label {
+  display: block;
+  font-size: 12px;
+  color: #9ca3af;
+  margin-bottom: 2px;
+}
+
+.proposal-detail p {
+  margin: 0;
+  font-size: 14px;
+  color: #4b5563;
+}
+
+.proposal-description {
+  margin-bottom: 15px;
+  padding: 12px;
+  background: #f8fafc;
+  border-radius: 8px;
+}
+
+.proposal-description p {
+  margin: 0;
+  font-size: 14px;
+  color: #6b7280;
+  line-height: 1.5;
+}
+
+.proposal-card-actions {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.proposal-card-actions .btn {
+  flex: 1;
+  min-width: 100px;
+  padding: 8px 12px;
+  font-size: 13px;
+}
+
+/* =========================
+   MEETINGS PAGE STYLES
+========================= */
+
+.meetings-list-container {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(380px, 1fr));
+  gap: 20px;
+}
+
+.meeting-card {
+  background: #ffffff;
+  border: 1px solid #e5e7eb;
+  border-radius: 12px;
+  padding: 20px;
+  transition: transform 0.2s ease, box-shadow 0.2s ease;
+}
+
+.meeting-card:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 8px 20px rgba(0, 0, 0, 0.1);
+}
+
+.meeting-card-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  margin-bottom: 15px;
+}
+
+.meeting-info h4 {
+  margin: 0 0 5px 0;
+  font-size: 18px;
+  color: #1f2937;
+}
+
+.meeting-id {
+  font-size: 12px;
+  color: #9ca3af;
+}
+
+.meeting-card-body {
+  margin-bottom: 15px;
+}
+
+.meeting-detail {
+  display: flex;
+  align-items: flex-start;
+  gap: 12px;
+  margin-bottom: 12px;
+}
+
+.meeting-detail i {
+  width: 20px;
+  text-align: center;
+  color: #6b7280;
+  margin-top: 3px;
+}
+
+.meeting-detail label {
+  display: block;
+  font-size: 12px;
+  color: #9ca3af;
+  margin-bottom: 2px;
+}
+
+.meeting-detail p {
+  margin: 0;
+  font-size: 14px;
+  color: #4b5563;
+}
+
+.meeting-agenda {
+  margin-bottom: 15px;
+  padding: 12px;
+  background: #f8fafc;
+  border-radius: 8px;
+}
+
+.meeting-agenda p {
+  margin: 0;
+  font-size: 14px;
+  color: #6b7280;
+  line-height: 1.5;
+}
+
+.meeting-card-actions {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.meeting-card-actions .btn {
+  flex: 1;
+  min-width: 90px;
+  padding: 8px 12px;
+  font-size: 13px;
+}
+
+/* Form row for date and time */
+.form-row {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 15px;
+}
+
+/* =========================
+   REPORTS PAGE STYLES
+========================= */
+
+.reports-list-container {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(380px, 1fr));
+  gap: 20px;
+}
+
+.report-card {
+  background: #ffffff;
+  border: 1px solid #e5e7eb;
+  border-radius: 12px;
+  padding: 20px;
+  transition: transform 0.2s ease, box-shadow 0.2s ease;
+}
+
+.report-card:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 8px 20px rgba(0, 0, 0, 0.1);
+}
+
+.report-card-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  margin-bottom: 15px;
+}
+
+.report-info h4 {
+  margin: 0 0 5px 0;
+  font-size: 18px;
+  color: #1f2937;
+}
+
+.report-id {
+  font-size: 12px;
+  color: #9ca3af;
+}
+
+.report-card-body {
+  margin-bottom: 15px;
+}
+
+.report-detail {
+  display: flex;
+  align-items: flex-start;
+  gap: 12px;
+  margin-bottom: 12px;
+}
+
+.report-detail i {
+  width: 20px;
+  text-align: center;
+  color: #6b7280;
+  margin-top: 3px;
+}
+
+.report-detail label {
+  display: block;
+  font-size: 12px;
+  color: #9ca3af;
+  margin-bottom: 2px;
+}
+
+.report-detail p {
+  margin: 0;
+  font-size: 14px;
+  color: #4b5563;
+}
+
+.report-attachments {
+  margin-bottom: 15px;
+  padding: 12px;
+  background: #f8fafc;
+  border-radius: 8px;
+}
+
+.attachment-preview {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  font-size: 14px;
+  color: #4b5563;
+}
+
+.attachment-preview i {
+  color: #dc2626;
+}
+
+.report-card-actions {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.report-card-actions .btn {
+  flex: 1;
+  min-width: 100px;
+  padding: 8px 12px;
+  font-size: 13px;
+}
+
+/* Attachments list */
+.attachments-list {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.attachment-item {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 10px;
+  background: #f8fafc;
+  border-radius: 8px;
+  font-size: 14px;
+}
+
+.attachment-item i {
+  color: #dc2626;
+  margin-right: 10px;
+}
+
+/* =========================
+   FEEDBACK PAGE STYLES
+========================= */
+
+.feedback-tabs {
+  display: flex;
+  border-bottom: 1px solid #e5e7eb;
+  margin-bottom: 20px;
+}
+
+.tab-btn {
+  padding: 12px 24px;
+  background: none;
+  border: none;
+  border-bottom: 2px solid transparent;
+  cursor: pointer;
+  font-size: 14px;
+  color: #6b7280;
+  transition: all 0.2s ease;
+}
+
+.tab-btn:hover {
+  color: #2563eb;
+}
+
+.tab-btn.active {
+  color: #2563eb;
+  border-bottom-color: #2563eb;
+}
+
+.tab-content {
+  display: none;
+}
+
+.tab-content.active {
+  display: block;
+}
+
+.feedback-list-container {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(380px, 1fr));
+  gap: 20px;
+}
+
+.feedback-card {
+  background: #ffffff;
+  border: 1px solid #e5e7eb;
+  border-radius: 12px;
+  padding: 20px;
+  transition: transform 0.2s ease, box-shadow 0.2s ease;
+}
+
+.feedback-card:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 8px 20px rgba(0, 0, 0, 0.1);
+}
+
+.feedback-card.received {
+  border-left: 4px solid #10b981;
+}
+
+.feedback-card.pending {
+  border-left: 4px solid #f59e0b;
+}
+
+.feedback-card-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  margin-bottom: 15px;
+}
+
+.feedback-info h4 {
+  margin: 0 0 5px 0;
+  font-size: 18px;
+  color: #1f2937;
+}
+
+.feedback-date {
+  font-size: 12px;
+  color: #9ca3af;
+}
+
+.feedback-rating {
+  display: flex;
+  gap: 2px;
+}
+
+.feedback-rating .fa-star {
+  color: #d1d5db;
+  font-size: 16px;
+}
+
+.feedback-rating .fa-star.active {
+  color: #fbbf24;
+}
+
+.feedback-card-body {
+  margin-bottom: 15px;
+}
+
+.feedback-detail {
+  display: flex;
+  align-items: flex-start;
+  gap: 12px;
+  margin-bottom: 12px;
+}
+
+.feedback-detail i {
+  width: 20px;
+  text-align: center;
+  color: #6b7280;
+  margin-top: 3px;
+}
+
+.feedback-detail label {
+  display: block;
+  font-size: 12px;
+  color: #9ca3af;
+  margin-bottom: 2px;
+}
+
+.feedback-detail p {
+  margin: 0;
+  font-size: 14px;
+  color: #4b5563;
+}
+
+.feedback-message {
+  margin-bottom: 15px;
+  padding: 12px;
+  background: #f8fafc;
+  border-radius: 8px;
+}
+
+.feedback-message p {
+  margin: 0;
+  font-size: 14px;
+  color: #6b7280;
+  line-height: 1.5;
+}
+
+.feedback-suggestions {
+  margin-bottom: 15px;
+  padding: 12px;
+  background: #fef3c7;
+  border-radius: 8px;
+  border-left: 3px solid #f59e0b;
+}
+
+.feedback-suggestions h5 {
+  margin: 0 0 8px 0;
+  font-size: 14px;
+  color: #92400e;
+}
+
+.feedback-suggestions p {
+  margin: 0;
+  font-size: 14px;
+  color: #78350f;
+  line-height: 1.5;
+}
+
+.feedback-card-actions {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.feedback-card-actions .btn {
+  flex: 1;
+  min-width: 90px;
+  padding: 8px 12px;
+  font-size: 13px;
+}
+
+/* Rating input */
+.rating-input {
+  display: flex;
+  gap: 5px;
+  margin-bottom: 10px;
+}
+
+.rating-input .fa-star {
+  font-size: 24px;
+  color: #d1d5db;
+  cursor: pointer;
+  transition: color 0.2s ease;
+}
+
+.rating-input .fa-star:hover,
+.rating-input .fa-star.active {
+  color: #fbbf24;
+}
+
+/* =========================
+   MODAL STYLES
+========================= */
+
+.modal {
+  display: none;
+  position: fixed;
+  z-index: 1000;
+  left: 0;
+  top: 0;
+  width: 100%;
+  height: 100%;
+  background-color: rgba(0, 0, 0, 0.5);
+}
+
+.modal-content {
+  background-color: #ffffff;
+  margin: 5% auto;
+  padding: 0;
+  border-radius: 12px;
+  width: 90%;
+  max-width: 600px;
+  max-height: 90vh;
+  overflow-y: auto;
+}
+
+.modal-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 20px;
+  border-bottom: 1px solid #e5e7eb;
+}
+
+.modal-header h3 {
+  margin: 0;
+  font-size: 20px;
+  color: #1f2937;
+}
+
+.close {
+  color: #6b7280;
+  font-size: 28px;
+  font-weight: bold;
+  cursor: pointer;
+  line-height: 1;
+}
+
+.close:hover {
+  color: #374151;
+}
+
+.modal-body {
+  padding: 20px;
+}
+
+/* Form styles */
+.form-group {
+  margin-bottom: 20px;
+}
+
+.form-group label {
+  display: block;
+  margin-bottom: 8px;
+  font-weight: 500;
+  color: #374151;
+}
+
+.form-group input,
+.form-group select,
+.form-group textarea {
+  width: 100%;
+  padding: 10px 12px;
+  border: 1px solid #e5e7eb;
+  border-radius: 8px;
+  font-size: 14px;
+  transition: border-color 0.2s ease, box-shadow 0.2s ease;
+}
+
+.form-group input:focus,
+.form-group select:focus,
+.form-group textarea:focus {
+  outline: none;
+  border-color: #2563eb;
+  box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.1);
+}
+
+.form-actions {
+  display: flex;
+  gap: 12px;
+  justify-content: flex-end;
+  margin-top: 24px;
+}
+
+/* Detail grid */
+.detail-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+  gap: 15px;
+}
+
+.detail-item {
+  padding: 12px;
+  background: #f8fafc;
+  border-radius: 8px;
+}
+
+.detail-item label {
+  display: block;
+  font-size: 12px;
+  color: #6b7280;
+  margin-bottom: 4px;
+}
+
+.detail-item p {
+  margin: 0;
+  font-size: 14px;
+  color: #1f2937;
+}
+
+/* Review sections */
+.review-section {
+  margin-bottom: 24px;
+}
+
+.review-section h4 {
+  margin: 0 0 12px 0;
+  font-size: 16px;
+  color: #1f2937;
+}
+
+/* Details sections */
+.details-section {
+  margin-bottom: 24px;
+}
+
+.details-section h4 {
+  margin: 0 0 12px 0;
+  font-size: 16px;
+  color: #1f2937;
+}
+
+/* Empty state */
+.empty-state {
+  text-align: center;
+  padding: 60px 20px;
+}
+
+.empty-state h4 {
+  margin: 15px 0 8px 0;
+  color: #6b7280;
+  font-size: 18px;
+}
+
+/* Responsive */
+@media (max-width: 768px) {
+  .proposals-list-container,
+  .meetings-list-container,
+  .reports-list-container,
+  .feedback-list-container {
+    grid-template-columns: 1fr;
+  }
+  
+  .search-filter-section {
+    flex-direction: column;
+  }
+  
+  .search-box {
+    width: 100%;
+  }
+  
+  .form-row {
+    grid-template-columns: 1fr;
+  }
+  
+  .feedback-tabs {
+    overflow-x: auto;
+  }
+  
+  .detail-grid {
+    grid-template-columns: 1fr;
+  }
+  
+  .modal-content {
+    margin: 10% auto;
+    width: 95%;
+  }
+  
+  .proposal-card-actions,
+  .meeting-card-actions,
+  .report-card-actions,
+  .feedback-card-actions {
+    flex-direction: column;
+  }
+  
+  .proposal-card-actions .btn,
+  .meeting-card-actions .btn,
+  .report-card-actions .btn,
+  .feedback-card-actions .btn {
+    width: 100%;
+  }
+}

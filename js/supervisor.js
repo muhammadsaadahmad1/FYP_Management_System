@@ -162,18 +162,18 @@ async function loadPendingReviews(supervisorId) {
     const proposalsSnapshot = await db.collection('proposals')
       .where('supervisorId', '==', supervisorId)
       .where('status', '==', 'pending_supervisor')
-      .count().get();
+      .get();
     
     // Get pending reports count
     const reportsSnapshot = await db.collection('reports')
       .where('supervisorId', '==', supervisorId)
       .where('status', '==', 'pending_review')
-      .count().get();
+      .get();
     
     return {
-      proposals: proposalsSnapshot.data().count || 0,
-      reports: reportsSnapshot.data().count || 0,
-      total: (proposalsSnapshot.data().count || 0) + (reportsSnapshot.data().count || 0)
+      proposals: proposalsSnapshot.size || 0,
+      reports: reportsSnapshot.size || 0,
+      total: (proposalsSnapshot.size || 0) + (reportsSnapshot.size || 0)
     };
   } catch (error) {
     console.error('Error loading pending reviews:', error);

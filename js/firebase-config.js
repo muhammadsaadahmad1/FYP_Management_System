@@ -28,21 +28,36 @@ try {
   db = firebase.firestore();
   storage = firebase.storage();
 
-  // Enable offline persistence for Firestore with better error handling
+  // Enable offline persistence for Firestore using new API with better error handling
   if (db) {
-    db.enablePersistence()
-      .then(() => {
-        console.log('Firestore offline persistence enabled');
-      })
-      .catch((err) => {
-        if (err.code === 'failed-precondition') {
-          console.log('Multiple tabs open, persistence can only be enabled in one tab at a time.');
-        } else if (err.code === 'unimplemented') {
-          console.log('The current browser does not support persistence.');
-        } else {
-          console.log('Persistence error:', err);
-        }
+    // Try the new cache API first (recommended)
+    try {
+      db.settings({
+        cacheSizeBytes: firebase.firestore.CACHE_SIZE_UNLIMITED
       });
+      db.enableNetwork()
+        .then(() => {
+          console.log('Firestore cache configured and network enabled');
+        })
+        .catch((err) => {
+          console.log('Network enable error:', err);
+        });
+    } catch (settingsErr) {
+      // Fallback to the old persistence method if settings API fails
+      db.enablePersistence()
+        .then(() => {
+          console.log('Firestore offline persistence enabled (legacy method)');
+        })
+        .catch((err) => {
+          if (err.code === 'failed-precondition') {
+            console.log('Multiple tabs open, persistence can only be enabled in one tab at a time.');
+          } else if (err.code === 'unimplemented') {
+            console.log('The current browser does not support persistence.');
+          } else {
+            console.log('Persistence error:', err);
+          }
+        });
+    }
   }
 
   // Set up auth state listener
