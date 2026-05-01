@@ -1079,8 +1079,26 @@
         
         <!-- Admin Fields -->
         <div id="adminFields" class="role-fields" style="display: none;">
-          <input type="text" id="adminId" placeholder="Admin ID" oninput="validateField(this)">
-          <input type="text" id="office" placeholder="Office Location" oninput="validateField(this)">
+          <input type="text" id="adminFullName" placeholder="Full Name" oninput="validateField(this)">
+          <input type="text" id="adminEmployeeId" placeholder="Employee ID" oninput="validateField(this)">
+          <input type="email" id="adminEmail" placeholder="_________@aup.edu.pk" oninput="validateField(this)">
+          
+          <!-- University Card Upload -->
+          <div class="file-upload-container" style="margin-bottom: 14px;">
+            <label for="universityCard" style="display: block; font-size: 13px; color: #64748b; margin-bottom: 6px; font-weight: 600;">
+              University ID Card <span style="color: #ef4444;">*</span>
+            </label>
+            <input type="file" id="universityCard" accept="image/*,.pdf" onchange="handleAdminFileUpload(this)" style="display: none;">
+            <div class="upload-box" id="universityCardUploadBox" onclick="document.getElementById('universityCard').click()" style="border: 2px dashed #cbd5e1; border-radius: 10px; padding: 20px; text-align: center; cursor: pointer; transition: all 0.3s ease; background: #f8fafc;">
+              <div class="upload-icon" style="font-size: 32px; margin-bottom: 8px;">📄</div>
+              <p style="margin: 0; font-size: 14px; color: #475569; font-weight: 500;">Click to upload University ID Card</p>
+              <p style="margin: 4px 0 0 0; font-size: 12px; color: #64748b;">JPG, PNG, or PDF (Max 5MB)</p>
+            </div>
+            <div id="universityCardPreview" style="display: none; margin-top: 10px; padding: 10px; background: #f0fdf4; border-radius: 8px; border: 1px solid #86efac;">
+              <span style="color: #166534; font-size: 13px;">✓ File selected</span>
+              <span id="universityCardName" style="color: #15803d; font-size: 13px; font-weight: 600; margin-left: 8px;"></span>
+            </div>
+          </div>
           
           <div class="phone-input">
             <select id="countryCodeAdmin" class="country-code">
@@ -1091,6 +1109,13 @@
               <option value="+971">🇦🇪 +971</option>
             </select>
             <input type="tel" id="phoneAdmin" placeholder="Phone Number" oninput="validateField(this)">
+          </div>
+          
+          <!-- Admin Password Info -->
+          <div class="password-info-box" style="background: #eff6ff; border: 1px solid #bfdbfe; border-radius: 8px; padding: 12px; margin-top: 12px;">
+            <p style="margin: 0; font-size: 12px; color: #1e40af; line-height: 1.5;">
+              <strong>Password Requirements:</strong> Minimum 6 characters.
+            </p>
           </div>
         </div>
       </div>
@@ -2118,77 +2143,148 @@ async function registerAdmin() {
   try {
     console.log('Registering admin...');
     
-    const adminId = document.getElementById('adminId').value;
-    const office = document.getElementById('office').value;
+    // Get all admin field values
+    const fullName = document.getElementById('adminFullName').value.trim();
+    const employeeId = document.getElementById('adminEmployeeId').value.trim();
+    const email = document.getElementById('adminEmail').value.trim();
     const phone = (document.getElementById('countryCodeAdmin').value || '+92') + (document.getElementById('phoneAdmin').value || '');
     const password = document.getElementById('password').value;
     
+    // Get uploaded file
+    const universityCardFile = document.getElementById('universityCard').files[0];
+    
     // Validate required fields
-    if (!adminId || !office || !password) {
+    if (!fullName || !employeeId || !email || !password) {
       throw new Error('Please fill in all required fields');
     }
     
-    // Create Firebase Auth account with admin email
-    const adminEmail = `admin${adminId}@fyp.aup.edu.pk`;
-    const userCredential = await firebase.auth().createUserWithEmailAndPassword(adminEmail, password);
+    // Validate email domain (must be @aup.edu.pk)
+    if (!email.endsWith('@aup.edu.pk')) {
+      throw new Error('Please use your university email (@aup.edu.pk)');
+    }
+    
+    // Validate password (same as students/supervisors - min 6 characters)
+    if (!password || password.length < 6) {
+      throw new Error('Password must be at least 6 characters');
+    }
+    
+    // Validate university card upload
+    if (!universityCardFile) {
+      throw new Error('Please upload your University ID Card for verification');
+    }
+    
+    // Validate file size (max 5MB)
+    if (universityCardFile.size > 5 * 1024 * 1024) {
+      throw new Error('University ID Card file size must be less than 5MB');
+    }
+    
+    // Check if email already exists
+    const emailQuery = await firebase.firestore().collection('users')
+      .where('email', '==', email)
+      .limit(1)
+      .get();
+    
+    if (!emailQuery.empty) {
+      throw new Error('This email is already registered. Please use a different email.');
+    }
+    
+    // Check if employee ID already exists
+    const employeeQuery = await firebase.firestore().collection('users')
+      .where('employeeId', '==', employeeId)
+      .where('role', '==', 'admin')
+      .limit(1)
+      .get();
+    
+    if (!employeeQuery.empty) {
+      throw new Error('This Employee ID is already registered.');
+    }
+    
+    // Create Firebase Auth account with real email
+    const userCredential = await firebase.auth().createUserWithEmailAndPassword(email, password);
     const user = userCredential.user;
     
     // Update user profile
     await user.updateProfile({
-      displayName: `Admin ${adminId}`
+      displayName: fullName
     });
     
     // Send email verification
     await user.sendEmailVerification();
     
-    // Store admin data in Firestore
-    const adminData = {
-      uid: user.uid,
-      adminId: adminId,
-      email: adminEmail,
-      phone: phone,
-      office: office,
-      status: 'active',
-      registeredAt: new Date().toISOString(),
-      role: 'admin',
-      isActive: true
-    };
-    
+    // Upload university card to Firebase Storage
+    let universityCardUrl = null;
     try {
-      await firebase.firestore().collection('admins').doc(user.uid).set(adminData);
-      console.log('Admin document created successfully');
-    } catch (adminError) {
-      console.error('Error creating admin document:', adminError);
-      // If admins collection fails, try to write to users only as fallback
-      const fallbackAdminData = {
-        ...adminData,
-        isAdmin: true,
-        registrationType: 'admin'
-      };
-      await firebase.firestore().collection('users').doc(user.uid).set(fallbackAdminData);
-      console.log('Admin data stored in users collection as fallback');
+      const storageRef = firebase.storage().ref();
+      const fileRef = storageRef.child(`admin_documents/${user.uid}/university_card_${Date.now()}`);
+      await fileRef.put(universityCardFile);
+      universityCardUrl = await fileRef.getDownloadURL();
+      console.log('University card uploaded successfully');
+    } catch (uploadError) {
+      console.error('Error uploading university card:', uploadError);
+      // Continue without the file but log the error
     }
     
-    // Also create user document for authentication purposes
+    // Store admin data in Firestore - PRIMARY: users collection (for auth consistency)
     const userData = {
       uid: user.uid,
-      email: adminEmail,
-      loginId: adminId, // Use admin ID as login ID
-      displayName: `Admin ${adminId}`,
+      email: email,
+      loginId: employeeId, // Use employee ID as login ID
+      displayName: fullName,
+      employeeId: employeeId,
+      phone: phone,
+      universityCardUrl: universityCardUrl,
       role: 'admin',
+      status: 'pending_approval',
+      isActive: false,
+      isAdmin: true,
+      registrationType: 'admin',
+      approvedBy: null,
+      approvedAt: null,
       createdAt: firebase.firestore.FieldValue.serverTimestamp(),
-      isActive: true
+      registeredAt: new Date().toISOString()
     };
     
     try {
       await firebase.firestore().collection('users').doc(user.uid).set(userData);
-      console.log('User document created successfully');
+      console.log('User document created successfully in users collection');
     } catch (userError) {
       console.error('Error creating user document:', userError);
-      throw new Error('Failed to create user account. Please check your Firebase permissions.');
+      // If users collection fails, delete the auth user to maintain consistency
+      try {
+        await user.delete();
+      } catch (deleteError) {
+        console.error('Error deleting auth user after failed Firestore write:', deleteError);
+      }
+      throw new Error('Failed to create user account in database. Please check your Firebase permissions or try again.');
     }
     
-    alert(`Admin Registration Successful!\n\nWelcome, Admin ${adminId}!\n\nYour account has been created and activated.\n\nLogin ID: ${adminId}\nEmail: ${adminEmail}\n\nPlease check your email for verification.\n\nRedirecting to login page...`);
+    // SECONDARY: Also store in admins collection for admin-specific queries (best effort)
+    try {
+      const adminData = {
+        uid: user.uid,
+        fullName: fullName,
+        employeeId: employeeId,
+        email: email,
+        phone: phone,
+        universityCardUrl: universityCardUrl,
+        status: 'pending_approval',
+        registeredAt: new Date().toISOString(),
+        role: 'admin',
+        isActive: false,
+        approvedBy: null,
+        approvedAt: null
+      };
+      await firebase.firestore().collection('admins').doc(user.uid).set(adminData);
+      console.log('Admin document created successfully in admins collection');
+    } catch (adminError) {
+      // This is non-critical - log but don't fail
+      console.warn('Could not create admins collection document (non-critical):', adminError);
+    }
+    
+    // Notify super-admins about new admin registration
+    await notifySuperAdminsAboutNewAdmin(fullName, employeeId, email);
+    
+    alert(`Admin Registration Submitted!\n\nWelcome, ${fullName}!\n\nYour application has been submitted for approval.\n\nEmployee ID: ${employeeId}\nEmail: ${email}\n\nPlease check your email for verification.\nYou will be notified once your account is approved by a super-admin.\n\nRedirecting to login page...`);
     
     // Redirect to login
     window.location.href = 'login.html';
@@ -2198,14 +2294,87 @@ async function registerAdmin() {
     let errorMessage = 'Admin registration failed. Please try again.';
     
     if (error.code === 'auth/email-already-in-use') {
-      errorMessage = 'This admin ID is already registered. Please use a different admin ID.';
+      errorMessage = 'This email is already registered. Please use a different email.';
     } else if (error.code === 'auth/weak-password') {
       errorMessage = 'Password is too weak. Please choose a stronger password.';
+    } else if (error.code === 'auth/invalid-email') {
+      errorMessage = 'Invalid email format. Please enter a valid email address.';
     } else {
       errorMessage = error.message;
     }
     
     throw new Error(errorMessage);
+  }
+}
+
+// Handle admin file upload preview
+function handleAdminFileUpload(input) {
+  const file = input.files[0];
+  if (file) {
+    // Validate file size (5MB max)
+    if (file.size > 5 * 1024 * 1024) {
+      alert('File size must be less than 5MB');
+      input.value = '';
+      return;
+    }
+    
+    // Validate file type
+    const allowedTypes = ['image/jpeg', 'image/png', 'image/jpg', 'application/pdf'];
+    if (!allowedTypes.includes(file.type)) {
+      alert('Please upload a JPG, PNG, or PDF file');
+      input.value = '';
+      return;
+    }
+    
+    // Show preview
+    const previewDiv = document.getElementById('universityCardPreview');
+    const fileNameSpan = document.getElementById('universityCardName');
+    
+    previewDiv.style.display = 'block';
+    fileNameSpan.textContent = file.name;
+    
+    // Change upload box style to show success
+    const uploadBox = document.getElementById('universityCardUploadBox');
+    uploadBox.style.borderColor = '#10b981';
+    uploadBox.style.background = '#f0fdf4';
+    
+    console.log('University card selected:', file.name);
+  }
+}
+
+// Notify super-admins about new admin registration
+async function notifySuperAdminsAboutNewAdmin(fullName, employeeId, email) {
+  try {
+    // Find all super-admins
+    const superAdminsSnapshot = await firebase.firestore().collection('users')
+      .where('role', '==', 'admin')
+      .where('adminRoleType', '==', 'system_admin')
+      .where('isActive', '==', true)
+      .get();
+    
+    // Create notifications for each super-admin
+    const notificationPromises = superAdminsSnapshot.docs.map(async (doc) => {
+      const superAdminId = doc.data().uid;
+      
+      return firebase.firestore().collection('notifications').add({
+        userId: superAdminId,
+        type: 'new_admin_application',
+        title: 'New Admin Registration Pending Approval',
+        message: `${fullName} (Employee ID: ${employeeId}) has registered as an admin and is awaiting your approval.`,
+        applicantEmail: email,
+        applicantEmployeeId: employeeId,
+        applicantName: fullName,
+        createdAt: new Date().toISOString(),
+        read: false,
+        actionRequired: true
+      });
+    });
+    
+    await Promise.all(notificationPromises);
+    console.log('Super-admins notified about new admin registration');
+  } catch (error) {
+    console.error('Error notifying super-admins:', error);
+    // Don't throw - this is not critical for registration
   }
 }
 
