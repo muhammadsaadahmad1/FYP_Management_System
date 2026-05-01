@@ -845,17 +845,17 @@ document.getElementById('submitProposalForm').addEventListener('submit', async f
       }
       return;
     }
-    
+
     const groupData = groupDoc.data();
     const supervisorId = groupData.supervisorId;
-    
+
     if (!supervisorId) {
       if (typeof showNotification !== 'undefined') {
         showNotification('No supervisor assigned to your group. Please contact administrator.', 'error');
       }
       return;
     }
-    
+
     console.log('✅ Automatic supervisor assignment:', supervisorId);
     
     // Show loading state
@@ -916,17 +916,19 @@ document.getElementById('submitProposalForm').addEventListener('submit', async f
     const proposalRef = await db.collection('proposals').add(proposalData);
     console.log('Proposal submitted successfully with ID:', proposalRef.id);
     
-    // Send notification to supervisor
-    await db.collection('notifications').add({
-      userId: supervisorId,
-      type: 'proposal_submitted',
-      title: 'New Proposal Submitted',
-      message: `A new proposal "${title}" has been submitted by ${groupData.groupName || 'your group'}.`,
-      proposalId: proposalRef.id,
-      groupId: groupId,
-      createdAt: new Date().toISOString(),
-      read: false
-    });
+    // Send notification to supervisor (only if supervisor is assigned)
+    if (supervisorId) {
+      await db.collection('notifications').add({
+        userId: supervisorId,
+        type: 'proposal_submitted',
+        title: 'New Proposal Submitted',
+        message: `A new proposal "${title}" has been submitted by ${groupData.groupName || 'your group'}.`,
+        proposalId: proposalRef.id,
+        groupId: groupId,
+        createdAt: new Date().toISOString(),
+        read: false
+      });
+    }
     
     // Send confirmation notification to student
     await db.collection('notifications').add({

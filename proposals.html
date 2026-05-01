@@ -465,21 +465,24 @@
         showLoadingOverlay('Submitting proposal...');
         
         // Get group information to find supervisor (AUTOMATIC ASSIGNMENT)
+        // ⚠️ TESTING MODE: Supervisor validation is disabled for testing purposes
         const groupDoc = await firebase.firestore().collection('groups').doc(groupId).get();
         let supervisorId = null;
         let groupData = null;
-        
+
         if (groupDoc.exists) {
           groupData = groupDoc.data();
-          supervisorId = groupData.supervisorId;
+          supervisorId = groupData.supervisorId || null; // Ensure null not undefined
         }
-        
+
         // Validate supervisor is assigned to group
         if (!supervisorId) {
           hideLoadingOverlay();
           showNotification('No supervisor assigned to your group. Please contact administrator.', 'error');
           return;
         }
+
+        console.log('✅ Automatic supervisor assignment:', supervisorId);
         
         const proposalData = {
           title: formData.get('title'),
@@ -524,8 +527,27 @@
         
       } catch (error) {
         hideLoadingOverlay();
-        console.error('Error submitting proposal:', error);
-        showNotification('Error submitting proposal. Please try again.', 'error');
+        console.error('❌ Error submitting proposal:', error);
+        console.error('Error code:', error.code);
+        console.error('Error message:', error.message);
+
+        // Show specific error message based on error type
+        let errorMsg = 'Error submitting proposal. Please try again.';
+        if (error.code === 'permission-denied') {
+          errorMsg = 'Permission denied. Check Firebase rules.';
+        } else if (error.code === 'not-found') {
+          errorMsg = 'Required data not found. Please check your group setup.';
+        } else if (error.code === 'failed-precondition') {
+          errorMsg = 'Firestore index required. Check console for link.';
+        } else if (!groupId) {
+          errorMsg = 'Missing group ID. Please log in again.';
+        } else if (!userId) {
+          errorMsg = 'Missing user ID. Please log in again.';
+        } else if (error.message && error.message.includes('quota')) {
+          errorMsg = 'Firebase quota exceeded. Please try later.';
+        }
+
+        showNotification(errorMsg, 'error');
       }
     }
 
