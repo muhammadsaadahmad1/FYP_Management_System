@@ -1,0 +1,429 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Proposals - Admin Dashboard | FYP Management System</title>
+  <link rel="stylesheet" href="css/style.css" />
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" />
+
+  <!-- Firebase SDK -->
+  <script src="https://www.gstatic.com/firebasejs/9.22.1/firebase-app-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/9.22.1/firebase-firestore-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/9.22.1/firebase-storage-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/9.22.1/firebase-auth-compat.js"></script>
+  
+  <!-- Firebase Configuration -->
+  <script src="js/firebase-config.js"></script>
+  <script src="js/firebase-auth.js"></script>
+  <script src="js/auth.js"></script>
+  <script src="js/admin-proposals.js"></script>
+  
+  <!-- Initialize Page -->
+  <script>
+    document.addEventListener('DOMContentLoaded', function() {
+      console.log('Admin Proposals Page Loaded');
+      
+      const waitForFirebase = () => {
+        if (typeof db !== 'undefined' && typeof auth !== 'undefined') {
+          console.log('Firebase is ready, loading admin proposals data...');
+          if (typeof loadAdminProposalsPage === 'function') {
+            loadAdminProposalsPage();
+          }
+        } else {
+          console.log('Waiting for Firebase to initialize...');
+          setTimeout(waitForFirebase, 500);
+        }
+      };
+      
+      setTimeout(waitForFirebase, 1000);
+    });
+  </script>
+  
+  <style>
+    .proposals-table { width: 100%; border-collapse: collapse; margin-top: 20px; }
+    .proposals-table th, .proposals-table td { 
+      padding: 12px; 
+      border-bottom: 1px solid #e5e7eb; 
+      text-align: left; 
+    }
+    .proposals-table th { background: #f5f8ff; color: #1e3a8a; font-weight: 600; }
+    .proposals-table tr:hover { background: #f9fafb; }
+    
+    .status-badge {
+      padding: 4px 12px;
+      border-radius: 20px;
+      font-size: 12px;
+      font-weight: 600;
+    }
+    .status-pending { background: #fef3c7; color: #92400e; }
+    .status-assigned { background: #dbeafe; color: #1e40af; }
+    .status-approved { background: #d1fae5; color: #065f46; }
+    .status-rejected { background: #fee2e2; color: #991b1b; }
+    
+    .action-btn {
+      padding: 6px 12px;
+      border: none;
+      border-radius: 6px;
+      cursor: pointer;
+      font-size: 12px;
+      margin-right: 5px;
+    }
+    .btn-assign { background: #3b82f6; color: white; }
+    .btn-view { background: #6b7280; color: white; }
+    .btn-approve { background: #10b981; color: white; }
+    
+    .supervisor-select {
+      padding: 6px 10px;
+      border: 1px solid #d1d5db;
+      border-radius: 6px;
+      font-size: 12px;
+    }
+    
+    .stats-row {
+      display: grid;
+      grid-template-columns: repeat(4, 1fr);
+      gap: 20px;
+      margin-bottom: 30px;
+    }
+    
+    .stat-card {
+      background: white;
+      padding: 20px;
+      border-radius: 12px;
+      box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+      display: flex;
+      align-items: center;
+      gap: 15px;
+    }
+    
+    .stat-icon {
+      width: 50px;
+      height: 50px;
+      border-radius: 10px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 20px;
+    }
+    
+    .stat-content h3 {
+      font-size: 14px;
+      color: #6b7280;
+      margin: 0 0 5px 0;
+    }
+    
+    .stat-number {
+      font-size: 24px;
+      font-weight: 700;
+      color: #111827;
+      margin: 0;
+    }
+    
+    .search-filter-section {
+      display: flex;
+      gap: 15px;
+      margin-bottom: 20px;
+      flex-wrap: wrap;
+    }
+    
+    .search-box {
+      flex: 1;
+      min-width: 250px;
+      position: relative;
+    }
+    
+    .search-box input {
+      width: 100%;
+      padding: 10px 15px 10px 40px;
+      border: 1px solid #d1d5db;
+      border-radius: 8px;
+      font-size: 14px;
+    }
+    
+    .search-box i {
+      position: absolute;
+      left: 15px;
+      top: 50%;
+      transform: translateY(-50%);
+      color: #9ca3af;
+    }
+    
+    .filter-dropdown select {
+      padding: 10px 15px;
+      border: 1px solid #d1d5db;
+      border-radius: 8px;
+      font-size: 14px;
+      background: white;
+    }
+    
+    .modal {
+      display: none;
+      position: fixed;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      background: rgba(0,0,0,0.5);
+      z-index: 1000;
+    }
+    
+    .modal.active { display: flex; align-items: center; justify-content: center; }
+    
+    .modal-content {
+      background: white;
+      border-radius: 12px;
+      width: 90%;
+      max-width: 700px;
+      max-height: 90vh;
+      overflow-y: auto;
+    }
+    
+    .modal-header {
+      padding: 20px;
+      border-bottom: 1px solid #e5e7eb;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+    
+    .modal-body { padding: 20px; }
+    
+    .close {
+      font-size: 24px;
+      cursor: pointer;
+      color: #6b7280;
+    }
+    
+    .close:hover { color: #111827; }
+    
+    .proposal-detail h4 {
+      color: #374151;
+      margin: 20px 0 10px 0;
+      font-size: 16px;
+    }
+    
+    .proposal-detail p {
+      color: #6b7280;
+      line-height: 1.6;
+      margin: 0 0 15px 0;
+    }
+    
+    .assign-section {
+      background: #f9fafb;
+      padding: 20px;
+      border-radius: 8px;
+      margin-top: 20px;
+    }
+    
+    .assign-section h4 {
+      margin: 0 0 15px 0;
+      color: #111827;
+    }
+    
+    .assign-controls {
+      display: flex;
+      gap: 10px;
+      align-items: center;
+    }
+    
+    .assign-controls select {
+      flex: 1;
+      padding: 10px;
+      border: 1px solid #d1d5db;
+      border-radius: 6px;
+    }
+    
+    .assign-controls button {
+      padding: 10px 20px;
+      background: #3b82f6;
+      color: white;
+      border: none;
+      border-radius: 6px;
+      cursor: pointer;
+      font-weight: 600;
+    }
+    
+    .assign-controls button:hover { background: #2563eb; }
+    
+    .empty-state {
+      text-align: center;
+      padding: 60px 20px;
+      color: #6b7280;
+    }
+    
+    .empty-state i {
+      font-size: 48px;
+      margin-bottom: 15px;
+      color: #d1d5db;
+    }
+    
+    .loading-spinner {
+      text-align: center;
+      padding: 40px;
+      color: #6b7280;
+    }
+    
+    .loading-spinner i {
+      font-size: 24px;
+      animation: spin 1s linear infinite;
+    }
+    
+    @keyframes spin {
+      from { transform: rotate(0deg); }
+      to { transform: rotate(360deg); }
+    }
+  </style>
+</head>
+
+<body>
+
+  <div class="dashboard-container">
+    <!-- Sidebar -->
+    <aside class="sidebar">
+      <div class="logo">
+        <img src="assets/images/university-logo.png" alt="University Logo" class="logo-img">
+      </div>
+      <nav class="nav-menu">
+        <a href="admin-dashboard.html" class="nav-item">
+          <i class="fas fa-tachometer-alt"></i>
+          <span>Dashboard</span>
+        </a>
+        <a href="admin-proposals.html" class="nav-item active">
+          <i class="fas fa-file-alt"></i>
+          <span>Proposals</span>
+        </a>
+        <a href="admin-supervisors.html" class="nav-item">
+          <i class="fas fa-users"></i>
+          <span>Supervisors</span>
+        </a>
+        <a href="admin-feedback.html" class="nav-item">
+          <i class="fas fa-comments"></i>
+          <span>Feedback</span>
+        </a>
+        <a href="admin-reports.html" class="nav-item">
+          <i class="fas fa-file-pdf"></i>
+          <span>Reports</span>
+        </a>
+        <a href="index.html" class="nav-item logout" onclick="logout()">
+          <i class="fas fa-sign-out-alt"></i>
+          <span>Logout</span>
+        </a>
+      </nav>
+    </aside>
+
+    <!-- Main Content -->
+    <main class="main-content">
+      <!-- Top Bar -->
+      <header class="top-bar">
+        <div class="welcome-section">
+          <h1>Proposals Management</h1>
+          <p>Review and assign all project proposals to supervisors</p>
+        </div>
+        <div class="action-buttons">
+          <button class="btn btn-secondary" onclick="exportProposals()">
+            <i class="fas fa-download"></i> Export
+          </button>
+          <div class="notification-bell" onclick="showNotifications()">
+            <i class="fas fa-bell"></i>
+            <span class="notification-badge" id="notificationCount">0</span>
+          </div>
+        </div>
+      </header>
+
+      <!-- Page Content -->
+      <div class="dashboard-content">
+        <!-- Stats Row -->
+        <div class="stats-row">
+          <div class="stat-card">
+            <div class="stat-icon" style="background: #fef3c7; color: #92400e;">
+              <i class="fas fa-clock"></i>
+            </div>
+            <div class="stat-content">
+              <h3>Pending</h3>
+              <p class="stat-number" id="pendingCount">0</p>
+            </div>
+          </div>
+          <div class="stat-card">
+            <div class="stat-icon" style="background: #dbeafe; color: #1e40af;">
+              <i class="fas fa-user-tie"></i>
+            </div>
+            <div class="stat-content">
+              <h3>Assigned</h3>
+              <p class="stat-number" id="assignedCount">0</p>
+            </div>
+          </div>
+          <div class="stat-card">
+            <div class="stat-icon" style="background: #d1fae5; color: #065f46;">
+              <i class="fas fa-check-circle"></i>
+            </div>
+            <div class="stat-content">
+              <h3>Approved</h3>
+              <p class="stat-number" id="approvedCount">0</p>
+            </div>
+          </div>
+          <div class="stat-card">
+            <div class="stat-icon" style="background: #f3e8ff; color: #6b21a8;">
+              <i class="fas fa-file-alt"></i>
+            </div>
+            <div class="stat-content">
+              <h3>Total</h3>
+              <p class="stat-number" id="totalCount">0</p>
+            </div>
+          </div>
+        </div>
+
+        <!-- Search and Filter -->
+        <div class="card">
+          <div class="search-filter-section">
+            <div class="search-box">
+              <i class="fas fa-search"></i>
+              <input type="text" id="proposalSearchInput" placeholder="Search proposals by title, group, or description..." onkeyup="filterProposals()">
+            </div>
+            <div class="filter-dropdown">
+              <select id="statusFilter" onchange="filterProposals()">
+                <option value="all">All Status</option>
+                <option value="pending">Pending</option>
+                <option value="assigned">Assigned</option>
+                <option value="approved">Approved</option>
+                <option value="rejected">Rejected</option>
+              </select>
+            </div>
+            <div class="filter-dropdown">
+              <select id="supervisorFilter" onchange="filterProposals()">
+                <option value="all">All Supervisors</option>
+                <option value="unassigned">Unassigned</option>
+              </select>
+            </div>
+          </div>
+        </div>
+
+        <!-- Proposals Table -->
+        <div class="card">
+          <h3>All Proposals</h3>
+          <div id="proposalsTableContainer">
+            <div class="loading-spinner">
+              <i class="fas fa-spinner"></i>
+              <p>Loading proposals...</p>
+            </div>
+          </div>
+        </div>
+      </div>
+    </main>
+  </div>
+
+  <!-- Proposal Detail Modal -->
+  <div id="proposalModal" class="modal">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h3>Proposal Details</h3>
+        <span class="close" onclick="closeProposalModal()">&times;</span>
+      </div>
+      <div class="modal-body" id="modalBody">
+        <!-- Content loaded dynamically -->
+      </div>
+    </div>
+  </div>
+
+</body>
+</html>

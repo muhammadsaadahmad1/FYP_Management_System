@@ -2168,15 +2168,10 @@ async function registerAdmin() {
       throw new Error('Password must be at least 6 characters');
     }
     
-    // Validate university card upload
-    if (!universityCardFile) {
-      throw new Error('Please upload your University ID Card for verification');
-    }
-    
-    // Validate file size (max 5MB)
-    if (universityCardFile.size > 5 * 1024 * 1024) {
-      throw new Error('University ID Card file size must be less than 5MB');
-    }
+    // ⚠️ CORS WORKAROUND: University card upload is temporarily disabled
+    // File validation skipped - document upload blocked by CORS policy
+    // Admin will be registered without university card document
+    console.warn('⚠️ University ID card upload temporarily disabled due to CORS');
     
     // Check if email already exists
     const emailQuery = await firebase.firestore().collection('users')
@@ -2211,18 +2206,11 @@ async function registerAdmin() {
     // Send email verification
     await user.sendEmailVerification();
     
-    // Upload university card to Firebase Storage
+    // ⚠️ CORS WORKAROUND: Skip file upload until CORS is configured
+    // File upload is blocked by CORS policy - saving without document for now
     let universityCardUrl = null;
-    try {
-      const storageRef = firebase.storage().ref();
-      const fileRef = storageRef.child(`admin_documents/${user.uid}/university_card_${Date.now()}`);
-      await fileRef.put(universityCardFile);
-      universityCardUrl = await fileRef.getDownloadURL();
-      console.log('University card uploaded successfully');
-    } catch (uploadError) {
-      console.error('Error uploading university card:', uploadError);
-      // Continue without the file but log the error
-    }
+    console.warn('⚠️ File upload skipped due to CORS. Admin will be registered without university card document.');
+    console.warn('Note: File upload temporarily disabled. Admin registered without document.');
     
     // Store admin data in Firestore - PRIMARY: users collection (for auth consistency)
     const userData = {

@@ -2,10 +2,43 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8" />
-  <title>Admin Dashboard | FYP Management System</title>
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-
+  <title>Admin Dashboard - FYP Management System</title>
   <link rel="stylesheet" href="css/style.css" />
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" />
+
+  <!-- Firebase SDK -->
+  <script src="https://www.gstatic.com/firebasejs/9.22.1/firebase-app-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/9.22.1/firebase-firestore-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/9.22.1/firebase-storage-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/9.22.1/firebase-auth-compat.js"></script>
+  
+  <!-- Firebase Configuration -->
+  <script src="js/firebase-config.js"></script>
+  <script src="js/firebase-auth.js"></script>
+  <script src="js/auth.js"></script>
+  <script src="js/admin.js"></script>
+  
+  <!-- Initialize Dashboard -->
+  <script>
+    document.addEventListener('DOMContentLoaded', function() {
+      console.log('Admin Dashboard Loaded');
+      
+      const waitForFirebase = () => {
+        if (typeof db !== 'undefined' && typeof auth !== 'undefined') {
+          console.log('Firebase is ready, loading admin dashboard data...');
+          if (typeof loadAdminDashboard === 'function') {
+            loadAdminDashboard();
+          }
+        } else {
+          console.log('Waiting for Firebase to initialize...');
+          setTimeout(waitForFirebase, 500);
+        }
+      };
+      
+      setTimeout(waitForFirebase, 1000);
+    });
+  </script>
 
   <style>
     .tabs {
@@ -85,208 +118,155 @@
 
 <body>
 
-  <aside class="sidebar">
-    <h2>Admin</h2>
-    <ul>
-      <li class="active">Dashboard</li>
-      <li onclick="logout()">Logout</li>
-    </ul>
-  </aside>
+  <div class="dashboard-container">
+    <!-- Sidebar -->
+    <aside class="sidebar">
+      <div class="logo">
+        <img src="assets/images/university-logo.png" alt="University Logo" class="logo-img">
+      </div>
+      <nav class="nav-menu">
+        <a href="admin-dashboard.html" class="nav-item active">
+          <i class="fas fa-tachometer-alt"></i>
+          <span>Dashboard</span>
+        </a>
+        <a href="admin-proposals.html" class="nav-item">
+          <i class="fas fa-file-alt"></i>
+          <span>Proposals</span>
+        </a>
+        <a href="admin-supervisors.html" class="nav-item">
+          <i class="fas fa-users"></i>
+          <span>Supervisors</span>
+        </a>
+        <a href="admin-feedback.html" class="nav-item">
+          <i class="fas fa-comments"></i>
+          <span>Feedback</span>
+        </a>
+        <a href="admin-reports.html" class="nav-item">
+          <i class="fas fa-file-pdf"></i>
+          <span>Reports</span>
+        </a>
+        <a href="index.html" class="nav-item logout" onclick="logout()">
+          <i class="fas fa-sign-out-alt"></i>
+          <span>Logout</span>
+        </a>
+      </nav>
+    </aside>
 
-  <main class="main-content">
+    <!-- Main Content -->
+    <main class="main-content">
+      <!-- Top Bar -->
+      <header class="top-bar">
+        <div class="welcome-section">
+          <h1>Welcome, <span id="adminName">Loading...</span>!</h1>
+        </div>
+        <div class="action-buttons">
+          <button class="btn btn-primary" onclick="handleApprovePending()">
+            <i class="fas fa-check-circle"></i>
+            Approve Pending
+          </button>
+          <button class="btn btn-secondary" onclick="handleViewAnalytics()">
+            <i class="fas fa-chart-bar"></i>
+            View Analytics
+          </button>
+        </div>
+      </header>
 
-    <header class="top-bar">
-      <h1>Admin Dashboard</h1>
-      <p>Manage proposals, supervisors, feedback, and student reports</p>
-    </header>
+      <!-- Dashboard Overview Cards -->
+      <div class="dashboard-grid">
+        <div class="dashboard-card">
+          <div class="card-icon"><i class="fas fa-users"></i></div>
+          <div class="card-info">
+            <h3>Total Students</h3>
+            <p id="totalStudents">0</p>
+          </div>
+        </div>
+        <div class="dashboard-card">
+          <div class="card-icon"><i class="fas fa-user-tie"></i></div>
+          <div class="card-info">
+            <h3>Total Supervisors</h3>
+            <p id="totalSupervisors">0</p>
+          </div>
+        </div>
+        <div class="dashboard-card">
+          <div class="card-icon"><i class="fas fa-file-alt"></i></div>
+          <div class="card-info">
+            <h3>Pending Proposals</h3>
+            <p id="pendingProposals">0</p>
+          </div>
+        </div>
+        <div class="dashboard-card">
+          <div class="card-icon"><i class="fas fa-clock"></i></div>
+          <div class="card-info">
+            <h3>Pending Approvals</h3>
+            <p id="pendingApprovals">0</p>
+          </div>
+        </div>
+      </div>
 
-    <div class="tabs">
-      <button class="tab-btn active" onclick="showSection('proposals', this)">Proposals</button>
-      <button class="tab-btn" onclick="showSection('supervisors', this)">Supervisors</button>
-      <button class="tab-btn" onclick="showSection('feedback', this)">Supervisor Feedback</button>
-      <button class="tab-btn" onclick="showSection('reports', this)">Student Reports</button>
-    </div>
+      <div class="tabs">
+        <button class="tab-btn active" onclick="showSection('proposals', this)">Proposals</button>
+        <button class="tab-btn" onclick="showSection('supervisors', this)">Supervisors</button>
+        <button class="tab-btn" onclick="showSection('feedback', this)">Feedback</button>
+        <button class="tab-btn" onclick="showSection('reports', this)">Reports</button>
+      </div>
 
-    <section id="proposals" class="section active">
-      <h2>Project Proposals & Assignment</h2>
+      <section id="proposals" class="section active">
+        <h2>Project Proposals & Assignment</h2>
+        <table>
+          <thead>
+            <tr>
+              <th>Group</th>
+              <th>Project Title</th>
+              <th>Supervisor</th>
+              <th>Action</th>
+              <th>Status</th>
+            </tr>
+          </thead>
+          <tbody id="proposalTable">
+            <tr><td colspan="5" style="text-align: center; padding: 20px;">Loading proposals...</td></tr>
+          </tbody>
+        </table>
+      </section>
 
-      <table>
-        <thead>
-          <tr>
-            <th>Student</th>
-            <th>Project</th>
-            <th>Supervisor</th>
-            <th>Action</th>
-            <th>Status</th>
-          </tr>
-        </thead>
-        <tbody id="proposalTable"></tbody>
-      </table>
-    </section>
+      <section id="supervisors" class="section">
+        <h2>Supervisors Management</h2>
+        <div id="supervisorList">
+          <p style="text-align: center; padding: 20px;">Loading supervisors...</p>
+        </div>
+      </section>
 
-    <section id="supervisors" class="section">
-      <h2>Supervisors & Assigned Proposals</h2>
-      <div id="supervisorList"></div>
-    </section>
+      <section id="feedback" class="section">
+        <h2>Supervisor Feedback</h2>
+        <div id="feedbackList">
+          <p style="text-align: center; padding: 20px;">Loading feedback...</p>
+        </div>
+      </section>
 
-    <section id="feedback" class="section">
-      <h2>Feedback from Supervisors</h2>
-      <div id="feedbackList"></div>
-    </section>
+      <section id="reports" class="section">
+        <h2>Student Progress Reports</h2>
+        <div id="reportList">
+          <p style="text-align: center; padding: 20px;">Loading reports...</p>
+        </div>
+      </section>
 
-    <section id="reports" class="section">
-      <h2>Student Progress Reports</h2>
-      <div id="reportList"></div>
-    </section>
-
-  </main>
+    </main>
+  </div>
 
   <script>
-    if (localStorage.getItem("role") !== "admin") {
-      window.location.href = "login.html";
-    }
-
-    const supervisors = ["Dr. Ahmed", "Dr. Khan", "Dr. Usman"];
-
-    const proposals = [
-      { student: "Ali Raza", project: "Smart Attendance System", supervisor: "", status: "Pending" },
-      { student: "laiba Khan", project: "Health Monitoring App", supervisor: "", status: "Pending" }
-    ];
-
-    const supervisorFeedback = [
-      {
-        student: "Ali Raza",
-        supervisor: "Dr. Ahmed",
-        feedback: "Student is progressing well. Needs better documentation."
-      }
-    ];
-
-    const studentReports = [
-      {
-        student: "laiba Khan",
-        project: "Health Monitoring App",
-        progress: "72%",
-        remark: "On track"
-      }
-    ];
-
+    // Simple tab switching - admin.js handles all Firebase data loading
     function showSection(id, btn) {
       document.querySelectorAll(".section").forEach(s => s.classList.remove("active"));
       document.querySelectorAll(".tab-btn").forEach(b => b.classList.remove("active"));
-
-      document.getElementById(id).classList.add("active");
-      btn.classList.add("active");
-    }
-
-    function loadProposals() {
-      const table = document.getElementById("proposalTable");
-      table.innerHTML = "";
-
-      proposals.forEach((p, i) => {
-        const row = document.createElement("tr");
-
-        row.innerHTML = `
-          <td>${p.student}</td>
-          <td>${p.project}</td>
-          <td>
-            <select id="sup-${i}">
-              <option value="">Select</option>
-              ${supervisors.map(s => `<option value="${s}">${s}</option>`).join("")}
-            </select>
-          </td>
-          <td>
-            <button class="assign" onclick="assignSupervisor(${i})">Assign</button>
-          </td>
-          <td class="status ${p.status === "Assigned" ? "assigned" : "pending"}">
-            ${p.status}
-          </td>
-        `;
-
-        table.appendChild(row);
-      });
-    }
-
-    function assignSupervisor(index) {
-      const select = document.getElementById(`sup-${index}`);
-      if (!select.value) {
-        alert("Select a supervisor first.");
-        return;
+      
+      const section = document.getElementById(id);
+      if (section) {
+        section.classList.add("active");
       }
-
-      proposals[index].supervisor = select.value;
-      proposals[index].status = "Assigned";
-
-      loadProposals();
-      loadSupervisors();
+      
+      if (btn) {
+        btn.classList.add("active");
+      }
     }
-
-    function loadSupervisors() {
-      const container = document.getElementById("supervisorList");
-      container.innerHTML = "";
-
-      supervisors.forEach(s => {
-        const assigned = proposals.filter(p => p.supervisor === s);
-
-        const div = document.createElement("div");
-        div.className = "card";
-
-        div.innerHTML = `
-          <h3>${s}</h3>
-          <ul>
-            ${assigned.map(a => `<li>${a.student} — ${a.project}</li>`).join("") || "<li>No assignments</li>"}
-          </ul>
-        `;
-
-        container.appendChild(div);
-      });
-    }
-
-    function loadFeedback() {
-      const container = document.getElementById("feedbackList");
-      container.innerHTML = "";
-
-      supervisorFeedback.forEach(f => {
-        const div = document.createElement("div");
-        div.className = "card";
-
-        div.innerHTML = `
-          <p><strong>Student:</strong> ${f.student}</p>
-          <p><strong>Supervisor:</strong> ${f.supervisor}</p>
-          <p>${f.feedback}</p>
-        `;
-
-        container.appendChild(div);
-      });
-    }
-
-    function loadReports() {
-      const container = document.getElementById("reportList");
-      container.innerHTML = "";
-
-      studentReports.forEach(r => {
-        const div = document.createElement("div");
-        div.className = "card";
-
-        div.innerHTML = `
-          <p><strong>Student:</strong> ${r.student}</p>
-          <p><strong>Project:</strong> ${r.project}</p>
-          <p><strong>Progress:</strong> ${r.progress}</p>
-          <p><strong>Remark:</strong> ${r.remark}</p>
-        `;
-
-        container.appendChild(div);
-      });
-    }
-
-    function logout() {
-      localStorage.clear();
-      window.location.href = "login.html";
-    }
-
-    loadProposals();
-    loadSupervisors();
-    loadFeedback();
-    loadReports();
   </script>
 
 </body>
