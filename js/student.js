@@ -764,16 +764,26 @@ let selectedProposalFile = null;
 
 // Open submit proposal modal
 function openSubmitProposalModal() {
-  document.getElementById('submitProposalModal').style.display = 'block';
-  document.getElementById('submitProposalForm').reset();
+  const modal = document.getElementById('submitProposalModal');
+  const form = document.getElementById('submitProposalForm');
+  const fileInfo = document.getElementById('fileInfo');
+  
+  if (modal) modal.style.display = 'block';
+  if (form) form.reset();
   selectedProposalFile = null;
-  document.getElementById('fileInfo').textContent = 'Supported formats: PDF, DOC, DOCX (Max 10MB)';
+  if (fileInfo) {
+    fileInfo.textContent = 'Supported formats: PDF, DOC, DOCX (Max 10MB)';
+    fileInfo.style.color = '#6b7280';
+  }
 }
 
 // Close submit proposal modal
 function closeSubmitProposalModal() {
-  document.getElementById('submitProposalModal').style.display = 'none';
-  document.getElementById('submitProposalForm').reset();
+  const modal = document.getElementById('submitProposalModal');
+  const form = document.getElementById('submitProposalForm');
+  
+  if (modal) modal.style.display = 'none';
+  if (form) form.reset();
   selectedProposalFile = null;
 }
 
@@ -781,6 +791,7 @@ function closeSubmitProposalModal() {
 function handleFileSelect(event) {
   const file = event.target.files[0];
   const fileInfo = document.getElementById('fileInfo');
+  if (!fileInfo) return;
   
   if (file) {
     // Check file size (10MB limit)
@@ -813,7 +824,9 @@ function handleFileSelect(event) {
 }
 
 // Submit proposal form handler
-document.getElementById('submitProposalForm').addEventListener('submit', async function(e) {
+const submitProposalForm = document.getElementById('submitProposalForm');
+if (submitProposalForm) {
+  submitProposalForm.addEventListener('submit', async function(e) {
   e.preventDefault();
   
   try {
@@ -966,11 +979,12 @@ document.getElementById('submitProposalForm').addEventListener('submit', async f
     submitBtn.disabled = false;
   }
 });
+}
 
 // Close modal when clicking outside
 window.onclick = function(event) {
   const modal = document.getElementById('submitProposalModal');
-  if (event.target === modal) {
+  if (modal && event.target === modal) {
     closeSubmitProposalModal();
   }
 }
