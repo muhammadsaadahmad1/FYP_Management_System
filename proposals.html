@@ -8,6 +8,238 @@
   <link rel="stylesheet" href="css/style.css" />
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" />
 
+  <!-- Supervisor List Styles -->
+  <style>
+    /* Supervisors List Card */
+    .supervisors-list-card {
+      background: linear-gradient(135deg, #f8fafc 0%, #e2e8f0 100%);
+      border: 2px solid #e2e8f0;
+    }
+
+    .supervisors-list-card h3 {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      color: #1e40af;
+      margin-bottom: 8px;
+    }
+
+    .supervisor-count {
+      font-size: 14px;
+      color: #64748b;
+      font-weight: normal;
+    }
+
+    .supervisor-help-text {
+      color: #64748b;
+      font-size: 13px;
+      margin-bottom: 15px;
+      font-style: italic;
+    }
+
+    /* Accordion Styles */
+    .supervisors-accordion {
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+    }
+
+    .accordion-category {
+      border: 1px solid #e2e8f0;
+      border-radius: 8px;
+      overflow: hidden;
+      background: white;
+      box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+    }
+
+    .accordion-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 12px 16px;
+      background: linear-gradient(135deg, #3b82f6 0%, #2563eb 100%);
+      color: white;
+      cursor: pointer;
+      transition: all 0.3s ease;
+    }
+
+    .accordion-header:hover {
+      background: linear-gradient(135deg, #2563eb 0%, #1d4ed8 100%);
+    }
+
+    .accordion-header-content {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
+
+    .accordion-header-content i {
+      font-size: 18px;
+    }
+
+    .accordion-header-content span {
+      font-weight: 600;
+      font-size: 14px;
+    }
+
+    .accordion-count {
+      background: rgba(255, 255, 255, 0.2);
+      padding: 2px 8px;
+      border-radius: 12px;
+      font-size: 12px;
+    }
+
+    .accordion-arrow {
+      transition: transform 0.3s ease;
+      font-size: 16px;
+    }
+
+    .accordion-category.active .accordion-arrow {
+      transform: rotate(180deg);
+    }
+
+    .accordion-content {
+      max-height: 0;
+      overflow: hidden;
+      transition: max-height 0.3s ease;
+      background: #f8fafc;
+    }
+
+    .accordion-category.active .accordion-content {
+      max-height: 500px;
+    }
+
+    .accordion-supervisors {
+      padding: 12px;
+    }
+
+    /* Supervisor Item */
+    .supervisor-item {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      padding: 10px 12px;
+      margin-bottom: 8px;
+      background: white;
+      border-radius: 6px;
+      border: 1px solid #e2e8f0;
+      transition: all 0.2s ease;
+    }
+
+    .supervisor-item:last-child {
+      margin-bottom: 0;
+    }
+
+    .supervisor-item:hover {
+      border-color: #3b82f6;
+      box-shadow: 0 2px 4px rgba(59, 130, 246, 0.15);
+    }
+
+    .supervisor-avatar-small {
+      width: 40px;
+      height: 40px;
+      border-radius: 50%;
+      background: linear-gradient(135deg, #3b82f6 0%, #8b5cf6 100%);
+      color: white;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-weight: 600;
+      font-size: 14px;
+      flex-shrink: 0;
+    }
+
+    .supervisor-info-compact {
+      flex: 1;
+      min-width: 0;
+    }
+
+    .supervisor-name {
+      font-weight: 600;
+      color: #1e293b;
+      font-size: 13px;
+      margin-bottom: 2px;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+
+    .supervisor-designation {
+      color: #64748b;
+      font-size: 11px;
+    }
+
+    .supervisor-status-badge {
+      padding: 2px 8px;
+      border-radius: 12px;
+      font-size: 10px;
+      font-weight: 500;
+      text-transform: uppercase;
+    }
+
+    .supervisor-status-badge.available {
+      background: #dcfce7;
+      color: #166534;
+    }
+
+    .supervisor-status-badge.busy {
+      background: #fef3c7;
+      color: #92400e;
+    }
+
+    .supervisor-status-badge.full {
+      background: #fee2e2;
+      color: #991b1b;
+    }
+
+    /* Loading State */
+    .loading-supervisors {
+      text-align: center;
+      padding: 20px;
+      color: #64748b;
+    }
+
+    .loading-supervisors i {
+      margin-right: 8px;
+    }
+
+    /* Empty State */
+    .no-supervisors {
+      text-align: center;
+      padding: 20px;
+      color: #64748b;
+    }
+
+    .no-supervisors i {
+      font-size: 32px;
+      margin-bottom: 10px;
+      color: #94a3b8;
+    }
+
+    /* Expand All / Collapse All Button */
+    .accordion-controls {
+      display: flex;
+      gap: 8px;
+      margin-bottom: 10px;
+    }
+
+    .accordion-btn {
+      padding: 6px 12px;
+      border: 1px solid #cbd5e1;
+      border-radius: 6px;
+      background: white;
+      color: #475569;
+      font-size: 12px;
+      cursor: pointer;
+      transition: all 0.2s ease;
+    }
+
+    .accordion-btn:hover {
+      background: #f1f5f9;
+      border-color: #94a3b8;
+    }
+  </style>
+
   <!-- Firebase SDK -->
   <script src="https://www.gstatic.com/firebasejs/9.22.1/firebase-app-compat.js"></script>
   <script src="https://www.gstatic.com/firebasejs/9.22.1/firebase-firestore-compat.js"></script>
@@ -101,6 +333,21 @@
                 <!-- Proposals will be dynamically loaded here -->
               </tbody>
             </table>
+          </div>
+        </div>
+
+        <!-- Available Supervisors List -->
+        <div class="card supervisors-list-card">
+          <h3>
+            <i class="fas fa-users"></i> Available Supervisors
+            <span class="supervisor-count" id="totalSupervisorCount">(0)</span>
+          </h3>
+          <p class="supervisor-help-text">Click on a category to view supervisors in that field</p>
+          <div class="supervisors-accordion" id="supervisorsAccordion">
+            <!-- Categories will be loaded dynamically -->
+            <div class="loading-supervisors">
+              <i class="fas fa-spinner fa-spin"></i> Loading supervisors...
+            </div>
           </div>
         </div>
 
@@ -373,6 +620,218 @@
       }
       return stars;
     }
+
+    // =========================
+    // SUPERVISOR LIST FUNCTIONS
+    // =========================
+
+    // Load and display supervisors by category
+    async function loadSupervisorsList() {
+      const accordion = document.getElementById('supervisorsAccordion');
+      const countElement = document.getElementById('totalSupervisorCount');
+      
+      if (!accordion) return;
+
+      try {
+        console.log('👔 Loading active supervisors list...');
+
+        // Check if Firebase is ready
+        if (typeof db === 'undefined') {
+          console.log('⏳ Firebase not ready, retrying...');
+          setTimeout(() => loadSupervisorsList(), 2000);
+          return;
+        }
+
+        // Load active supervisors from Firestore
+        // Only show supervisors that admin has added to the active list
+        const snapshot = await db.collection('supervisors')
+          .where('isActive', '==', true)
+          .where('showInStudentList', '==', true)
+          .get();
+
+        if (snapshot.empty) {
+          accordion.innerHTML = `
+            <div class="no-supervisors">
+              <i class="fas fa-users"></i>
+              <p>No supervisors available at the moment</p>
+            </div>
+          `;
+          if (countElement) countElement.textContent = '(0)';
+          return;
+        }
+
+        // Group supervisors by expertise/department
+        const supervisorsByCategory = {};
+        let totalCount = 0;
+
+        snapshot.docs.forEach(doc => {
+          const supervisor = doc.data();
+          const category = supervisor.expertise || supervisor.department || 'General';
+          
+          if (!supervisorsByCategory[category]) {
+            supervisorsByCategory[category] = [];
+          }
+          
+          supervisorsByCategory[category].push({
+            id: doc.id,
+            ...supervisor
+          });
+          totalCount++;
+        });
+
+        // Update total count
+        if (countElement) countElement.textContent = `(${totalCount})`;
+
+        // Render accordion
+        renderSupervisorsAccordion(supervisorsByCategory);
+
+        console.log(`✅ Loaded ${totalCount} supervisors in ${Object.keys(supervisorsByCategory).length} categories`);
+
+      } catch (error) {
+        console.error('❌ Error loading supervisors:', error);
+        accordion.innerHTML = `
+          <div class="no-supervisors">
+            <i class="fas fa-exclamation-circle"></i>
+            <p>Error loading supervisors</p>
+          </div>
+        `;
+      }
+    }
+
+    // Render supervisors accordion by category
+    function renderSupervisorsAccordion(supervisorsByCategory) {
+      const accordion = document.getElementById('supervisorsAccordion');
+      if (!accordion) return;
+
+      // Category icons mapping
+      const categoryIcons = {
+        'AI': 'fa-robot',
+        'Artificial Intelligence': 'fa-robot',
+        'Web': 'fa-globe',
+        'Web Development': 'fa-globe',
+        'Mobile': 'fa-mobile-alt',
+        'Mobile Development': 'fa-mobile-alt',
+        'Database': 'fa-database',
+        'Database Systems': 'fa-database',
+        'Security': 'fa-shield-alt',
+        'Cybersecurity': 'fa-shield-alt',
+        'Networking': 'fa-network-wired',
+        'Cloud': 'fa-cloud',
+        'Machine Learning': 'fa-brain',
+        'Data Science': 'fa-chart-line',
+        'Software Engineering': 'fa-code',
+        'General': 'fa-user-tie'
+      };
+
+      let html = `
+        <div class="accordion-controls">
+          <button class="accordion-btn" onclick="expandAllCategories()">
+            <i class="fas fa-expand-alt"></i> Expand All
+          </button>
+          <button class="accordion-btn" onclick="collapseAllCategories()">
+            <i class="fas fa-compress-alt"></i> Collapse All
+          </button>
+        </div>
+      `;
+
+      Object.keys(supervisorsByCategory).forEach((category, index) => {
+        const supervisors = supervisorsByCategory[category];
+        const icon = categoryIcons[category] || 'fa-user-tie';
+        const isActive = index === 0 ? 'active' : ''; // First category expanded by default
+
+        html += `
+          <div class="accordion-category ${isActive}" data-category="${category}">
+            <div class="accordion-header" onclick="toggleCategory(this)">
+              <div class="accordion-header-content">
+                <i class="fas ${icon}"></i>
+                <span>${category}</span>
+                <span class="accordion-count">${supervisors.length}</span>
+              </div>
+              <i class="fas fa-chevron-down accordion-arrow"></i>
+            </div>
+            <div class="accordion-content">
+              <div class="accordion-supervisors">
+                ${supervisors.map(supervisor => renderSupervisorItem(supervisor)).join('')}
+              </div>
+            </div>
+          </div>
+        `;
+      });
+
+      accordion.innerHTML = html;
+    }
+
+    // Render single supervisor item
+    function renderSupervisorItem(supervisor) {
+      const name = supervisor.fullName || supervisor.displayName || 'Unknown';
+      const initials = name.split(' ').map(n => n[0]).join('').toUpperCase().substring(0, 2);
+      const designation = supervisor.designation || 'Supervisor';
+      const department = supervisor.department || 'N/A';
+      
+      // Determine availability status
+      const maxGroups = supervisor.maxGroups || 5;
+      const currentGroups = supervisor.assignedGroups || 0;
+      let statusClass = 'available';
+      let statusText = 'Available';
+      
+      if (currentGroups >= maxGroups) {
+        statusClass = 'full';
+        statusText = 'Full';
+      } else if (currentGroups >= maxGroups * 0.8) {
+        statusClass = 'busy';
+        statusText = 'Busy';
+      }
+
+      return `
+        <div class="supervisor-item" onclick="viewSupervisorDetails('${supervisor.id}')" style="cursor: pointer;">
+          <div class="supervisor-avatar-small">${initials}</div>
+          <div class="supervisor-info-compact">
+            <div class="supervisor-name">${name}</div>
+            <div class="supervisor-designation">${designation} • ${department}</div>
+          </div>
+          <span class="supervisor-status-badge ${statusClass}">${statusText}</span>
+        </div>
+      `;
+    }
+
+    // Toggle category accordion
+    function toggleCategory(header) {
+      const category = header.closest('.accordion-category');
+      category.classList.toggle('active');
+    }
+
+    // Expand all categories
+    function expandAllCategories() {
+      document.querySelectorAll('.accordion-category').forEach(cat => {
+        cat.classList.add('active');
+      });
+    }
+
+    // Collapse all categories
+    function collapseAllCategories() {
+      document.querySelectorAll('.accordion-category').forEach(cat => {
+        cat.classList.remove('active');
+      });
+    }
+
+    // View supervisor details (modal)
+    function viewSupervisorDetails(supervisorId) {
+      // This can be extended to show a modal with full supervisor details
+      console.log('👔 Viewing supervisor:', supervisorId);
+      
+      // For now, just show a notification
+      if (typeof showNotification !== 'undefined') {
+        showNotification('Supervisor details feature coming soon!', 'info');
+      }
+    }
+
+    // Initialize supervisors list when page loads
+    document.addEventListener('DOMContentLoaded', function() {
+      // Wait for Firebase to be ready
+      setTimeout(() => {
+        loadSupervisorsList();
+      }, 2000);
+    });
 
     // Show new proposal form
     function showNewProposalForm() {

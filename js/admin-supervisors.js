@@ -169,10 +169,10 @@ function updatePendingBadge() {
   }
 }
 
-// Render supervisors grid
+// Render supervisors table
 function renderSupervisors() {
   const container = document.getElementById('supervisorsContainer');
-  
+
   if (allSupervisors.length === 0) {
     container.innerHTML = `
       <div class="empty-state">
@@ -183,14 +183,20 @@ function renderSupervisors() {
     `;
     return;
   }
-  
-  let html = '<div class="supervisors-grid">';
-  
+
+  // Table header
+  let html = `
+    <div class="supervisors-table">
+      <div class="supervisors-table-header">
+        <div>Supervisor</div>
+        <div>Employee ID</div>
+        <div>Email</div>
+        <div>Status</div>
+        <div>Actions</div>
+      </div>
+  `;
+
   allSupervisors.forEach(supervisor => {
-    // Count assigned groups
-    const assignedGroups = allGroups.filter(g => g.supervisorId === supervisor.id);
-    const groupCount = assignedGroups.length;
-    
     // Determine status
     let status = supervisor.status || 'pending';
     if (supervisor.isActive && status !== 'pending_approval') {
@@ -198,71 +204,48 @@ function renderSupervisors() {
     } else if (!supervisor.isActive) {
       status = 'inactive';
     }
-    
+
     const statusClass = `status-${status}`;
-    const statusText = status === 'pending_approval' ? 'Pending Approval' : 
+    const statusText = status === 'pending_approval' ? 'Pending Approval' :
                        status.charAt(0).toUpperCase() + status.slice(1);
-    
+
     // Format name initials for avatar
     const name = supervisor.fullName || supervisor.displayName || 'Unknown';
     const initials = name.split(' ').map(n => n[0]).join('').toUpperCase().substring(0, 2);
-    
-    // Format date
-    const registeredDate = supervisor.registeredAt ? 
-      new Date(supervisor.registeredAt).toLocaleDateString() : 
-      'Unknown';
-    
+
     html += `
-      <div class="supervisor-card" data-supervisor-id="${supervisor.id}">
-        <div class="supervisor-header">
-          <div class="supervisor-avatar">${initials}</div>
-          <div class="supervisor-info">
-            <h3>${name}</h3>
-            <p>${supervisor.email || 'No email'}</p>
-            <span class="status-badge ${statusClass}">${statusText}</span>
+      <div class="supervisors-table-row" data-supervisor-id="${supervisor.id}">
+        <div class="supervisor-row-info">
+          <div class="supervisor-avatar-small">${initials}</div>
+          <div>
+            <div class="supervisor-row-name">${name}</div>
+            <div class="supervisor-row-email">${supervisor.department || 'N/A'}</div>
           </div>
         </div>
-        
-        <div class="supervisor-details">
-          <div class="detail-row">
-            <span class="detail-label">Department</span>
-            <span class="detail-value">${supervisor.department || 'N/A'}</span>
-          </div>
-          <div class="detail-row">
-            <span class="detail-label">Designation</span>
-            <span class="detail-value">${supervisor.designation || 'N/A'}</span>
-          </div>
-          <div class="detail-row">
-            <span class="detail-label">Employee ID</span>
-            <span class="detail-value">${supervisor.employeeId || 'N/A'}</span>
-          </div>
-          <div class="detail-row">
-            <span class="detail-label">Assigned Groups</span>
-            <span class="detail-value">${groupCount}</span>
-          </div>
-          <div class="detail-row">
-            <span class="detail-label">Registered</span>
-            <span class="detail-value">${registeredDate}</span>
-          </div>
+        <div class="supervisor-row-id">${supervisor.employeeId || 'N/A'}</div>
+        <div class="supervisor-row-email">${supervisor.email || 'N/A'}</div>
+        <div>
+          <span class="status-badge ${statusClass}">${statusText}</span>
         </div>
-        
-        <div class="supervisor-actions">
-          <button class="action-btn btn-view" onclick="viewSupervisor('${supervisor.id}')">
-            <i class="fas fa-eye"></i> View
+        <div class="action-btns-row">
+          <button class="btn-view-row" onclick="viewSupervisor('${supervisor.id}')">
+            <i class="fas fa-eye"></i>
           </button>
           ${status === 'pending_approval' ? `
-            <button class="action-btn btn-approve" onclick="approveSupervisor('${supervisor.id}')">
+            <button class="btn-approve-row" onclick="approveSupervisor('${supervisor.id}')">
               <i class="fas fa-check"></i> Approve
             </button>
-            <button class="action-btn btn-reject" onclick="rejectSupervisor('${supervisor.id}')">
-              <i class="fas fa-times"></i> Reject
+            <button class="btn-reject-row" onclick="rejectSupervisor('${supervisor.id}')">
+              <i class="fas fa-times"></i>
             </button>
           ` : status === 'active' ? `
-            <button class="action-btn btn-deactivate" onclick="deactivateSupervisor('${supervisor.id}')">
-              <i class="fas fa-ban"></i> Deactivate
-            </button>
+            <label class="toggle-switch" title="${supervisor.showInStudentList ? 'In Student List' : 'Not in Student List'}">
+              <input type="checkbox" ${supervisor.showInStudentList ? 'checked' : ''} onchange="toggleSupervisorInStudentList('${supervisor.id}', this.checked)">
+              <span class="toggle-slider"></span>
+              <span class="toggle-label">${supervisor.showInStudentList ? 'In List' : 'Add'}</span>
+            </label>
           ` : `
-            <button class="action-btn btn-approve" onclick="activateSupervisor('${supervisor.id}')">
+            <button class="btn-approve-row" onclick="activateSupervisor('${supervisor.id}')">
               <i class="fas fa-check"></i> Activate
             </button>
           `}
@@ -270,7 +253,7 @@ function renderSupervisors() {
       </div>
     `;
   });
-  
+
   html += '</div>';
   container.innerHTML = html;
 }
@@ -280,26 +263,26 @@ function filterSupervisors() {
   const searchTerm = document.getElementById('supervisorSearchInput').value.toLowerCase();
   const statusFilter = document.getElementById('statusFilter').value;
   const deptFilter = document.getElementById('deptFilter').value;
-  
-  const cards = document.querySelectorAll('.supervisor-card');
-  
-  cards.forEach(card => {
-    const supervisorId = card.getAttribute('data-supervisor-id');
+
+  const rows = document.querySelectorAll('.supervisors-table-row');
+
+  rows.forEach(row => {
+    const supervisorId = row.getAttribute('data-supervisor-id');
     const supervisor = allSupervisors.find(s => s.id === supervisorId);
-    
+
     if (!supervisor) return;
-    
+
     // Search filter
     const searchText = `
-      ${supervisor.fullName || ''} 
-      ${supervisor.displayName || ''} 
-      ${supervisor.email || ''} 
-      ${supervisor.department || ''} 
+      ${supervisor.fullName || ''}
+      ${supervisor.displayName || ''}
+      ${supervisor.email || ''}
+      ${supervisor.department || ''}
       ${supervisor.employeeId || ''}
     `.toLowerCase();
-    
+
     const matchesSearch = searchText.includes(searchTerm);
-    
+
     // Status filter
     let status = supervisor.status || 'pending';
     if (supervisor.isActive && status !== 'pending_approval') {
@@ -308,11 +291,11 @@ function filterSupervisors() {
       status = 'inactive';
     }
     const matchesStatus = statusFilter === 'all' || status === statusFilter;
-    
+
     // Department filter
     const matchesDept = deptFilter === 'all' || supervisor.department === deptFilter;
-    
-    card.style.display = matchesSearch && matchesStatus && matchesDept ? '' : 'none';
+
+    row.style.display = matchesSearch && matchesStatus && matchesDept ? '' : 'none';
   });
 }
 
@@ -566,6 +549,94 @@ function exportSupervisors() {
   window.URL.revokeObjectURL(url);
   
   console.log('✅ Supervisors exported');
+}
+
+// Toggle supervisor visibility in student list
+async function toggleSupervisorInStudentList(supervisorId, showInList) {
+  try {
+    console.log(`${showInList ? '➕ Adding' : '➖ Removing'} supervisor ${supervisorId} from student list`);
+
+    const updateData = {
+      showInStudentList: showInList,
+      updatedAt: firebase.firestore.FieldValue.serverTimestamp(),
+      updatedBy: currentAdmin.uid,
+      updatedByName: currentAdmin.displayName
+    };
+
+    // Update in supervisors collection
+    await db.collection('supervisors').doc(supervisorId).update(updateData);
+
+    // Update in users collection
+    await db.collection('users').doc(supervisorId).update(updateData);
+
+    // Update local data
+    const supervisorIndex = allSupervisors.findIndex(s => s.id === supervisorId);
+    if (supervisorIndex !== -1) {
+      allSupervisors[supervisorIndex].showInStudentList = showInList;
+    }
+
+    // Re-render supervisors to update toggle state
+    renderSupervisors();
+
+    // Show success notification
+    showNotification(
+      `Supervisor ${showInList ? 'added to' : 'removed from'} student list successfully!`,
+      'success'
+    );
+
+    console.log(`✅ Supervisor ${showInList ? 'added to' : 'removed from'} student list`);
+
+  } catch (error) {
+    console.error('❌ Error toggling supervisor visibility:', error);
+    showNotification('Error updating supervisor visibility. Please try again.', 'error');
+  }
+}
+
+// Show notification
+function showNotification(message, type = 'info') {
+  // Check if notification container exists
+  let notifContainer = document.getElementById('notificationContainer');
+  if (!notifContainer) {
+    notifContainer = document.createElement('div');
+    notifContainer.id = 'notificationContainer';
+    notifContainer.style.cssText = `
+      position: fixed;
+      top: 20px;
+      right: 20px;
+      z-index: 10000;
+      display: flex;
+      flex-direction: column;
+      gap: 10px;
+    `;
+    document.body.appendChild(notifContainer);
+  }
+
+  const notification = document.createElement('div');
+  notification.className = `notification ${type}`;
+  notification.innerHTML = `
+    <i class="fas ${type === 'success' ? 'fa-check-circle' : type === 'error' ? 'fa-exclamation-circle' : 'fa-info-circle'}"></i>
+    <span>${message}</span>
+  `;
+  notification.style.cssText = `
+    background: ${type === 'success' ? '#10b981' : type === 'error' ? '#ef4444' : '#3b82f6'};
+    color: white;
+    padding: 12px 20px;
+    border-radius: 8px;
+    box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    font-size: 14px;
+    animation: slideIn 0.3s ease;
+  `;
+
+  notifContainer.appendChild(notification);
+
+  // Remove after 3 seconds
+  setTimeout(() => {
+    notification.style.animation = 'slideOut 0.3s ease';
+    setTimeout(() => notification.remove(), 300);
+  }, 3000);
 }
 
 // Show error message
