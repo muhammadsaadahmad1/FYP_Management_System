@@ -312,6 +312,63 @@
       gap: 40px;
     }
 
+    .hero-buttons {
+      display: flex;
+      gap: 15px;
+      margin-top: 25px;
+      flex-wrap: wrap;
+    }
+
+    .hero-btn {
+      padding: 12px 24px;
+      border-radius: 10px;
+      font-size: 14px;
+      font-weight: 700;
+      text-decoration: none;
+      transition: all 0.3s ease;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      color: white;
+      border: 2px solid rgba(255,255,255,0.3);
+      backdrop-filter: blur(10px);
+    }
+
+    .hero-btn:hover {
+      transform: translateY(-2px);
+      box-shadow: 0 8px 20px rgba(0,0,0,0.2);
+    }
+
+    .hero-btn.student {
+      background: linear-gradient(135deg, #3b82f6, #2563eb);
+      border-color: rgba(59, 130, 246, 0.5);
+    }
+
+    .hero-btn.student:hover {
+      background: linear-gradient(135deg, #2563eb, #1d4ed8);
+      border-color: rgba(37, 99, 235, 0.7);
+    }
+
+    .hero-btn.supervisor {
+      background: linear-gradient(135deg, #10b981, #059669);
+      border-color: rgba(16, 185, 129, 0.5);
+    }
+
+    .hero-btn.supervisor:hover {
+      background: linear-gradient(135deg, #059669, #047857);
+      border-color: rgba(5, 150, 105, 0.7);
+    }
+
+    .hero-btn.admin {
+      background: linear-gradient(135deg, #f59e0b, #d97706);
+      border-color: rgba(245, 158, 11, 0.5);
+    }
+
+    .hero-btn.admin:hover {
+      background: linear-gradient(135deg, #d97706, #b45309);
+      border-color: rgba(217, 119, 6, 0.7);
+    }
+
     .hero-card {
       @media (max-width: 768px) {
         grid-template-columns: 1fr;
@@ -550,11 +607,6 @@
         <small>University Portal &#8212; Projects &#8212; Supervision</small>
       </div>
     </div>
-
-    <div class="landing-auth">
-      <a href="login.html" class="landing-btn login">Login</a>
-      <a href="register.html" class="landing-btn register">Register</a>
-    </div>
   </header>
 
   <main class="landing-hero">
@@ -566,6 +618,20 @@
           streamline supervision, monitor progress, and enhance coordination
           between students, supervisors, and administration.
         </p>
+        <div class="hero-buttons">
+          <a href="login.html?role=student" class="hero-btn student">
+            <i class="fas fa-user-graduate"></i>
+            Student
+          </a>
+          <a href="login.html?role=supervisor" class="hero-btn supervisor">
+            <i class="fas fa-chalkboard-teacher"></i>
+            Supervisor
+          </a>
+          <a href="login.html?role=admin" class="hero-btn admin">
+            <i class="fas fa-user-shield"></i>
+            Admin
+          </a>
+        </div>
       </div>
 
       <div class="hero-right">
@@ -645,8 +711,7 @@
 
   <footer class="landing-footer">
     &copy; 2026 Agriculture University � FYP Management System |
-    <a href="https://www.aup.edu.pk/" target="_blank" rel="noopener">University Website</a> |
-    <a href="mailto:support@aup.edu.pk">Contact Support</a>
+    <a href="https://www.aup.edu.pk/" target="_blank" rel="noopener">University Website</a>
   </footer>
 
 </div>
@@ -684,6 +749,60 @@
   // If you want splash EVERY TIME (not once per session),
   // then delete the whole IF/ELSE above and use only:
   // setTimeout(showMainUI, 3000);
+
+  // ===== Realtime Stats Data =====
+  function loadRealtimeStats() {
+    const db = window.firebaseServices?.db;
+    if (!db) {
+      console.error('Firestore not initialized');
+      return;
+    }
+
+    // Active Projects - Count from proposals collection
+    db.collection('proposals').onSnapshot((snapshot) => {
+      const projectCount = snapshot.size;
+      document.querySelector('.stats-container .stat-item:nth-child(1) .stat-number').textContent = projectCount + '+';
+    }, (error) => {
+      console.error('Error fetching projects:', error);
+    });
+
+    // Expert Supervisors - Count active supervisors
+    db.collection('supervisors').where('isActive', '==', true).onSnapshot((snapshot) => {
+      const supervisorCount = snapshot.size;
+      document.querySelector('.stats-container .stat-item:nth-child(2) .stat-number').textContent = supervisorCount + '+';
+    }, (error) => {
+      console.error('Error fetching supervisors:', error);
+    });
+
+    // Success Rate - Calculate based on completed/approved projects
+    db.collection('proposals').onSnapshot((snapshot) => {
+      const totalProjects = snapshot.size;
+      const completedProjects = snapshot.docs.filter(doc => {
+        const data = doc.data();
+        return data.status === 'approved' || data.status === 'completed';
+      }).length;
+      
+      const successRate = totalProjects > 0 ? Math.round((completedProjects / totalProjects) * 100) : 0;
+      document.querySelector('.stats-container .stat-item:nth-child(3) .stat-number').textContent = successRate + '%';
+    }, (error) => {
+      console.error('Error calculating success rate:', error);
+    });
+
+    // System Availability - Keep static as 24/7
+    // This is a system metric that doesn't change based on database data
+  }
+
+  // Load stats when Firebase is ready
+  if (window.firebaseServices?.db) {
+    loadRealtimeStats();
+  } else {
+    // Wait for Firebase to initialize
+    setTimeout(() => {
+      if (window.firebaseServices?.db) {
+        loadRealtimeStats();
+      }
+    }, 1000);
+  }
 </script>
 
 </body>

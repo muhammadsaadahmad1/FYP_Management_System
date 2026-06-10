@@ -191,7 +191,7 @@ function renderSupervisors() {
         <div>Supervisor</div>
         <div>Employee ID</div>
         <div>Email</div>
-        <div>Status</div>
+        <div>Status & Controls</div>
         <div>Actions</div>
       </div>
   `;
@@ -216,7 +216,7 @@ function renderSupervisors() {
     html += `
       <div class="supervisors-table-row" data-supervisor-id="${supervisor.id}">
         <div class="supervisor-row-info">
-          <div class="supervisor-avatar-small">${initials}</div>
+          <div class="supervisor-avatar-small ${supervisor.isActive ? 'active-border' : ''}">${initials}</div>
           <div>
             <div class="supervisor-row-name">${name}</div>
             <div class="supervisor-row-email">${supervisor.department || 'N/A'}</div>
@@ -224,8 +224,22 @@ function renderSupervisors() {
         </div>
         <div class="supervisor-row-id">${supervisor.employeeId || 'N/A'}</div>
         <div class="supervisor-row-email">${supervisor.email || 'N/A'}</div>
-        <div>
+        <div class="status-controls">
           <span class="status-badge ${statusClass}">${statusText}</span>
+          ${status !== 'pending_approval' ? `
+            <label class="toggle-switch" title="${supervisor.isActive ? 'Active' : 'Inactive'}">
+              <input type="checkbox" ${supervisor.isActive ? 'checked' : ''} onchange="toggleSupervisorActiveStatus('${supervisor.id}', this.checked)">
+              <span class="toggle-slider"></span>
+              <span class="toggle-label">${supervisor.isActive ? 'Active' : 'Inactive'}</span>
+            </label>
+            ${status === 'active' ? `
+              <label class="toggle-switch" title="${supervisor.showInStudentList ? 'In Student List' : 'Not in Student List'}">
+                <input type="checkbox" ${supervisor.showInStudentList ? 'checked' : ''} onchange="toggleSupervisorInStudentList('${supervisor.id}', this.checked)">
+                <span class="toggle-slider"></span>
+                <span class="toggle-label">${supervisor.showInStudentList ? 'In List' : 'Add'}</span>
+              </label>
+            ` : ''}
+          ` : ''}
         </div>
         <div class="action-btns-row">
           <button class="btn-view-row" onclick="viewSupervisor('${supervisor.id}')">
@@ -238,17 +252,7 @@ function renderSupervisors() {
             <button class="btn-reject-row" onclick="rejectSupervisor('${supervisor.id}')">
               <i class="fas fa-times"></i>
             </button>
-          ` : status === 'active' ? `
-            <label class="toggle-switch" title="${supervisor.showInStudentList ? 'In Student List' : 'Not in Student List'}">
-              <input type="checkbox" ${supervisor.showInStudentList ? 'checked' : ''} onchange="toggleSupervisorInStudentList('${supervisor.id}', this.checked)">
-              <span class="toggle-slider"></span>
-              <span class="toggle-label">${supervisor.showInStudentList ? 'In List' : 'Add'}</span>
-            </label>
-          ` : `
-            <button class="btn-approve-row" onclick="activateSupervisor('${supervisor.id}')">
-              <i class="fas fa-check"></i> Activate
-            </button>
-          `}
+          ` : ''}
         </div>
       </div>
     `;
@@ -589,6 +593,61 @@ async function toggleSupervisorInStudentList(supervisorId, showInList) {
   } catch (error) {
     console.error('❌ Error toggling supervisor visibility:', error);
     showNotification('Error updating supervisor visibility. Please try again.', 'error');
+  }
+}
+
+// Toggle supervisor active/inactive status
+async function toggleSupervisorActiveStatus(supervisorId, isActive) {
+  try {
+    console.log(`${isActive ? '✅ Activating' : '🔒 Deactivating'} supervisor ${supervisorId}`);
+
+    const updateData = {
+      isActive: isActive,
+      status: isActive ? 'active' : 'inactive',
+      updatedAt: firebase.firestore.FieldValue.serverTimestamp(),
+      updatedBy: currentAdmin.uid,
+      updatedByName: currentAdmin.displayName
+    };
+
+    if (isActive) {
+      updateData.activatedAt = firebase.firestore.FieldValue.serverTimestamp();
+    } else {
+      updateData.deactivatedAt = firebase.firestore.FieldValue.serverTimestamp();
+    }
+
+    // Update in supervisors collection
+    await db.collection('supervisors').doc(supervisorId).update(updateData);
+
+    // Update in users collection
+    await db.collection('users').doc(supervisorId).update(updateData);
+
+    // Update local data
+    const supervisorIndex = allSupervisors.findIndex(s => s.id === supervisorId);
+    if (supervisorIndex !== -1) {
+      allSupervisors[supervisorIndex].isActive = isActive;
+      allSupervisors[supervisorIndex].status = isActive ? 'active' : 'inactive';
+    }
+
+    // Re-render supervisors to update toggle state
+    renderSupervisors();
+
+    // Update stats
+    updateSupervisorStats();
+
+    // Update pending badge
+    updatePendingBadge();
+
+    // Show success notification
+    showNotification(
+      `Supervisor ${isActive ? 'activated' : 'deactivated'} successfully!`,
+      'success'
+    );
+
+    console.log(`✅ Supervisor ${isActive ? 'activated' : 'deactivated'}`);
+
+  } catch (error) {
+    console.error('❌ Error toggling supervisor active status:', error);
+    showNotification('Error updating supervisor status. Please try again.', 'error');
   }
 }
 

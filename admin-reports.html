@@ -133,17 +133,30 @@
       margin: 0;
     }
     
+    .stats-row {
+      margin-bottom: 30px;
+    }
+    
     .search-filter-section {
       display: flex;
+      flex-direction: column;
       gap: 15px;
+      margin-top: 0;
       margin-bottom: 20px;
-      flex-wrap: wrap;
+      align-items: flex-start;
     }
     
     .search-box {
-      flex: 1;
-      min-width: 250px;
+      width: 100%;
+      max-width: 400px;
       position: relative;
+    }
+    
+    .search-filters-row {
+      display: flex;
+      gap: 15px;
+      flex-wrap: wrap;
+      align-items: center;
     }
     
     .search-box input {
@@ -361,12 +374,12 @@
         </div>
 
         <!-- Search and Filter -->
-        <div class="card">
-          <div class="search-filter-section">
-            <div class="search-box">
-              <i class="fas fa-search"></i>
-              <input type="text" id="reportSearchInput" placeholder="Search reports by title, group, or description..." onkeyup="filterReports()">
-            </div>
+        <div class="search-filter-section">
+          <div class="search-box">
+            <i class="fas fa-search"></i>
+            <input type="text" id="reportSearchInput" placeholder="Search reports by title, group, or description..." onkeyup="filterReports()">
+          </div>
+          <div class="search-filters-row">
             <div class="filter-dropdown">
               <select id="typeFilter" onchange="filterReports()">
                 <option value="all">All Types</option>
