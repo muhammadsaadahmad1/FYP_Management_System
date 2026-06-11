@@ -193,9 +193,7 @@
   </div>
 
   <script>
-    document.addEventListener('DOMContentLoaded', function() {
-      loadMeetingsData();
-    });
+    window.initStudentMeetingsPage = loadMeetingsData;
 
     // Verify authentication and user permissions
     async function verifyAuthentication() {
@@ -399,32 +397,25 @@
             showNotification('Error updating viva data', 'error');
           });
         
-        // Real-time deadlines listener
+        // Real-time deadlines listener (no orderBy — sort client-side to avoid index requirement)
         deadlinesListener = firebase.firestore()
           .collection('deadlines')
           .where('groupId', '==', groupId)
-          .orderBy('date', 'asc')
           .onSnapshot((snapshot) => {
             console.log('Deadlines data updated:', snapshot.docs.length, 'documents');
-            
-            const deadlines = [];
-            snapshot.forEach(doc => {
-              const deadlineData = doc.data();
-              console.log('Deadline data:', deadlineData);
-              deadlines.push({
-                id: doc.id,
-                ...deadlineData
-              });
-            });
-            
+
+            const deadlines = snapshot.docs
+              .map((doc) => ({ id: doc.id, ...doc.data() }))
+              .sort((a, b) => new Date(a.date || 0) - new Date(b.date || 0));
+
             console.log('Processed deadlines:', deadlines.length);
             updateDeadlinesList(deadlines);
-            if (snapshot.docs.length > 0) {
-              showNotification('Deadlines updated!', 'success');
-            }
           }, (error) => {
             console.error('Deadlines listener error:', error);
-            showNotification('Error updating deadlines data', 'error');
+            const message = error.code === 'permission-denied'
+              ? 'Permission denied for deadlines. Please log out and log in again.'
+              : 'Error updating deadlines data';
+            showNotification(message, 'error');
           });
           
       } catch (error) {

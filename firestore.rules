@@ -38,7 +38,14 @@ service cloud.firestore {
     }
 
     match /users/{userId} {
-      allow read: if isOwner(userId) || isActiveAdmin() || isActiveSupervisor();
+      // Owner, admin, supervisor can read any user doc.
+      // Signed-in students can also read docs belonging to the same group
+      // (needed for displaying group members and sending notifications).
+      allow read: if isOwner(userId)
+                  || isActiveAdmin()
+                  || isActiveSupervisor()
+                  || (signedIn() && resource.data.groupId != null
+                      && resource.data.groupId == userData().groupId);
       allow create: if isOwner(userId);
       allow update: if isOwner(userId) || isActiveAdmin();
       allow delete: if isActiveAdmin();

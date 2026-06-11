@@ -249,6 +249,7 @@
   <script src="js/firebase-auth.js"></script>
   <script src="js/auth-guard.js"></script>
   <script src="js/ui-helpers.js"></script>
+  <script src="js/proposal-workflow.js"></script>
   <script src="js/student.js"></script>
 </head>
 
@@ -399,83 +400,83 @@
 
   <!-- Main JavaScript -->
   <script>
-    // Load proposals data when page loads
-    document.addEventListener('DOMContentLoaded', function() {
-      loadProposalsData();
-    });
-
-    // Load proposals data from Firebase
+    // Load proposals data from Firebase (called after auth guard confirms login)
     async function loadProposalsData() {
       const groupId = localStorage.getItem('groupId');
       const currentUserRole = localStorage.getItem('role');
-      
+
       if (!groupId || currentUserRole !== 'student') {
         console.log('Missing groupId or not student role');
         return;
       }
-      
+
       try {
         showLoadingOverlay('Loading proposals data...');
-        
-        // Fetch current proposal
-        const currentProposalSnapshot = await firebase.firestore()
+
+        const proposalsSnapshot = await firebase.firestore()
           .collection('proposals')
           .where('groupId', '==', groupId)
-          .where('isCurrent', '==', true)
           .get();
-        
+
         let currentProposal = null;
-        if (!currentProposalSnapshot.empty) {
-          currentProposal = currentProposalSnapshot.docs[0].data();
-        }
-        
-        // Fetch proposal history
-        const proposalsHistorySnapshot = await firebase.firestore()
-          .collection('proposals')
-          .where('groupId', '==', groupId)
-          .orderBy('submittedDate', 'desc')
-          .get();
-        
         const proposalsHistory = [];
-        proposalsHistorySnapshot.forEach(doc => {
-          const proposalData = doc.data();
-          proposalsHistory.push({
-            id: doc.id,
-            ...proposalData
-          });
+        proposalsSnapshot.forEach((doc) => {
+          const proposalData = { id: doc.id, ...doc.data() };
+          proposalsHistory.push(proposalData);
+          if (proposalData.isCurrent === true) {
+            currentProposal = proposalData;
+          }
         });
-        
-        // Fetch supervisor feedback
-        const feedbackSnapshot = await firebase.firestore()
-          .collection('feedback')
-          .where('groupId', '==', groupId)
-          .where('type', '==', 'proposal')
-          .orderBy('timestamp', 'desc')
-          .limit(5)
-          .get();
-        
-        const feedbacks = [];
-        feedbackSnapshot.forEach(doc => {
-          const feedbackData = doc.data();
-          feedbacks.push({
-            id: doc.id,
-            ...feedbackData
-          });
+
+        proposalsHistory.sort((a, b) => {
+          const dateA = a.submittedDate ? new Date(a.submittedDate).getTime() : 0;
+          const dateB = b.submittedDate ? new Date(b.submittedDate).getTime() : 0;
+          return dateB - dateA;
         });
-        
-        // Update all sections
+
+        let feedbacks = [];
+        try {
+          const feedbackSnapshot = await firebase.firestore()
+            .collection('feedback')
+            .where('groupId', '==', groupId)
+            .where('type', '==', 'proposal')
+            .orderBy('timestamp', 'desc')
+            .limit(5)
+            .get();
+
+          feedbackSnapshot.forEach((doc) => {
+            feedbacks.push({ id: doc.id, ...doc.data() });
+          });
+        } catch (indexError) {
+          console.log('Feedback index not found, using fallback query');
+          const feedbackSnapshot = await firebase.firestore()
+            .collection('feedback')
+            .where('groupId', '==', groupId)
+            .get();
+
+          feedbacks = feedbackSnapshot.docs
+            .map((doc) => ({ id: doc.id, ...doc.data() }))
+            .filter((item) => item.type === 'proposal')
+            .sort((a, b) => new Date(b.timestamp || 0) - new Date(a.timestamp || 0))
+            .slice(0, 5);
+        }
+
         updateCurrentProposalStatus(currentProposal);
         updateProposalsTable(proposalsHistory);
         updateSupervisorFeedback(feedbacks);
-        
+
         hideLoadingOverlay();
-        
       } catch (error) {
         hideLoadingOverlay();
         console.error('Error loading proposals data:', error);
-        showNotification('Error loading proposals data. Please check your connection.', 'error');
+        const message = error.code === 'permission-denied'
+          ? 'Permission denied. Please log out and log in again.'
+          : 'Error loading proposals data. Please check your connection.';
+        showNotification(message, 'error');
       }
     }
+
+    window.initStudentProposalsPage = loadProposalsData;
 
     // Update current proposal status
     function updateCurrentProposalStatus(proposal) {
@@ -494,16 +495,27 @@
         return;
       }
       
+      const assignmentLabel = {
+        pending_supervisor: 'Awaiting Supervisor Response',
+        accepted: 'Accepted by Supervisor',
+        rejected: 'Rejected by Supervisor',
+        admin_assigned: 'Permanently Assigned by Admin'
+      }[proposal.assignmentStatus] || proposal.status;
+
       statusCard.innerHTML = `
         <div class="proposal-details">
           <div class="proposal-header">
             <h4>${proposal.title}</h4>
-            <span class="status ${proposal.status}">${proposal.status}</span>
+            <span class="status ${proposal.status}">${assignmentLabel}</span>
           </div>
           <div class="proposal-info">
             <p><strong>Submitted:</strong> ${new Date(proposal.submittedDate).toLocaleDateString()}</p>
             <p><strong>Last Updated:</strong> ${new Date(proposal.lastUpdated).toLocaleDateString()}</p>
-            <p><strong>Supervisor:</strong> ${proposal.supervisor || 'Not Assigned'}</p>
+            <p><strong>Requested Supervisor:</strong> ${proposal.requestedSupervisorName || proposal.supervisorName || 'Not Assigned'}</p>
+            ${proposal.responseDeadline && proposal.assignmentStatus === 'pending_supervisor' ?
+              `<p><strong>Supervisor must respond by:</strong> ${new Date(proposal.responseDeadline).toLocaleDateString()}</p>` : ''}
+            ${proposal.rejectionReport ?
+              `<p><strong>Rejection Report:</strong> ${proposal.rejectionReport}</p>` : ''}
           </div>
           <div class="proposal-progress">
             <p><strong>Progress:</strong></p>
@@ -662,6 +674,7 @@
         const supervisorsByCategory = {};
         let totalCount = 0;
 
+        const availableSupervisors = [];
         snapshot.docs.forEach(doc => {
           const supervisor = doc.data();
           const category = supervisor.expertise || supervisor.department || 'General';
@@ -670,12 +683,12 @@
             supervisorsByCategory[category] = [];
           }
           
-          supervisorsByCategory[category].push({
-            id: doc.id,
-            ...supervisor
-          });
+          const item = { id: doc.id, ...supervisor };
+          supervisorsByCategory[category].push(item);
+          availableSupervisors.push(item);
           totalCount++;
         });
+        window.availableSupervisorsCache = availableSupervisors;
 
         // Update total count
         if (countElement) countElement.textContent = `(${totalCount})`;
@@ -831,8 +844,25 @@
       }, 2000);
     });
 
+    // Build supervisor dropdown options from Available Supervisors list
+    function buildSupervisorSelectOptions() {
+      const supervisors = window.availableSupervisorsCache || [];
+      if (!supervisors.length) {
+        return '<option value="" disabled>No supervisors in Available Supervisors list</option>';
+      }
+      return supervisors.map((supervisor) => {
+        const name = supervisor.fullName || supervisor.displayName || 'Supervisor';
+        const dept = supervisor.department || supervisor.expertise || 'General';
+        return `<option value="${supervisor.id}">${name} — ${dept}</option>`;
+      }).join('');
+    }
+
     // Show new proposal form
-    function showNewProposalForm() {
+    async function showNewProposalForm() {
+      if (!window.availableSupervisorsCache || !window.availableSupervisorsCache.length) {
+        await loadSupervisorsList();
+      }
+
       const formHtml = `
         <div id="proposalModal" class="modal" style="display: block;">
           <div class="modal-content proposal-modal">
@@ -842,6 +872,14 @@
             </div>
             <div class="modal-body">
               <form id="proposalForm">
+                <div class="form-group">
+                  <label>Select Supervisor *</label>
+                  <select name="supervisorId" required>
+                    <option value="">Choose from Available Supervisors</option>
+                    ${buildSupervisorSelectOptions()}
+                  </select>
+                  <small>Only supervisors shown in the Available Supervisors section can be selected.</small>
+                </div>
                 <div class="form-group">
                   <label>Proposal Title *</label>
                   <input type="text" name="title" required placeholder="Enter your proposal title">
@@ -917,69 +955,81 @@
       const formData = new FormData(form);
       const groupId = localStorage.getItem('groupId');
       const userId = localStorage.getItem('uid');
-      
+      const selectedSupervisorId = formData.get('supervisorId');
+
       try {
         showLoadingOverlay('Submitting proposal...');
-        
-        // Get group information to find supervisor (AUTOMATIC ASSIGNMENT)
-        // ⚠️ TESTING MODE: Supervisor validation is disabled for testing purposes
-        const groupDoc = await firebase.firestore().collection('groups').doc(groupId).get();
-        let supervisorId = null;
-        let groupData = null;
 
-        if (groupDoc.exists) {
-          groupData = groupDoc.data();
-          supervisorId = groupData.supervisorId || null; // Ensure null not undefined
-        }
-
-        // Validate supervisor is assigned to group
-        if (!supervisorId) {
+        if (!selectedSupervisorId) {
           hideLoadingOverlay();
-          showNotification('No supervisor assigned to your group. Please contact administrator.', 'error');
+          showNotification('Please select a supervisor from the Available Supervisors list.', 'error');
           return;
         }
 
-        console.log('✅ Automatic supervisor assignment:', supervisorId);
-        
+        const supervisor = (window.availableSupervisorsCache || []).find((s) => s.id === selectedSupervisorId);
+        if (!supervisor) {
+          hideLoadingOverlay();
+          showNotification('Selected supervisor is not in the Available Supervisors list.', 'error');
+          return;
+        }
+
+        const supervisorName = ProposalWorkflow.supervisorDisplayName(supervisor);
+        const groupLabel = groupId;
+        const now = new Date().toISOString();
+
         const proposalData = {
           title: formData.get('title'),
           category: formData.get('category'),
           abstract: formData.get('abstract'),
+          description: formData.get('abstract'),
           objectives: formData.get('objectives'),
           methodology: formData.get('methodology'),
           outcomes: formData.get('outcomes'),
-          timeline: parseInt(formData.get('timeline')),
-          groupId: groupId,
-          supervisorId: supervisorId,
+          timeline: parseInt(formData.get('timeline'), 10),
+          groupId,
+          groupName: groupLabel,
+          requestedSupervisorId: selectedSupervisorId,
+          requestedSupervisorName: supervisorName,
+          supervisorId: selectedSupervisorId,
+          supervisorName,
           submittedBy: userId,
-          submittedDate: new Date().toISOString(),
-          lastUpdated: new Date().toISOString(),
+          submittedDate: now,
+          submittedAt: now,
+          lastUpdated: now,
           status: 'pending',
+          assignmentStatus: 'pending_supervisor',
+          responseDeadline: ProposalWorkflow.getResponseDeadline(),
+          adminOverdueNotified: false,
           isCurrent: true,
           progress: 0
         };
-        
-        // Mark previous proposals as not current
-        await firebase.firestore()
+
+        const priorSnapshot = await firebase.firestore()
           .collection('proposals')
           .where('groupId', '==', groupId)
-          .get()
-          .then(snapshot => {
-            const batch = firebase.firestore().batch();
-            snapshot.forEach(doc => {
-              batch.update(doc.ref, { isCurrent: false });
-            });
-            return batch.commit();
-          });
-        
-        // Add new proposal
-        await firebase.firestore().collection('proposals').add(proposalData);
-        
+          .get();
+
+        const batch = firebase.firestore().batch();
+        priorSnapshot.forEach((doc) => {
+          batch.update(doc.ref, { isCurrent: false });
+        });
+        await batch.commit();
+
+        const proposalRef = await firebase.firestore().collection('proposals').add(proposalData);
+
+        await ProposalWorkflow.notifyProposalSubmitted({
+          proposalId: proposalRef.id,
+          groupId,
+          groupLabel,
+          supervisorId: selectedSupervisorId,
+          supervisorName,
+          proposalTitle: proposalData.title
+        });
+
         hideLoadingOverlay();
         closeProposalModal();
-        showNotification('Proposal submitted successfully!', 'success');
-        
-        // Reload proposals data
+        showNotification(`Proposal sent to ${supervisorName}. Awaiting supervisor response (7 days).`, 'success');
+
         loadProposalsData();
         
       } catch (error) {

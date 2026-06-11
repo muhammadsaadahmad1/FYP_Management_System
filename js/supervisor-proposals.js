@@ -87,55 +87,43 @@ async function loadAllSupervisorProposals(supervisorId) {
   try {
     const proposalsSnapshot = await db.collection('proposals')
       .where('supervisorId', '==', supervisorId)
-      .orderBy('submittedDate', 'desc')
       .get();
-    
+
     const proposals = [];
-    
+
     for (const proposalDoc of proposalsSnapshot.docs) {
       const proposalData = proposalDoc.data();
-      
-      // Get group information
       const groupDoc = await db.collection('groups').doc(proposalData.groupId).get();
       const groupData = groupDoc.exists ? groupDoc.data() : null;
-      
-      // Get student information
-      let studentNames = [];
-      if (groupData && groupData.members) {
-        for (const memberId of groupData.members) {
-          // Validate memberId is a string before using it
-          if (typeof memberId === 'string' && memberId.trim() !== '') {
-            try {
-              const memberDoc = await db.collection('users').doc(memberId).get();
-              if (memberDoc.exists) {
-                studentNames.push(memberDoc.data().displayName);
-              }
-            } catch (memberError) {
-              console.error('Error loading member:', memberId, memberError);
-            }
-          } else {
-            console.warn('Invalid memberId found:', memberId);
-          }
-        }
-      }
-      
+      const studentNames = await ProposalWorkflow.getStudentNames(proposalData.groupId, groupData);
+
       proposals.push({
         id: proposalDoc.id,
+        ...proposalData,
         title: proposalData.title || 'Untitled Proposal',
-        description: proposalData.description || '',
+        description: ProposalWorkflow.getDescription(proposalData),
         category: proposalData.category || 'other',
         status: proposalData.status || 'pending',
-        submittedDate: proposalData.submittedDate || null,
+        assignmentStatus: proposalData.assignmentStatus || 'pending_supervisor',
+        submittedDate: ProposalWorkflow.getSubmittedDate(proposalData),
         reviewedDate: proposalData.reviewedDate || null,
         feedback: proposalData.feedback || '',
+        rejectionReport: proposalData.rejectionReport || '',
         groupId: proposalData.groupId,
-        groupName: groupData ? groupData.groupName : 'Unknown Group',
-        studentNames: studentNames,
+        groupName: groupData?.groupId || proposalData.groupId || 'Unknown Group',
+        studentNames,
         supervisorId: proposalData.supervisorId,
-        attachments: proposalData.attachments || []
+        requestedSupervisorId: proposalData.requestedSupervisorId,
+        responseDeadline: proposalData.responseDeadline || null,
+        attachments: proposalData.attachments || [],
+        objectives: proposalData.objectives || '',
+        methodology: proposalData.methodology || '',
+        outcomes: proposalData.outcomes || '',
+        timeline: proposalData.timeline || ''
       });
     }
-    
+
+    proposals.sort((a, b) => new Date(b.submittedDate || 0) - new Date(a.submittedDate || 0));
     return proposals;
   } catch (error) {
     console.error('Error loading supervisor proposals:', error);
@@ -145,9 +133,9 @@ async function loadAllSupervisorProposals(supervisorId) {
 
 // Update statistics cards
 function updateProposalsStats(proposalsData) {
-  const pendingCount = proposalsData.filter(p => p.status === 'pending').length;
+  const pendingCount = proposalsData.filter(p => p.assignmentStatus === 'pending_supervisor' || p.status === 'pending').length;
   const underReviewCount = proposalsData.filter(p => p.status === 'under_review').length;
-  const approvedCount = proposalsData.filter(p => p.status === 'approved').length;
+  const approvedCount = proposalsData.filter(p => p.status === 'approved' || p.assignmentStatus === 'accepted').length;
   const rejectedCount = proposalsData.filter(p => p.status === 'rejected').length;
   
   document.getElementById('pendingCount').textContent = pendingCount;
@@ -179,7 +167,7 @@ function displayProposalsList(proposalsData) {
           <h4>${proposal.title}</h4>
           <span class="proposal-id">ID: ${proposal.id}</span>
         </div>
-        <span class="status-badge ${proposal.status}">${formatStatus(proposal.status)}</span>
+        <span class="status-badge ${proposal.status}">${formatAssignmentStatus(proposal)}</span>
       </div>
       
       <div class="proposal-card-body">
@@ -214,6 +202,15 @@ function displayProposalsList(proposalsData) {
             <p>${proposal.submittedDate ? new Date(proposal.submittedDate).toLocaleDateString() : 'N/A'}</p>
           </div>
         </div>
+
+        ${proposal.assignmentStatus === 'pending_supervisor' && proposal.responseDeadline ? `
+        <div class="proposal-detail">
+          <i class="fas fa-hourglass-half"></i>
+          <div>
+            <label>Respond by</label>
+            <p>${new Date(proposal.responseDeadline).toLocaleDateString()}</p>
+          </div>
+        </div>` : ''}
       </div>
       
       <div class="proposal-description">
@@ -295,6 +292,7 @@ async function reviewProposal(proposalId) {
     const modal = document.getElementById('proposalReviewModal');
     const content = document.getElementById('proposalReviewContent');
     
+    const isPending = proposal.assignmentStatus === 'pending_supervisor';
     content.innerHTML = `
       <div class="proposal-review">
         <div class="review-section">
@@ -310,7 +308,7 @@ async function reviewProposal(proposalId) {
             </div>
             <div class="detail-item">
               <label>Students:</label>
-              <p>${proposal.studentNames.join(', ')}</p>
+              <p>${proposal.studentNames.join(', ') || 'N/A'}</p>
             </div>
             <div class="detail-item">
               <label>Category:</label>
@@ -322,16 +320,31 @@ async function reviewProposal(proposalId) {
             </div>
             <div class="detail-item">
               <label>Status:</label>
-              <span class="status-badge ${proposal.status}">${formatStatus(proposal.status)}</span>
+              <span class="status-badge ${proposal.status}">${formatAssignmentStatus(proposal)}</span>
             </div>
           </div>
         </div>
-        
+
         <div class="review-section">
-          <h4>Description</h4>
-          <p>${proposal.description}</p>
+          <h4>Abstract</h4>
+          <p>${proposal.description || 'No abstract provided.'}</p>
         </div>
-        
+
+        <div class="review-section">
+          <h4>Objectives</h4>
+          <p>${proposal.objectives || 'N/A'}</p>
+        </div>
+
+        <div class="review-section">
+          <h4>Methodology</h4>
+          <p>${proposal.methodology || 'N/A'}</p>
+        </div>
+
+        <div class="review-section">
+          <h4>Expected Outcomes</h4>
+          <p>${proposal.outcomes || 'N/A'}</p>
+        </div>
+
         ${proposal.attachments && proposal.attachments.length > 0 ? `
           <div class="review-section">
             <h4>Attachments</h4>
@@ -348,38 +361,57 @@ async function reviewProposal(proposalId) {
             </div>
           </div>
         ` : ''}
-        
+
+        ${isPending ? `
         <div class="review-section">
-          <h4>Review Action</h4>
+          <h4>Your Decision</h4>
           <form id="reviewForm">
             <div class="form-group">
-              <label for="reviewDecision">Decision:</label>
+              <label for="reviewDecision">Decision *</label>
               <select id="reviewDecision" required>
-                <option value="">Select Decision</option>
-                <option value="approved">Approve</option>
-                <option value="rejected">Reject</option>
-                <option value="under_review">Request Changes</option>
+                <option value="">Select decision</option>
+                <option value="accepted">Accept proposal & supervise group</option>
+                <option value="rejected">Reject proposal</option>
               </select>
             </div>
-            <div class="form-group">
-              <label for="reviewFeedback">Feedback:</label>
-              <textarea id="reviewFeedback" rows="4" placeholder="Provide detailed feedback..."></textarea>
+            <div class="form-group" id="feedbackGroup">
+              <label for="reviewFeedback">Comments (optional for accept)</label>
+              <textarea id="reviewFeedback" rows="3" placeholder="Add comments for the group..."></textarea>
+            </div>
+            <div class="form-group" id="rejectionReportGroup" style="display:none;">
+              <label for="rejectionReport">Rejection Report *</label>
+              <textarea id="rejectionReport" rows="5" placeholder="Provide a detailed rejection report (required). This will be sent to students and admin."></textarea>
             </div>
             <div class="form-actions">
               <button type="button" class="btn btn-secondary" onclick="closeProposalReviewModal()">Cancel</button>
-              <button type="submit" class="btn btn-primary">Submit Review</button>
+              <button type="submit" class="btn btn-primary">Submit Decision</button>
             </div>
           </form>
         </div>
+        ` : `
+        <div class="review-section">
+          <h4>Review Result</h4>
+          <p><strong>Decision:</strong> ${formatAssignmentStatus(proposal)}</p>
+          ${proposal.feedback ? `<p><strong>Feedback:</strong> ${proposal.feedback}</p>` : ''}
+          ${proposal.rejectionReport ? `<p><strong>Rejection Report:</strong> ${proposal.rejectionReport}</p>` : ''}
+        </div>
+        `}
       </div>
     `;
     
-    // Add form submit handler
-    document.getElementById('reviewForm').addEventListener('submit', async (e) => {
-      e.preventDefault();
-      await submitProposalReview(proposalId);
-    });
-    
+    if (isPending) {
+      const decisionSelect = document.getElementById('reviewDecision');
+      const rejectionGroup = document.getElementById('rejectionReportGroup');
+      decisionSelect.addEventListener('change', () => {
+        rejectionGroup.style.display = decisionSelect.value === 'rejected' ? 'block' : 'none';
+      });
+
+      document.getElementById('reviewForm').addEventListener('submit', async (e) => {
+        e.preventDefault();
+        await submitProposalReview(proposalId);
+      });
+    }
+
     modal.style.display = 'block';
     
   } catch (error) {
@@ -394,68 +426,67 @@ async function reviewProposal(proposalId) {
 async function submitProposalReview(proposalId) {
   try {
     const decision = document.getElementById('reviewDecision').value;
-    const feedback = document.getElementById('reviewFeedback').value;
-    
+    const feedback = document.getElementById('reviewFeedback')?.value?.trim() || '';
+    const rejectionReport = document.getElementById('rejectionReport')?.value?.trim() || '';
+
     if (!decision) {
-      if (typeof showNotification !== 'undefined') {
-        showNotification('Please select a decision', 'error');
-      }
+      showNotification?.('Please select a decision', 'error');
       return;
     }
-    
+
+    if (decision === 'rejected' && !rejectionReport) {
+      showNotification?.('A rejection report is required when rejecting a proposal.', 'error');
+      return;
+    }
+
+    const proposal = supervisorProposalsData.find((p) => p.id === proposalId);
+    if (!proposal) {
+      showNotification?.('Proposal not found', 'error');
+      return;
+    }
+
     const supervisorId = localStorage.getItem('uid');
-    
-    await db.collection('proposals').doc(proposalId).update({
-      status: decision,
-      feedback: feedback,
-      reviewedDate: new Date().toISOString(),
-      reviewedBy: supervisorId
-    });
-    
-    // Send notification to students
-    const proposal = supervisorProposalsData.find(p => p.id === proposalId);
-    if (proposal && proposal.groupId) {
-      const groupDoc = await db.collection('groups').doc(proposal.groupId).get();
-      if (groupDoc.exists) {
-        const groupData = groupDoc.data();
-        if (groupData.members) {
-          for (const memberId of groupData.members) {
-            // Validate memberId is a string before using it
-            if (typeof memberId === 'string' && memberId.trim() !== '') {
-              try {
-                await db.collection('notifications').add({
-                  userId: memberId,
-                  type: 'proposal_review',
-                  title: `Proposal ${decision}`,
-                  message: `Your proposal "${proposal.title}" has been ${decision}.`,
-                  proposalId: proposalId,
-                  createdAt: new Date().toISOString(),
-                  read: false
-                });
-              } catch (notificationError) {
-                console.error('Error sending notification to member:', memberId, notificationError);
-              }
-            } else {
-              console.warn('Invalid memberId found when sending notification:', memberId);
-            }
-          }
-        }
-      }
+    const supervisorName = localStorage.getItem('displayName') || 'Supervisor';
+    const groupLabel = proposal.groupName || proposal.groupId;
+
+    if (decision === 'accepted') {
+      await ProposalWorkflow.acceptProposal({
+        proposalId,
+        supervisorId,
+        supervisorName,
+        feedback,
+        groupId: proposal.groupId,
+        groupLabel,
+        proposalTitle: proposal.title
+      });
+      showNotification?.('Proposal accepted. Group has been assigned to you.', 'success');
+    } else {
+      await ProposalWorkflow.rejectProposal({
+        proposalId,
+        supervisorId,
+        supervisorName,
+        rejectionReport,
+        groupId: proposal.groupId,
+        groupLabel,
+        proposalTitle: proposal.title
+      });
+      showNotification?.('Proposal rejected. Students and admin have been notified.', 'success');
     }
-    
-    if (typeof showNotification !== 'undefined') {
-      showNotification(`Proposal ${decision} successfully!`, 'success');
-    }
-    
+
     closeProposalReviewModal();
-    loadSupervisorProposalsPage(); // Reload data
-    
+    loadSupervisorProposalsPage();
   } catch (error) {
     console.error('Error submitting review:', error);
-    if (typeof showNotification !== 'undefined') {
-      showNotification('Error submitting review', 'error');
-    }
+    showNotification?.('Error submitting review: ' + error.message, 'error');
   }
+}
+
+function formatAssignmentStatus(proposal) {
+  if (proposal.assignmentStatus === 'pending_supervisor') return 'Awaiting Your Response';
+  if (proposal.assignmentStatus === 'accepted') return 'Accepted';
+  if (proposal.assignmentStatus === 'rejected') return 'Rejected';
+  if (proposal.assignmentStatus === 'admin_assigned') return 'Admin Assigned';
+  return formatStatus(proposal.status || 'pending');
 }
 
 // Download proposal

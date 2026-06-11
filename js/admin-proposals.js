@@ -33,12 +33,13 @@ async function loadAdminProposalsPage() {
     currentAdmin = userDoc.data();
     console.log('✅ Admin verified:', currentAdmin.displayName);
     
-    // Load all data in parallel
     await Promise.all([
       loadSupervisors(),
       loadGroups(),
       loadProposals()
     ]);
+
+    await ProposalWorkflow.checkAndNotifyOverdueProposals();
     
     console.log('✅ Admin Proposals Page loaded successfully');
     
@@ -119,15 +120,18 @@ async function loadProposals() {
       `;
     }
     
-    // Get proposals from Firestore
-    const snapshot = await db.collection('proposals')
-      .orderBy('submittedAt', 'desc')
-      .get();
-    
+    const snapshot = await db.collection('proposals').get();
+
     allProposals = snapshot.docs.map(doc => ({
       id: doc.id,
       ...doc.data()
     }));
+
+    allProposals.sort((a, b) => {
+      const dateA = new Date(ProposalWorkflow.getSubmittedDate(a) || 0).getTime();
+      const dateB = new Date(ProposalWorkflow.getSubmittedDate(b) || 0).getTime();
+      return dateB - dateA;
+    });
     
     console.log(`✅ Loaded ${allProposals.length} proposals`);
     
@@ -158,8 +162,10 @@ async function loadProposals() {
 
 // Update proposal statistics
 function updateProposalStats() {
-  const pending = allProposals.filter(p => p.status === 'pending' || !p.status).length;
-  const assigned = allProposals.filter(p => p.status === 'assigned' || p.supervisorId).length;
+  const pending = allProposals.filter(p => p.assignmentStatus === 'pending_supervisor').length;
+  const assigned = allProposals.filter(p =>
+    p.assignmentStatus === 'admin_assigned' || p.status === 'assigned' || p.assignmentStatus === 'accepted'
+  ).length;
   const approved = allProposals.filter(p => p.status === 'approved').length;
   const total = allProposals.length;
   
@@ -201,28 +207,37 @@ function renderProposalsTable() {
   `;
   
   allProposals.forEach(proposal => {
-    // Find group info
     const group = allGroups.find(g => g.id === proposal.groupId) || {};
     const groupName = group.groupId || group.name || proposal.groupId || 'Unknown Group';
-    
-    // Find supervisor info
-    const supervisor = allSupervisors.find(s => s.id === proposal.supervisorId) || {};
-    const supervisorName = supervisor.fullName || supervisor.displayName || (proposal.supervisorId ? 'Assigned' : 'Not Assigned');
-    
-    // Determine status
-    let status = proposal.status || 'pending';
-    if (proposal.supervisorId && status === 'pending') {
-      status = 'assigned';
+
+    const supervisorId = proposal.requestedSupervisorId || proposal.supervisorId;
+    const supervisor = allSupervisors.find(s => s.id === supervisorId) || {};
+    const supervisorName = proposal.requestedSupervisorName || proposal.supervisorName ||
+      supervisor.fullName || supervisor.displayName || 'Not Assigned';
+
+    const overdue = ProposalWorkflow.isOverdue(proposal);
+    let status = proposal.assignmentStatus || proposal.status || 'pending';
+    let statusClass = `status-${proposal.status || 'pending'}`;
+    let statusText = status.replace(/_/g, ' ');
+
+    if (overdue) {
+      statusText = 'Overdue — No Response';
+      statusClass = 'status-pending';
+    } else if (status === 'pending_supervisor') {
+      statusText = 'Awaiting Supervisor';
+    } else if (status === 'accepted') {
+      statusText = 'Accepted';
+      statusClass = 'status-approved';
+    } else if (status === 'admin_assigned') {
+      statusText = 'Admin Assigned';
+      statusClass = 'status-assigned';
     }
-    
-    const statusClass = `status-${status}`;
-    const statusText = status.charAt(0).toUpperCase() + status.slice(1);
-    
-    // Format date
-    const submittedDate = proposal.submittedAt ? 
-      new Date(proposal.submittedAt.toDate ? proposal.submittedAt.toDate() : proposal.submittedAt).toLocaleDateString() : 
+
+    const submittedRaw = ProposalWorkflow.getSubmittedDate(proposal);
+    const submittedDate = submittedRaw ?
+      new Date(submittedRaw).toLocaleDateString() :
       'Unknown';
-    
+
     html += `
       <tr data-proposal-id="${proposal.id}">
         <td>${groupName}</td>
@@ -235,7 +250,11 @@ function renderProposalsTable() {
           <button class="action-btn btn-view" onclick="viewProposal('${proposal.id}')">
             <i class="fas fa-eye"></i> View
           </button>
-          ${!proposal.supervisorId ? `
+          ${overdue ? `
+            <button class="action-btn btn-approve" onclick="adminPermanentlyAssignProposal('${proposal.id}', '${proposal.groupId}')">
+              <i class="fas fa-gavel"></i> Force Assign
+            </button>
+          ` : (!proposal.supervisorId && proposal.assignmentStatus !== 'pending_supervisor') ? `
             <button class="action-btn btn-assign" onclick="showAssignModal('${proposal.id}')">
               <i class="fas fa-user-tie"></i> Assign
             </button>
@@ -302,35 +321,40 @@ function viewProposal(proposalId) {
   const group = allGroups.find(g => g.id === proposal.groupId) || {};
   const supervisor = allSupervisors.find(s => s.id === proposal.supervisorId) || {};
   
+  const overdue = ProposalWorkflow.isOverdue(proposal);
+  const requestedName = proposal.requestedSupervisorName || supervisor.fullName || supervisor.displayName || 'N/A';
   const modalBody = document.getElementById('modalBody');
   modalBody.innerHTML = `
     <div class="proposal-detail">
       <h4>Project Title</h4>
       <p>${proposal.title || proposal.projectTitle || 'Untitled'}</p>
-      
-      <h4>Description</h4>
-      <p>${proposal.description || proposal.projectDescription || 'No description provided.'}</p>
-      
+
+      <h4>Abstract</h4>
+      <p>${ProposalWorkflow.getDescription(proposal) || 'No description provided.'}</p>
+
       <h4>Group Information</h4>
       <p>
         <strong>Group ID:</strong> ${group.groupId || group.name || proposal.groupId || 'N/A'}<br>
-        <strong>Members:</strong> ${group.members ? group.members.map(m => m.name || m.email).join(', ') : 'N/A'}
+        <strong>Members:</strong> ${group.members ? group.members.map(m => m.fullName || m.name || m.email).join(', ') : 'N/A'}
       </p>
-      
-      <h4>Category</h4>
-      <p>${proposal.category || proposal.projectType || 'N/A'}</p>
-      
-      <h4>Supervisor</h4>
-      <p>${supervisor.fullName || supervisor.displayName || 'Not Assigned'}</p>
-      
-      <h4>Status</h4>
-      <p>
-        <span class="status-badge status-${proposal.status || 'pending'}">
-          ${(proposal.status || 'pending').charAt(0).toUpperCase() + (proposal.status || 'pending').slice(1)}
-        </span>
-      </p>
-      
-      ${!proposal.supervisorId ? `
+
+      <h4>Requested Supervisor</h4>
+      <p>${requestedName}</p>
+
+      <h4>Assignment Status</h4>
+      <p>${proposal.assignmentStatus || proposal.status || 'pending'}${overdue ? ' (OVERDUE — 7+ days)' : ''}</p>
+      ${proposal.responseDeadline ? `<p><strong>Supervisor deadline:</strong> ${new Date(proposal.responseDeadline).toLocaleString()}</p>` : ''}
+      ${proposal.rejectionReport ? `<p><strong>Rejection report:</strong> ${proposal.rejectionReport}</p>` : ''}
+
+      ${overdue ? `
+        <div class="assign-section">
+          <h4>Permanent Assignment (Admin Authority)</h4>
+          <p>Supervisor did not respond within 7 days. You may permanently assign this project to ${requestedName}.</p>
+          <button class="btn-approve action-btn" onclick="adminPermanentlyAssignProposal('${proposal.id}', '${proposal.groupId}')">
+            <i class="fas fa-gavel"></i> Permanently Assign to ${requestedName}
+          </button>
+        </div>
+      ` : (!proposal.supervisorId && proposal.assignmentStatus !== 'pending_supervisor') ? `
         <div class="assign-section">
           <h4>Assign Supervisor</h4>
           <div class="assign-controls">
@@ -360,6 +384,26 @@ function closeProposalModal() {
 // Show assign modal (simplified version)
 function showAssignModal(proposalId) {
   viewProposal(proposalId);
+}
+
+// Permanently assign after 7-day supervisor timeout
+async function adminPermanentlyAssignProposal(proposalId, groupId) {
+  if (!confirm('Permanently assign this group and proposal to the requested supervisor?')) return;
+
+  try {
+    await ProposalWorkflow.adminPermanentlyAssign({
+      proposalId,
+      groupId,
+      adminUid: currentAdmin.uid
+    });
+
+    alert('Project permanently assigned to supervisor.');
+    closeProposalModal();
+    await loadProposals();
+  } catch (error) {
+    console.error('❌ Error force-assigning supervisor:', error);
+    alert('Error: ' + error.message);
+  }
 }
 
 // Assign supervisor to proposal

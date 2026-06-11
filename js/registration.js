@@ -161,6 +161,33 @@ async function generateGroupId() {
   return `GRP${nextId.toString().padStart(4, '0')}`;
 }
 
+async function createStudentFirestoreDocs(user, member, groupId) {
+  await firebase.firestore().collection('users').doc(user.uid).set({
+    uid: user.uid,
+    email: member.email,
+    loginId: member.loginId,
+    displayName: member.fullName,
+    role: 'student',
+    groupId,
+    isGroupLeader: member.isGroupLeader,
+    registrationNumber: member.registrationNumber,
+    medium: member.medium,
+    batch: member.batch,
+    classNumber: member.classNumber,
+    section: member.section,
+    phone: member.phone,
+    createdAt: firebase.firestore.FieldValue.serverTimestamp(),
+    isActive: true
+  });
+
+  await firebase.firestore().collection('login_lookup').doc(member.registrationNumber).set({
+    email: member.email,
+    groupId,
+    role: 'student',
+    uid: user.uid
+  });
+}
+
 async function registerStudentGroup() {
   await waitForFirebase();
 
@@ -180,55 +207,51 @@ async function registerStudentGroup() {
   registerBtn.textContent = 'Registering...';
 
   try {
+    // Check emails before creating any accounts
+    for (const member of members) {
+      const signInMethods = await firebase.auth().fetchSignInMethodsForEmail(member.email);
+      if (signInMethods.length > 0) {
+        throw new Error(
+          `Email ${member.email} is already registered in Firebase Auth. ` +
+          'Delete it from Authentication → Users in the Firebase Console, then try again.'
+        );
+      }
+    }
+
+    // Create leader first so Firestore rules allow groups read/write (requires signedIn)
+    const leader = members[0];
+    const leaderCredential = await firebase.auth().createUserWithEmailAndPassword(leader.email, password);
+    const leaderUser = leaderCredential.user;
+    await leaderUser.updateProfile({ displayName: leader.fullName });
+
     const groupId = await generateGroupId();
-    const groupData = {
+    await firebase.firestore().collection('groups').doc(groupId).set({
       groupId,
       groupSize,
       members,
       createdAt: firebase.firestore.FieldValue.serverTimestamp(),
       isActive: true
-    };
-
-    await firebase.firestore().collection('groups').doc(groupId).set(groupData);
+    });
 
     const createdUsers = [];
-    for (const member of members) {
-      const signInMethods = await firebase.auth().fetchSignInMethodsForEmail(member.email);
-      if (signInMethods.length > 0) {
-        throw new Error(`Email ${member.email} is already registered.`);
-      }
+    const memberUids = [leaderUser.uid];
+    await createStudentFirestoreDocs(leaderUser, leader, groupId);
+    createdUsers.push(leader);
 
+    for (let i = 1; i < members.length; i++) {
+      const member = members[i];
       const userCredential = await firebase.auth().createUserWithEmailAndPassword(member.email, password);
       const user = userCredential.user;
       await user.updateProfile({ displayName: member.fullName });
-
-      await firebase.firestore().collection('users').doc(user.uid).set({
-        uid: user.uid,
-        email: member.email,
-        loginId: member.loginId,
-        displayName: member.fullName,
-        role: 'student',
-        groupId,
-        isGroupLeader: member.isGroupLeader,
-        registrationNumber: member.registrationNumber,
-        medium: member.medium,
-        batch: member.batch,
-        classNumber: member.classNumber,
-        section: member.section,
-        phone: member.phone,
-        createdAt: firebase.firestore.FieldValue.serverTimestamp(),
-        isActive: true
-      });
-
-      await firebase.firestore().collection('login_lookup').doc(member.registrationNumber).set({
-        email: member.email,
-        groupId,
-        role: 'student',
-        uid: user.uid
-      });
-
+      await createStudentFirestoreDocs(user, member, groupId);
       createdUsers.push(member);
+      memberUids.push(user.uid);
     }
+
+    // Store UIDs on the group doc so notifications can find members without querying users collection
+    await firebase.firestore().collection('groups').doc(groupId).update({ memberUids });
+
+    await firebase.auth().signOut();
 
     let message = `Group Registration Successful!\n\nGROUP ID: ${groupId}\n\nMembers:\n`;
     createdUsers.forEach((user, index) => {
@@ -239,7 +262,12 @@ async function registerStudentGroup() {
     window.location.href = 'login.html?role=student';
   } catch (error) {
     console.error('Group registration error:', error);
-    alert(error.message || 'Group registration failed. Please try again.');
+    try { await firebase.auth().signOut(); } catch (_) { /* ignore */ }
+    let message = error.message || 'Group registration failed. Please try again.';
+    if (error.code === 'permission-denied' || message.includes('insufficient permissions')) {
+      message = 'Registration failed due to database permissions. Please refresh the page and try again.';
+    }
+    alert(message);
   } finally {
     registerBtn.disabled = false;
     registerBtn.textContent = 'Register Group';

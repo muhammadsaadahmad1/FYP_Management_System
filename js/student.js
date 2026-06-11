@@ -1,11 +1,30 @@
-// Firebase auth guard — dashboard data loads only on student-dashboard page
-requireAuth('student', () => {
-  const isDashboard = document.body.dataset.studentPage === 'dashboard'
-    || window.location.pathname.endsWith('student-dashboard.html');
+function runStudentPageInit(initName) {
+  const run = () => {
+    if (typeof window[initName] === 'function') {
+      window[initName]();
+      return true;
+    }
+    return false;
+  };
 
-  if (isDashboard) {
+  if (!run()) {
+    document.addEventListener('DOMContentLoaded', () => run());
+  }
+}
+
+// Firebase auth guard — load page data only after auth is confirmed
+requireAuth('student', () => {
+  const page = window.location.pathname.split('/').pop() || '';
+
+  if (document.body.dataset.studentPage === 'dashboard' || page === 'student-dashboard.html') {
     console.log('✅ Student authenticated, loading dashboard...');
     loadAllDashboardData();
+  } else if (page === 'proposals.html') {
+    runStudentPageInit('initStudentProposalsPage');
+  } else if (page === 'meetings-viva.html') {
+    runStudentPageInit('initStudentMeetingsPage');
+  } else if (page === 'reports-files.html') {
+    runStudentPageInit('initStudentReportsPage');
   } else {
     console.log('✅ Student authenticated');
   }
