@@ -15,10 +15,10 @@
   <script src="https://www.gstatic.com/firebasejs/9.22.1/firebase-auth-compat.js"></script>
   <script src="js/firebase-config.js"></script>
   <script src="js/firebase-auth.js"></script>
-  <script src="js/auth.js"></script>
+  <script src="js/auth-guard.js"></script>
+  <script src="js/ui-helpers.js"></script>
   <script src="js/student.js"></script>
   
-  <!-- Verify Firebase is loaded -->
   <script>
     console.log('Meetings Page Firebase Check:');
     console.log('- Firebase available:', typeof firebase !== 'undefined');
@@ -192,23 +192,8 @@
     </main>
   </div>
 
-  <!-- Main JavaScript -->
-  <script src="script.js"></script>
   <script>
-    // Load meetings data when page loads
     document.addEventListener('DOMContentLoaded', function() {
-      console.log('DOM loaded, starting meetings page initialization');
-      
-      // Add a timeout to ensure demo data shows if Firebase fails
-      setTimeout(() => {
-        console.log('Checking if data loaded...');
-        const upcomingMeetings = document.getElementById('upcomingMeetings');
-        if (!upcomingMeetings || upcomingMeetings.innerHTML.trim() === '') {
-          console.log('No data loaded after timeout, loading demo data');
-          setupFallbackData();
-        }
-      }, 3000); // 3 second timeout
-      
       loadMeetingsData();
     });
 
@@ -255,14 +240,8 @@
           }
           
         } catch (firestoreError) {
-          console.warn('Firestore verification failed, using localStorage:', firestoreError);
-          // Fallback to localStorage data if Firestore fails
-          userData = {
-            uid: uid,
-            role: role,
-            displayName: displayName,
-            groupId: groupId
-          };
+          console.error('Firestore verification failed:', firestoreError);
+          throw new Error('Could not verify your account. Please login again.');
         }
         
         // Create a mock user object for consistency
@@ -450,84 +429,8 @@
           
       } catch (error) {
         console.error('Error setting up real-time listeners:', error);
-        showNotification('Error setting up real-time updates', 'error');
-        
-        // Fallback: show demo data for testing
-        console.log('Setting up fallback demo data');
-        setupFallbackData();
+        showNotification('Error setting up real-time updates. Please refresh the page.', 'error');
       }
-    }
-    
-    // Fallback data for testing
-    function setupFallbackData() {
-      console.log('Setting up fallback demo data');
-      
-      // Demo meetings
-      const demoMeetings = [
-        {
-          id: 'demo1',
-          type: 'progress',
-          date: new Date(Date.now() + 86400000).toISOString(), // Tomorrow
-          duration: 60,
-          purpose: 'Weekly progress review and milestone discussion',
-          location: 'Online',
-          status: 'pending',
-          supervisor: 'Dr. Sarah Khan',
-          requestedBy: localStorage.getItem('uid')
-        },
-        {
-          id: 'demo2',
-          type: 'technical',
-          date: new Date(Date.now() + 172800000).toISOString(), // Day after tomorrow
-          duration: 45,
-          purpose: 'Technical implementation discussion',
-          location: 'Lab 301',
-          status: 'approved',
-          supervisor: 'Dr. Ahmed Hassan',
-          requestedBy: localStorage.getItem('uid')
-        }
-      ];
-      
-      // Demo viva
-      const demoViva = {
-        date: new Date(Date.now() + 30 * 86400000).toISOString(), // 30 days from now
-        venue: 'Main Examination Hall',
-        duration: '60 minutes',
-        format: 'Presentation + Q&A',
-        chairperson: 'Dr. Ahmed Hassan',
-        supervisor: 'Dr. Sarah Khan',
-        external: 'Prof. Muhammad Ali'
-      };
-      
-      // Demo deadlines
-      const demoDeadlines = [
-        {
-          id: 'deadline1',
-          title: 'Final Report Submission',
-          date: new Date(Date.now() + 7 * 86400000).toISOString(), // 7 days from now
-          type: 'report',
-          description: 'Submit final project report'
-        },
-        {
-          id: 'deadline2',
-          title: 'Presentation Slides',
-          date: new Date(Date.now() + 14 * 86400000).toISOString(), // 14 days from now
-          type: 'presentation',
-          description: 'Submit final presentation slides'
-        }
-      ];
-      
-      // Update UI with demo data
-      const now = new Date().toISOString();
-      const upcomingMeetings = demoMeetings.filter(m => m.date >= now);
-      const meetingsHistory = demoMeetings.filter(m => m.date < now);
-      
-      updateUpcomingMeetings(upcomingMeetings);
-      updateMeetingsTable(meetingsHistory);
-      updateVivaSchedule(demoViva);
-      updateDeadlinesList(demoDeadlines);
-      
-      showNotification('Demo data loaded for testing', 'info');
     }
     
     // Cleanup listeners when page unloads
@@ -566,11 +469,7 @@
       } catch (error) {
         hideLoadingOverlay();
         console.error('Error loading meetings data:', error);
-        
-        // Always show demo data as fallback, regardless of error type
-        console.log('Falling back to demo data due to error:', error.message);
-        setupFallbackData();
-        
+
         // Show appropriate error message
         let errorMessage = 'Error loading meetings data';
         if (error.message.includes('Authentication data missing')) {

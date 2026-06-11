@@ -1,64 +1,61 @@
-# 🎓 Final Year Project (FYP) Management System  
-## Frontend-Only Web Application
+# FYP Management System
 
----
+A web-based Final Year Project management platform for university students, supervisors, and administrators.
 
-## 📌 Project Overview
-The **Final Year Project (FYP) Management System** is a **frontend-only academic web application** developed to simulate the workflow of managing Final Year Projects in a university.
+## Tech Stack
 
-The system provides:
-- A fully designed public landing page
-- A themed login page with role selection
-- Separate dashboards for Students, Admins, and Supervisors
-- Role-specific functionality using JavaScript logic
-- Clean, professional, and academic UI design
+- **Frontend:** HTML5, CSS3, Vanilla JavaScript
+- **Backend / Database:** Firebase Authentication, Cloud Firestore, Firebase Storage
+- **Hosting:** Firebase Hosting
+- **Local dev:** live-server on port 5500
 
-⚠️ This project intentionally **does not include backend, database, or APIs** and is designed strictly for frontend-focused FYP submission.
+## Firebase Services
 
----
+| Service | Purpose |
+|---------|---------|
+| Firebase Auth | Login, registration, session management |
+| Cloud Firestore | Users, groups, proposals, reports, meetings, feedback |
+| Firebase Storage | Project files, admin documents |
+| Firebase Hosting | Production deployment |
 
-## 🎯 Project Objectives
-- Design a professional academic web interface
-- Implement role-based dashboards
-- Apply separation of concerns using multiple JavaScript files
-- Simulate real university FYP workflows using dummy data
-- Build a system suitable for FYP demo and viva
+## User Roles
 
----
+- **Student** — group registration, proposals, reports, meetings
+- **Supervisor** — review proposals, manage groups, feedback (requires admin approval)
+- **Admin** — manage system, assign supervisors, approve accounts
 
-## 👥 User Roles & Responsibilities
+## Run Locally
 
-### 👨‍🎓 Student
-- View own project title
-- Check proposal approval status
-- Track project progress
-- View upcoming deadlines
-- Monitor academic progress visually
+```bash
+cd "FYP management system"
+npx live-server --port=5500 --host=localhost --open=/index.html
+```
 
-### 🧑‍💼 Admin
-- View submitted project proposals
-- Assign supervisors to students
-- Manage proposal allocation workflow
+Or double-click `start-localhost.bat`.
 
-### 👨‍🏫 Supervisor
-- View assigned student proposals
-- Accept or reject proposals
-- Monitor student progress
-- Submit evaluation and remarks
+## Deploy Firebase Rules
 
-> All features are simulated using static data and frontend logic only.
+```bash
+firebase deploy --only firestore:rules,storage
+```
 
----
+## Project Structure
 
-## 🛠️ Technologies Used
-- **HTML5** – Page structure
-- **CSS3 (Plain CSS)** – Styling and layout
-- **Vanilla JavaScript (ES6)** – Frontend logic
-- ❌ No frameworks
-- ❌ No libraries
-- ❌ No backend
-- ❌ No database
-
----
-
-## 📁 Project Structure
+```
+├── index.html              # Landing page
+├── login.html              # Role-based login
+├── student-register.html   # Student group registration
+├── supervisor-register.html
+├── admin-register.html
+├── js/
+│   ├── firebase-config.js  # Firebase initialization
+│   ├── firebase-auth.js    # Auth helper class
+│   ├── auth-guard.js       # Protected page guards
+│   ├── registration.js     # Registration logic
+│   ├── student.js          # Student module
+│   ├── admin.js            # Admin module
+│   └── supervisor.js       # Supervisor module
+├── firestore.rules
+├── storage.rules
+└── firebase.json
+```

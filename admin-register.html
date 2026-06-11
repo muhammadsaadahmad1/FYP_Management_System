@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8">
-  <title>Supervisor Registration | FYP Management System</title>
+  <title>Admin Registration | FYP Management System</title>
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <link rel="stylesheet" href="css/style.css">
   <link rel="stylesheet" href="css/registration.css">
@@ -13,41 +13,36 @@
     <img src="assets/images/university-logo.png" alt="University Logo">
     <div class="title">
       FYP Management System
-      <small>Supervisor Registration</small>
+      <small>Administrator Registration</small>
     </div>
   </header>
 
   <div class="register-container">
     <div class="register-box">
       <img class="logo" src="assets/images/university-logo.png" alt="University Logo">
-      <h2>Supervisor Registration</h2>
-      <p class="register-subtitle">Register as a project supervisor. Approval is required before login.</p>
+      <h2>Admin Registration</h2>
+      <p class="register-subtitle">Register as a system administrator. Approval is required before login.</p>
 
-      <input type="text" id="fullNameSup" placeholder="Full Name">
-      <input type="email" id="emailSup" placeholder="Email Address">
-      <input type="text" id="employeeId" placeholder="Employee ID">
+      <input type="text" id="adminFullName" placeholder="Full Name">
+      <input type="text" id="adminEmployeeId" placeholder="Employee ID">
+      <input type="email" id="adminEmail" placeholder="University Email (@aup.edu.pk)">
 
-      <select id="departmentSup">
-        <option value="">Select Department</option>
-        <option value="cs">Computer Science</option>
-        <option value="se">Software Engineering</option>
-        <option value="it">Information Technology</option>
-        <option value="ce">Computer Engineering</option>
-        <option value="ee">Electrical Engineering</option>
-        <option value="me">Mechanical Engineering</option>
-        <option value="bba">Business Administration</option>
-      </select>
-
-      <input type="text" id="designation" placeholder="Designation (e.g., Senior Lecturer)">
-      <textarea id="expertise" placeholder="Areas of Expertise (e.g., Machine Learning, Web Development...)"></textarea>
+      <input type="file" id="universityCard" accept="image/*,.pdf" onchange="handleAdminFileUpload(this)" style="display:none;">
+      <div class="upload-box" onclick="document.getElementById('universityCard').click()">
+        <p>Upload University ID Card</p>
+        <small>JPG, PNG, or PDF (Max 5MB)</small>
+      </div>
+      <div class="file-selected" id="universityCardPreview" style="display:none;">
+        ✓ <span id="universityCardName"></span>
+      </div>
 
       <div class="phone-input">
-        <select id="countryCodeSup" class="country-code">
+        <select id="countryCodeAdmin" class="country-code">
           <option value="+92">+92</option>
           <option value="+1">+1</option>
           <option value="+44">+44</option>
         </select>
-        <input type="tel" id="phoneSup" placeholder="Phone Number">
+        <input type="tel" id="phoneAdmin" placeholder="Phone Number">
       </div>
 
       <p class="form-section-title">Account Password</p>
@@ -68,11 +63,11 @@
         </label>
       </div>
 
-      <button type="button" class="register-btn" id="registerBtn" onclick="registerSupervisorAccount()">Register as Supervisor</button>
+      <button type="button" class="register-btn" id="registerBtn" onclick="registerAdminAccount()">Register as Admin</button>
 
       <p class="register-note">
         Already registered?
-        <a href="login.html?role=supervisor">Login here</a>
+        <a href="login.html?role=admin">Login here</a>
       </p>
     </div>
   </div>

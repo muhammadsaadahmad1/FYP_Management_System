@@ -1,56 +1,14 @@
-// Firebase Authentication Check for Supervisor Dashboard
-auth.onAuthStateChanged(async (user) => {
-  if (!user) {
-    console.log('No user signed in, redirecting to login...');
-    window.location.href = "login.html";
-    return;
+requireAuth('supervisor', (userData) => {
+  const supervisorNameElement = document.getElementById('supervisorName');
+  if (supervisorNameElement) {
+    supervisorNameElement.textContent = userData.displayName || userData.email;
   }
 
-  console.log('User authenticated:', user.email);
-  
-  try {
-    // Wait for Firebase to be fully initialized
-    if (typeof db === 'undefined') {
-      console.error('Firebase database not initialized');
-      if (typeof showNotification !== 'undefined') {
-        showNotification('Firebase not initialized. Please refresh the page.', 'error');
-      }
-      return;
-    }
+  const isDashboard = document.body.dataset.supervisorPage === 'dashboard'
+    || window.location.pathname.endsWith('supervisor-dashboard.html');
 
-    // Get user role from Firestore
-    const userDoc = await db.collection('users').doc(user.uid).get();
-    const userData = userDoc.data();
-
-    if (!userData || userData.role !== 'supervisor') {
-      console.log('User is not a supervisor, redirecting to login...');
-      window.location.href = "login.html";
-      return;
-    }
-
-    console.log('Supervisor role confirmed, loading dashboard data...');
-    
-    // Store user data in localStorage for easy access
-    localStorage.setItem('uid', user.uid);
-    localStorage.setItem('displayName', userData.displayName || user.email);
-    localStorage.setItem('role', userData.role);
-    
-    // Update welcome message
-    const supervisorNameElement = document.getElementById('supervisorName');
-    if (supervisorNameElement) {
-      supervisorNameElement.textContent = userData.displayName || user.email;
-    }
-    
-    // User is authenticated and is a supervisor, load dashboard data
+  if (isDashboard) {
     loadSupervisorDashboard();
-  } catch (error) {
-    console.error('Error checking user role:', error);
-    if (typeof showNotification !== 'undefined') {
-      showNotification('Authentication error. Please try logging in again.', 'error');
-    }
-    setTimeout(() => {
-      window.location.href = "login.html";
-    }, 2000);
   }
 });
 

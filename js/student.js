@@ -1,57 +1,13 @@
-// Firebase Authentication Check for Student Dashboard
-auth.onAuthStateChanged(async (user) => {
-  if (!user) {
-    console.log('❌ No user signed in, redirecting to login...');
-    window.location.href = "login.html";
-    return;
-  }
+// Firebase auth guard — dashboard data loads only on student-dashboard page
+requireAuth('student', () => {
+  const isDashboard = document.body.dataset.studentPage === 'dashboard'
+    || window.location.pathname.endsWith('student-dashboard.html');
 
-  console.log('✅ User authenticated:', user.email);
-  
-  try {
-    // Wait for Firebase to be fully initialized
-    if (typeof db === 'undefined') {
-      console.error('❌ Firebase database not initialized');
-      if (typeof showNotification !== 'undefined') {
-        showNotification('Firebase not initialized. Please refresh the page.', 'error');
-      }
-      return;
-    }
-
-    // Get user role from Firestore
-    const userDoc = await db.collection('users').doc(user.uid).get();
-    const userData = userDoc.data();
-
-    if (!userData || userData.role !== 'student') {
-      console.log('❌ User is not a student, redirecting to login...');
-      window.location.href = "login.html";
-      return;
-    }
-
-    console.log('✅ Student role confirmed, loading dashboard data...');
-    
-    // Store user data in localStorage for easy access
-    localStorage.setItem('uid', user.uid);
-    localStorage.setItem('displayName', userData.displayName || user.email);
-    localStorage.setItem('groupId', userData.groupId || user.uid);
-    localStorage.setItem('role', userData.role);
-    
-    // Update welcome message
-    const userNameElement = document.getElementById('dynamicUserName');
-    if (userNameElement) {
-      userNameElement.textContent = userData.displayName || user.email;
-    }
-    
-    // User is authenticated and is a student, load dashboard data
+  if (isDashboard) {
+    console.log('✅ Student authenticated, loading dashboard...');
     loadAllDashboardData();
-  } catch (error) {
-    console.error('❌ Error checking user role:', error);
-    if (typeof showNotification !== 'undefined') {
-      showNotification('Authentication error. Please try logging in again.', 'error');
-    }
-    setTimeout(() => {
-      window.location.href = "login.html";
-    }, 2000);
+  } else {
+    console.log('✅ Student authenticated');
   }
 });
 
@@ -742,17 +698,8 @@ function downloadFile(fileId) {
   }
 }
 
-// Enhanced logout function with Firebase
 async function logout() {
-  try {
-    await auth.signOut();
-    localStorage.clear();
-    window.location.href = "index.html";
-  } catch (error) {
-    console.error('Logout error:', error);
-    localStorage.clear();
-    window.location.href = "index.html";
-  }
+  await firebaseLogout('index.html');
 }
 
 // =========================

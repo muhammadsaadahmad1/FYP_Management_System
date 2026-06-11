@@ -87,7 +87,9 @@ class FirebaseAuth {
   async signOut() {
     try {
       await this.auth.signOut();
-      localStorage.removeItem('role');
+      ['uid', 'role', 'email', 'displayName', 'groupId', 'loginId', 'isGroupLeader', 'user'].forEach((key) => {
+        localStorage.removeItem(key);
+      });
       console.log('User signed out successfully!');
       return { success: true };
     } catch (error) {

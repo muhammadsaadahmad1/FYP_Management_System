@@ -13,25 +13,11 @@
   <script src="https://www.gstatic.com/firebasejs/9.22.1/firebase-firestore-compat.js"></script>
   <script src="https://www.gstatic.com/firebasejs/9.22.1/firebase-storage-compat.js"></script>
   <script src="https://www.gstatic.com/firebasejs/9.22.1/firebase-auth-compat.js"></script>
-  <script src="https://www.gstatic.com/firebasejs/9.22.1/firebase-database-compat.js"></script>
-  
-  <!-- Firebase Configuration (must load after SDK) -->
   <script src="js/firebase-config.js"></script>
   <script src="js/firebase-auth.js"></script>
-  <script src="js/auth.js"></script>
-  <script src="script.js"></script>
+  <script src="js/auth-guard.js"></script>
+  <script src="js/ui-helpers.js"></script>
   <script src="js/student.js"></script>
-  <script src="dashboard-proposal-only.js"></script>
-  <script src="js/realtime-database.js"></script>
-  
-  <!-- Verify Firebase is loaded -->
-  <script>
-    console.log('🔍 Firebase Check:');
-    console.log('- Firebase available:', typeof firebase !== 'undefined');
-    console.log('- Firestore available:', typeof firebase !== 'undefined' && typeof firebase.firestore !== 'undefined');
-    console.log('- Realtime Database available:', typeof firebase !== 'undefined' && typeof firebase.database !== 'undefined');
-    console.log('- Auth available:', typeof firebase !== 'undefined' && typeof firebase.auth !== 'undefined');
-  </script>
   
   <!-- Initialize Dashboard Data Loading -->
   <script>
@@ -60,7 +46,7 @@
   </script>
 </head>
 
-<body>
+<body data-student-page="dashboard">
 
   <div class="dashboard-container">
     <!-- Sidebar -->

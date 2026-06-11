@@ -16,32 +16,18 @@
   <!-- Firebase Configuration -->
   <script src="js/firebase-config.js"></script>
   <script src="js/firebase-auth.js"></script>
-  <script src="js/auth.js"></script>
+  <script src="js/auth-guard.js"></script>
+  <script src="js/ui-helpers.js"></script>
   <script src="js/supervisor.js"></script>
   
-  <!-- Initialize Dashboard -->
   <script>
     document.addEventListener('DOMContentLoaded', function() {
       console.log('Supervisor Dashboard Loaded');
-      
-      const waitForFirebase = () => {
-        if (typeof db !== 'undefined' && typeof auth !== 'undefined') {
-          console.log('Firebase is ready, loading supervisor dashboard data...');
-          if (typeof loadSupervisorDashboard === 'function') {
-            loadSupervisorDashboard();
-          }
-        } else {
-          console.log('Waiting for Firebase to initialize...');
-          setTimeout(waitForFirebase, 500);
-        }
-      };
-      
-      setTimeout(waitForFirebase, 1000);
     });
   </script>
 </head>
 
-<body>
+<body data-supervisor-page="dashboard">
 
   <div class="dashboard-container">
     <!-- Sidebar -->

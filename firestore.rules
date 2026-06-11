@@ -1,80 +1,117 @@
 rules_version = '2';
 service cloud.firestore {
   match /databases/{database}/documents {
-    // Allow all operations for development
-    match /{document=**} {
-      allow read, write, create, update, delete: if true;
+
+    function signedIn() {
+      return request.auth != null;
     }
-    
-    // Users collection - allow all operations for registration
+
+    function isOwner(userId) {
+      return signedIn() && request.auth.uid == userId;
+    }
+
+    function userData() {
+      return get(/databases/$(database)/documents/users/$(request.auth.uid)).data;
+    }
+
+    function userExists() {
+      return signedIn() && exists(/databases/$(database)/documents/users/$(request.auth.uid));
+    }
+
+    function isActiveAdmin() {
+      return userExists() && userData().role == 'admin' && userData().get('isActive', false) == true;
+    }
+
+    function isActiveSupervisor() {
+      return userExists() && userData().role == 'supervisor' && userData().get('isActive', false) == true;
+    }
+
+    function isActiveStudent() {
+      return userExists() && userData().role == 'student' && userData().get('isActive', true) != false;
+    }
+
+    // Pre-auth student login lookup (registration number -> email)
+    match /login_lookup/{registrationNumber} {
+      allow read: if true;
+      allow create, update: if signedIn();
+      allow delete: if isActiveAdmin();
+    }
+
     match /users/{userId} {
-      allow read: if true;
-      allow create: if true;
-      allow write: if true;
-      allow update: if true;
-      allow delete: if true;
+      allow read: if isOwner(userId) || isActiveAdmin() || isActiveSupervisor();
+      allow create: if isOwner(userId);
+      allow update: if isOwner(userId) || isActiveAdmin();
+      allow delete: if isActiveAdmin();
     }
-    
-    // Groups collection - allow all operations for registration
+
     match /groups/{groupId} {
-      allow read: if true;
-      allow create: if true;
-      allow write: if true;
-      allow update: if true;
-      allow delete: if true;
+      allow read, write: if signedIn();
     }
-    
-    // Projects collection
-    match /projects/{projectId} {
-      allow read, write, create, update, delete: if true;
-    }
-    
-    // Proposals collection
-    match /proposals/{proposalId} {
-      allow read, write, create, update, delete: if true;
-    }
-    
-    // Reports collection
-    match /reports/{reportId} {
-      allow read, write, create, update, delete: if true;
-    }
-    
-    // Meetings collection
-    match /meetings/{meetingId} {
-      allow read, write, create, update, delete: if true;
-    }
-    
-    // Test collection
-    match /test_collection/{docId} {
-      allow read, write, create, update, delete: if true;
-    }
-    
-    // Public collection
-    match /public/{docId} {
-      allow read, write, create, update, delete: if true;
-    }
-    
-    // System collection
-    match /system/{docId} {
-      allow read, write, create, update, delete: if true;
-    }
-    
-    // Supervisors collection - allow all operations for registration
+
     match /supervisors/{supervisorId} {
-      allow read: if true;
-      allow create: if true;
-      allow write: if true;
-      allow update: if true;
-      allow delete: if true;
+      allow read: if signedIn();
+      allow create: if signedIn();
+      allow update: if isActiveAdmin() || isOwner(supervisorId);
+      allow delete: if isActiveAdmin();
     }
-    
-    // Admins collection - allow all operations for registration
+
     match /admins/{adminId} {
-      allow read: if true;
-      allow create: if true;
-      allow write: if true;
-      allow update: if true;
-      allow delete: if true;
+      allow read: if signedIn();
+      allow create: if signedIn();
+      allow update: if isActiveAdmin();
+      allow delete: if isActiveAdmin();
+    }
+
+    match /proposals/{docId} {
+      allow read, write: if signedIn();
+    }
+
+    match /projects/{docId} {
+      allow read, write: if signedIn();
+    }
+
+    match /reports/{docId} {
+      allow read, write: if signedIn();
+    }
+
+    match /tasks/{docId} {
+      allow read, write: if signedIn();
+    }
+
+    match /files/{docId} {
+      allow read, write: if signedIn();
+    }
+
+    match /meetings/{docId} {
+      allow read, write: if signedIn();
+    }
+
+    match /viva/{docId} {
+      allow read, write: if signedIn();
+    }
+
+    match /deadlines/{docId} {
+      allow read, write: if signedIn();
+    }
+
+    match /feedback/{docId} {
+      allow read, write: if signedIn();
+    }
+
+    match /announcements/{docId} {
+      allow read, write: if signedIn();
+    }
+
+    match /notifications/{docId} {
+      allow read, write: if signedIn();
+    }
+
+    match /proposal_templates/{docId} {
+      allow read, write: if signedIn();
+    }
+
+    match /report_templates/{docId} {
+      allow read, write: if signedIn();
     }
   }
 }

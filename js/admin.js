@@ -1,11 +1,6 @@
 // Admin Dashboard JavaScript with Firebase Integration
 // FYP Management System - Admin Module
 
-// Check admin authentication
-if (localStorage.getItem("role") !== "admin") {
-  window.location.href = "login.html";
-}
-
 // Global variables
 let currentAdmin = null;
 let supervisorsList = [];
@@ -636,16 +631,8 @@ function hideLoadingOverlay() {
   }
 }
 
-// Logout function
 function logout() {
-  auth.signOut().then(() => {
-    localStorage.clear();
-    window.location.href = 'index.html';
-  }).catch((error) => {
-    console.error('Logout error:', error);
-    localStorage.clear();
-    window.location.href = 'index.html';
-  });
+  firebaseLogout('login.html');
 }
 
 // Close modal on outside click

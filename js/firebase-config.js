@@ -26,7 +26,11 @@ try {
   // Initialize Firebase services
   auth = firebase.auth();
   db = firebase.firestore();
-  storage = firebase.storage();
+  if (typeof firebase.storage === 'function') {
+    storage = firebase.storage();
+  } else {
+    console.warn('Firebase Storage SDK not loaded — storage features disabled on this page.');
+  }
 
   // Enable offline persistence for Firestore using new API with better error handling
   if (db) {
@@ -60,27 +64,12 @@ try {
     }
   }
 
-  // Set up auth state listener
-  if (auth) {
-    auth.onAuthStateChanged((user) => {
-      if (user) {
-        console.log('User is signed in:', user.email);
-        // Store user session
-        localStorage.setItem('user', JSON.stringify({
-          uid: user.uid,
-          email: user.email,
-          displayName: user.displayName
-        }));
-      } else {
-        console.log('User is signed out');
-        localStorage.removeItem('user');
-      }
-    });
-  }
-
 } catch (error) {
   console.error('Firebase initialization error:', error);
-  alert('Firebase initialization failed. Please check your internet connection and try again.');
+  // Only alert if core services failed — don't block the page for optional features
+  if (!auth || !db) {
+    console.error('Critical Firebase services unavailable:', error.message);
+  }
 }
 
 // Export Firebase services for use in other files

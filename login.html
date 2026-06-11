@@ -189,7 +189,7 @@
       
       <p style="margin-top: 20px; font-size: 14px; color: #64748b;">
         Don't have an account? 
-        <a href="register.html" style="color: #2563eb; text-decoration: none; font-weight: 600;">Register here</a>
+        <a href="#" id="registerLink" onclick="goToRegister(event)" style="color: #2563eb; text-decoration: none; font-weight: 600;">Register here</a>
       </p>
     </div>
   </div>
@@ -211,22 +211,36 @@
 <script>
 console.log('Login script loaded successfully!');
 
+const registerPages = {
+  student: 'student-register.html',
+  supervisor: 'supervisor-register.html',
+  admin: 'admin-register.html'
+};
+
 // Handle role selection
 function handleRoleChange() {
   const role = document.getElementById('role').value;
   const studentFields = document.getElementById('studentLoginFields');
   const staffFields = document.getElementById('staffLoginFields');
   
-  // Hide all login fields first
   studentFields.style.display = 'none';
   staffFields.style.display = 'none';
   
-  // Show appropriate fields based on role
   if (role === 'student') {
     studentFields.style.display = 'block';
   } else if (role === 'admin' || role === 'supervisor') {
     staffFields.style.display = 'block';
   }
+}
+
+function goToRegister(event) {
+  event.preventDefault();
+  const role = document.getElementById('role').value;
+  if (!role || !registerPages[role]) {
+    alert('Please select your role first, then click Register here.');
+    return;
+  }
+  window.location.href = registerPages[role];
 }
 
 // Enhanced login function with simplified approach
@@ -253,72 +267,23 @@ async function login() {
     
     try {
       console.log('Looking up student with registration number:', registrationNumber);
-      
-      // Query users collection for registration number (not document ID)
-      
-      try {
-        const querySnapshot = await firebase.firestore().collection('users')
-          .where('registrationNumber', '==', registrationNumber)
-          .where('role', '==', 'student')
-          .limit(1)
-          .get();
-        
-        if (!querySnapshot.empty) {
-          userData = querySnapshot.docs[0].data();
-          console.log('Found student by registration number:', userData);
-        } else {
-          console.log('No student found with registration number:', registrationNumber);
-        }
-      } catch (queryError) {
-        console.log('Query lookup failed:', queryError.message);
-      }
-      
-      // If query fails, try alternative lookup methods
-      if (!userData) {
-        try {
-          // Try loginId lookup (some systems use this)
-          const loginQuery = await firebase.firestore().collection('users')
-            .where('loginId', '==', registrationNumber)
-            .where('role', '==', 'student')
-            .limit(1)
-            .get();
-          
-          if (!loginQuery.empty) {
-            userData = loginQuery.docs[0].data();
-            console.log('Found student by loginId:', userData);
-          }
-        } catch (loginError) {
-          console.log('LoginId lookup failed:', loginError.message);
-        }
-      }
-      
-      // Final fallback - try direct document lookup (for compatibility)
-      if (!userData) {
-        try {
-          const userDoc = await firebase.firestore().collection('users').doc(registrationNumber).get();
-          if (userDoc.exists && userDoc.data().role === 'student') {
-            userData = userDoc.data();
-            console.log('Found student by direct lookup:', userData);
-          }
-        } catch (directError) {
-          console.log('Direct lookup failed:', directError.message);
-        }
-      }
-      
-      if (!userData) {
-        console.log('Student not found with registration number:', registrationNumber);
+
+      const lookupDoc = await firebase.firestore().collection('login_lookup').doc(registrationNumber).get();
+
+      if (!lookupDoc.exists) {
         alert('Student not found. Please register your account first.');
         return;
       }
-      
-      if (!userData.isActive) {
-        throw new Error('Account is not active. Please contact administrator.');
+
+      const lookupData = lookupDoc.data();
+      email = lookupData.email;
+
+      if (!email) {
+        alert('Student account not found. Please register first.');
+        return;
       }
-      
-      // Use the email associated with this student for Firebase Auth
-      email = userData.email;
-      
-      console.log('Student found:', userData.email, 'Role:', userData.role);
+
+      console.log('Student login lookup found:', email);
       
     } catch (error) {
       console.error('Student lookup error:', error);
@@ -344,20 +309,40 @@ async function login() {
     const user = userCredential.user;
     
     console.log('✅ Firebase Auth successful for:', user.email);
-    
-    // Store user data in localStorage
-    localStorage.setItem('uid', user.uid);
-    localStorage.setItem('role', role);
-    localStorage.setItem('displayName', user.displayName || email);
-    localStorage.setItem('email', email);
-    
-    // Student-specific data
-    if (role === 'student' && userData) {
-      localStorage.setItem('groupId', userData.groupId || user.uid);
-      localStorage.setItem('loginId', userData.loginId || registrationNumber);
-      localStorage.setItem('isGroupLeader', userData.isGroupLeader || false);
+
+    const userDoc = await firebase.firestore().collection('users').doc(user.uid).get();
+    if (!userDoc.exists) {
+      await firebase.auth().signOut();
+      alert('User profile not found. Please register first.');
+      return;
     }
-    
+
+    const firestoreUser = userDoc.data();
+    if (firestoreUser.role !== role) {
+      await firebase.auth().signOut();
+      alert('Role mismatch. Please select the correct role for your account.');
+      return;
+    }
+
+    if (firestoreUser.isActive === false) {
+      await firebase.auth().signOut();
+      alert(role === 'admin' || role === 'supervisor'
+        ? 'Your account is pending admin approval.'
+        : 'Your account is not active. Please contact the administrator.');
+      return;
+    }
+
+    localStorage.setItem('uid', user.uid);
+    localStorage.setItem('role', firestoreUser.role);
+    localStorage.setItem('displayName', firestoreUser.displayName || user.displayName || email);
+    localStorage.setItem('email', email);
+
+    if (role === 'student') {
+      localStorage.setItem('groupId', firestoreUser.groupId || user.uid);
+      localStorage.setItem('loginId', firestoreUser.loginId || (typeof registrationNumber !== 'undefined' ? registrationNumber : ''));
+      localStorage.setItem('isGroupLeader', firestoreUser.isGroupLeader || false);
+    }
+
     console.log('🎉 Login successful! Redirecting to', role + ' dashboard');
     
     // Redirect based on role

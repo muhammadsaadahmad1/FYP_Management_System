@@ -1,0 +1,176 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>Student Registration | FYP Management System</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <link rel="stylesheet" href="css/style.css">
+  <link rel="stylesheet" href="css/registration.css">
+</head>
+<body class="register-page">
+
+  <header class="register-header">
+    <img src="assets/images/university-logo.png" alt="University Logo">
+    <div class="title">
+      FYP Management System
+      <small>Student Group Registration</small>
+    </div>
+  </header>
+
+  <div class="register-container">
+    <div class="register-box wide">
+      <img class="logo" src="assets/images/university-logo.png" alt="University Logo">
+      <h2>Student Registration</h2>
+      <p class="register-subtitle">Register your FYP group (2 or 3 members) with one shared group password.</p>
+
+      <input type="hidden" id="groupSize" value="">
+
+      <p style="font-size:13px;font-weight:700;color:#0f2e7a;margin-bottom:10px;">Select Group Size</p>
+      <div class="group-size-selector">
+        <button type="button" class="group-size-btn" data-size="2" onclick="setStudentGroupSize(2)">2 Students</button>
+        <button type="button" class="group-size-btn" data-size="3" onclick="setStudentGroupSize(3)">3 Students</button>
+      </div>
+
+      <div id="studentFormFields" style="display:none;">
+        <div class="group-member" id="member1">
+          <h4>Student 1 (Group Leader)</h4>
+          <input type="text" id="studentId1" placeholder="Registration Number (e.g., 2026-Agr-U-1234)">
+          <input type="text" id="fullName1" placeholder="Full Name">
+          <input type="email" id="email1" placeholder="Email Address">
+          <input type="text" id="department1" placeholder="Medium">
+          <select id="batch1">
+            <option value="">Select Batch/Year</option>
+            <option value="2026">2026</option>
+            <option value="2025">2025</option>
+            <option value="2024">2024</option>
+            <option value="2023">2023</option>
+            <option value="2022">2022</option>
+          </select>
+          <input type="text" id="classNumber1" placeholder="Class Number">
+          <select id="section1">
+            <option value="">Select Section</option>
+            <option value="A">Section A</option>
+            <option value="B">Section B</option>
+            <option value="C">Section C</option>
+            <option value="D">Section D</option>
+            <option value="E">Section E</option>
+            <option value="F">Section F</option>
+          </select>
+          <div class="phone-input">
+            <select id="countryCode1" class="country-code">
+              <option value="+92">+92</option>
+              <option value="+1">+1</option>
+              <option value="+44">+44</option>
+            </select>
+            <input type="tel" id="phone1" placeholder="Phone Number">
+          </div>
+        </div>
+
+        <div class="group-member" id="member2" style="display:none;">
+          <h4>Student 2</h4>
+          <input type="text" id="studentId2" placeholder="Registration Number">
+          <input type="text" id="fullName2" placeholder="Full Name">
+          <input type="email" id="email2" placeholder="Email Address">
+          <input type="text" id="department2" placeholder="Medium">
+          <select id="batch2">
+            <option value="">Select Batch/Year</option>
+            <option value="2026">2026</option>
+            <option value="2025">2025</option>
+            <option value="2024">2024</option>
+            <option value="2023">2023</option>
+            <option value="2022">2022</option>
+          </select>
+          <input type="text" id="classNumber2" placeholder="Class Number">
+          <select id="section2">
+            <option value="">Select Section</option>
+            <option value="A">Section A</option>
+            <option value="B">Section B</option>
+            <option value="C">Section C</option>
+            <option value="D">Section D</option>
+            <option value="E">Section E</option>
+            <option value="F">Section F</option>
+          </select>
+          <div class="phone-input">
+            <select id="countryCode2" class="country-code">
+              <option value="+92">+92</option>
+              <option value="+1">+1</option>
+              <option value="+44">+44</option>
+            </select>
+            <input type="tel" id="phone2" placeholder="Phone Number">
+          </div>
+        </div>
+
+        <div class="group-member" id="member3" style="display:none;">
+          <h4>Student 3</h4>
+          <input type="text" id="studentId3" placeholder="Registration Number">
+          <input type="text" id="fullName3" placeholder="Full Name">
+          <input type="email" id="email3" placeholder="Email Address">
+          <input type="text" id="department3" placeholder="Medium">
+          <select id="batch3">
+            <option value="">Select Batch/Year</option>
+            <option value="2026">2026</option>
+            <option value="2025">2025</option>
+            <option value="2024">2024</option>
+            <option value="2023">2023</option>
+            <option value="2022">2022</option>
+          </select>
+          <input type="text" id="classNumber3" placeholder="Class Number">
+          <select id="section3">
+            <option value="">Select Section</option>
+            <option value="A">Section A</option>
+            <option value="B">Section B</option>
+            <option value="C">Section C</option>
+            <option value="D">Section D</option>
+            <option value="E">Section E</option>
+            <option value="F">Section F</option>
+          </select>
+          <div class="phone-input">
+            <select id="countryCode3" class="country-code">
+              <option value="+92">+92</option>
+              <option value="+1">+1</option>
+              <option value="+44">+44</option>
+            </select>
+            <input type="tel" id="phone3" placeholder="Phone Number">
+          </div>
+        </div>
+
+        <p class="form-section-title">Group Account Password</p>
+        <div class="info-box">All group members log in with their own registration number and this shared group password.</div>
+
+        <div class="password-container">
+          <input type="password" id="password" placeholder="Group Password (min 6 characters)" oninput="checkPasswordStrength(this.value)">
+          <div class="password-strength">
+            <div class="strength-bar" id="strengthBar"></div>
+            <span class="strength-text" id="strengthText">Enter password</span>
+          </div>
+        </div>
+        <input type="password" id="confirmPassword" placeholder="Confirm Group Password">
+
+        <div class="terms-section">
+          <label class="checkbox-container">
+            <input type="checkbox" id="termsAccepted">
+            <span class="checkmark"></span>
+            I agree to the Terms &amp; Conditions
+          </label>
+        </div>
+
+        <button type="button" class="register-btn" id="registerBtn" onclick="registerStudentGroup()">Register Group</button>
+      </div>
+
+      <p class="register-note">
+        Already registered?
+        <a href="login.html?role=student">Login here</a>
+      </p>
+    </div>
+  </div>
+
+  <footer class="register-footer">2026 Agriculture University — FYP Management System</footer>
+
+  <script src="https://www.gstatic.com/firebasejs/9.22.1/firebase-app-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/9.22.1/firebase-auth-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/9.22.1/firebase-firestore-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/9.22.1/firebase-storage-compat.js"></script>
+  <script src="js/firebase-config.js"></script>
+  <script src="js/registration.js"></script>
+</body>
+</html>

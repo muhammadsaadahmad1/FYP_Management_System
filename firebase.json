@@ -2,7 +2,30 @@
   "firestore": {
     "rules": "firestore.rules"
   },
+  "storage": {
+    "rules": "storage.rules"
+  },
   "hosting": {
-    "public": "."
+    "public": ".",
+    "ignore": [
+      "firebase.json",
+      "**/.*",
+      "**/node_modules/**",
+      "login-test.html",
+      "test-login.html",
+      "test-firebase.html",
+      "final-test.html",
+      "dashboard-debug.html",
+      "dashboard-diagnostic.html",
+      "diagnostic-tool.html",
+      "quick-fix.html",
+      "deploy-firebase-rules.html",
+      "create-test-student.html",
+      "firebase-setup.html",
+      "demo-proposals.js",
+      "script-backup.js",
+      "script-fixed.js",
+      "real-proposals.js"
+    ]
   }
 }
