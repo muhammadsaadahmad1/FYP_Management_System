@@ -223,11 +223,20 @@ const ProposalWorkflow = (function () {
     const db = getDb();
     const now = new Date().toISOString();
 
+    // Fetch supervisor email so it can be cached on the group doc
+    // (students cannot read the users collection for supervisor docs, but supervisors collection is readable)
+    let supervisorEmail = '';
+    try {
+      const supDoc = await db.collection('supervisors').doc(supervisorId).get();
+      if (supDoc.exists) supervisorEmail = supDoc.data().email || '';
+    } catch (_) {}
+
     await db.collection('proposals').doc(proposalId).update({
       status: 'approved',
       assignmentStatus: 'accepted',
       supervisorId,
       supervisorName,
+      supervisorEmail,
       feedback: feedback || '',
       reviewedDate: now,
       reviewedBy: supervisorId
@@ -237,6 +246,7 @@ const ProposalWorkflow = (function () {
       await db.collection('groups').doc(groupId).update({
         supervisorId,
         supervisorName,
+        supervisorEmail,
         assignedAt: now
       });
     }

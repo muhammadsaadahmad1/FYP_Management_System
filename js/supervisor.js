@@ -10,6 +10,8 @@ requireAuth('supervisor', (userData) => {
   if (isDashboard) {
     loadSupervisorDashboard();
   }
+  // Load notification badge on every supervisor page
+  loadNotificationCount();
 });
 
 // Load all supervisor dashboard data
@@ -98,15 +100,17 @@ async function loadPendingProposals(supervisorId) {
 // Load upcoming meetings for supervisor
 async function loadUpcomingMeetings(supervisorId) {
   try {
-    const now = new Date();
+    // No compound filter/orderBy to avoid requiring a composite index; sort client-side
     const meetingsSnapshot = await db.collection('meetings')
       .where('supervisorId', '==', supervisorId)
-      .where('scheduledDate', '>=', now)
-      .orderBy('scheduledDate', 'asc')
-      .limit(10)
       .get();
-    
-    return meetingsSnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+
+    const now = new Date();
+    return meetingsSnapshot.docs
+      .map(doc => ({ id: doc.id, ...doc.data() }))
+      .filter(m => m.status === 'pending' || new Date(m.scheduledDate || m.date || 0) >= now)
+      .sort((a, b) => new Date(a.scheduledDate || a.date || 0) - new Date(b.scheduledDate || b.date || 0))
+      .slice(0, 10);
   } catch (error) {
     console.error('Error loading upcoming meetings:', error);
     return [];
@@ -290,18 +294,24 @@ function updateMeetingsSection(meetingsData) {
     return;
   }
   
-  const meetingsHtml = meetingsData.map(meeting => `
-    <div class="meeting-item">
+  const meetingsHtml = meetingsData.map(meeting => {
+    const isPending = meeting.status === 'pending';
+    const dateStr = meeting.scheduledDate || meeting.date;
+    return `
+    <div class="meeting-item" style="${isPending ? 'border-left: 4px solid #f59e0b; background: #fffbeb;' : ''}">
       <div class="meeting-info">
-        <h4>${meeting.title || 'Meeting'}</h4>
-        <p><strong>Date:</strong> ${meeting.scheduledDate ? new Date(meeting.scheduledDate).toLocaleDateString() : 'TBA'}</p>
+        <h4>${meeting.title || 'Meeting'}${isPending ? ' <span style="font-size:11px;color:#92400e;background:#fef3c7;padding:2px 6px;border-radius:8px;font-weight:600;">NEEDS APPROVAL</span>' : ''}</h4>
+        <p><strong>Date:</strong> ${dateStr ? new Date(dateStr).toLocaleDateString() : 'TBA'}</p>
         <p><strong>Time:</strong> ${meeting.time || 'TBA'}</p>
         <p><strong>Group:</strong> ${meeting.groupName || meeting.groupId || 'Unknown'}</p>
         <p><strong>Type:</strong> ${meeting.type || 'General'}</p>
       </div>
-      <span class="meeting-status ${meeting.status}">${meeting.status}</span>
+      <div style="display:flex;flex-direction:column;gap:6px;align-items:flex-end;">
+        <span class="meeting-status ${meeting.status}">${isPending ? 'Pending' : meeting.status}</span>
+        ${isPending ? `<a href="supervisor-meetings.html" style="font-size:12px;color:#2563eb;text-decoration:underline;">Review →</a>` : ''}
+      </div>
     </div>
-  `).join('');
+  `;}).join('');
   
   meetingsList.innerHTML = meetingsHtml;
 }
@@ -429,10 +439,87 @@ function downloadReport(reportId) {
   }
 }
 
-function showNotifications() {
-  if (typeof showNotification !== 'undefined') {
-    showNotification('Notification center coming soon!', 'info');
+async function loadNotificationCount() {
+  try {
+    const uid = localStorage.getItem('uid');
+    if (!uid) return;
+    const snap = await db.collection('notifications')
+      .where('userId', '==', uid)
+      .where('read', '==', false)
+      .get();
+    const badge = document.getElementById('notificationCount');
+    if (badge) {
+      badge.textContent = snap.size;
+      badge.style.display = snap.size > 0 ? 'flex' : 'none';
+    }
+  } catch (e) {
+    console.warn('Could not load notification count:', e.message);
   }
+}
+
+async function showNotifications() {
+  const uid = localStorage.getItem('uid');
+  if (!uid) return;
+  try {
+    const snap = await db.collection('notifications')
+      .where('userId', '==', uid)
+      .where('read', '==', false)
+      .get();
+
+    if (snap.empty) {
+      if (typeof showNotification !== 'undefined') {
+        showNotification('No new notifications.', 'info');
+      }
+      return;
+    }
+
+    // Build a simple dropdown list
+    let existing = document.getElementById('notifDropdown');
+    if (existing) { existing.remove(); return; } // toggle off
+
+    const dropdown = document.createElement('div');
+    dropdown.id = 'notifDropdown';
+    dropdown.style.cssText = `position:fixed;top:60px;right:20px;background:#fff;border:1px solid #e5e7eb;
+      border-radius:10px;box-shadow:0 8px 24px rgba(0,0,0,.12);width:320px;max-height:400px;
+      overflow-y:auto;z-index:9999;`;
+
+    const items = snap.docs.map(doc => {
+      const n = doc.data();
+      return `<div style="padding:12px 16px;border-bottom:1px solid #f3f4f6;cursor:pointer;"
+                   onclick="markNotifRead('${doc.id}', this)">
+        <p style="margin:0;font-weight:600;font-size:14px;">${n.title || 'Notification'}</p>
+        <p style="margin:4px 0 0;font-size:13px;color:#6b7280;">${n.message || ''}</p>
+        ${n.type === 'meeting_request' ? `<a href="supervisor-meetings.html" style="font-size:12px;color:#2563eb;">Go to Meetings →</a>` : ''}
+      </div>`;
+    }).join('');
+
+    dropdown.innerHTML = `
+      <div style="padding:12px 16px;border-bottom:1px solid #e5e7eb;font-weight:700;font-size:14px;
+                  display:flex;justify-content:space-between;align-items:center;">
+        Notifications
+        <span onclick="document.getElementById('notifDropdown').remove()"
+              style="cursor:pointer;color:#9ca3af;font-size:18px;">&times;</span>
+      </div>
+      ${items}`;
+    document.body.appendChild(dropdown);
+
+    // Close on outside click
+    setTimeout(() => {
+      document.addEventListener('click', function handler(e) {
+        if (!dropdown.contains(e.target)) { dropdown.remove(); document.removeEventListener('click', handler); }
+      });
+    }, 100);
+  } catch (e) {
+    console.warn('Error loading notifications:', e.message);
+  }
+}
+
+async function markNotifRead(docId, el) {
+  try {
+    await db.collection('notifications').doc(docId).update({ read: true });
+    el.style.opacity = '0.5';
+    loadNotificationCount();
+  } catch (_) {}
 }
 
 // Helper function to get file icon based on type

@@ -79,6 +79,7 @@ async function loadSupervisorMeetingsPage() {
     await loadGroupsForMeetingSchedule(supervisorId);
     
     console.log('Supervisor meetings page loaded successfully');
+    loadNotificationCount();
     
   } catch (error) {
     console.error('Error loading supervisor meetings page:', error);
@@ -105,13 +106,34 @@ async function loadAllSupervisorMeetings(supervisorId) {
       const groupDoc = await db.collection('groups').doc(meetingData.groupId).get();
       const groupData = groupDoc.exists ? groupDoc.data() : null;
       
-      // Get student information
+      // Get student names — members array may be objects {fullName, ...} or plain UID strings
       let studentNames = [];
-      if (groupData && groupData.members) {
-        for (const memberId of groupData.members) {
-          const memberDoc = await db.collection('users').doc(memberId).get();
-          if (memberDoc.exists) {
-            studentNames.push(memberDoc.data().displayName);
+      if (groupData) {
+        // Prefer memberUids array (set during registration)
+        const memberUids = Array.isArray(groupData.memberUids) ? groupData.memberUids : [];
+
+        // Also extract UIDs from the members objects array
+        const membersArr = Array.isArray(groupData.members) ? groupData.members : [];
+        const uidSet = new Set(memberUids);
+        for (const m of membersArr) {
+          if (typeof m === 'string') uidSet.add(m);
+          else if (m && typeof m === 'object') {
+            // Collect display name directly from the object if available
+            if (m.fullName) studentNames.push(m.fullName);
+            else if (m.displayName) studentNames.push(m.displayName);
+            else if (m.name) studentNames.push(m.name);
+            // Still record UID for further lookup
+            if (m.uid) uidSet.add(m.uid);
+          }
+        }
+
+        // Fetch names for UIDs not yet resolved
+        if (studentNames.length === 0 && uidSet.size > 0) {
+          for (const uid of uidSet) {
+            try {
+              const memberDoc = await db.collection('users').doc(uid).get();
+              if (memberDoc.exists) studentNames.push(memberDoc.data().displayName || uid);
+            } catch (_) { /* skip silently */ }
           }
         }
       }
@@ -129,7 +151,7 @@ async function loadAllSupervisorMeetings(supervisorId) {
         agenda: meetingData.agenda || meetingData.purpose || '',
         purpose: meetingData.purpose || meetingData.agenda || '',
         groupId: meetingData.groupId,
-        groupName: groupData?.groupId || groupData?.groupName || meetingData.groupId || 'Unknown Group',
+        groupName: groupData?.groupName || groupData?.groupId || meetingData.groupId || 'Unknown Group',
         studentNames,
         supervisorId: meetingData.supervisorId,
         requestedBy: meetingData.requestedBy || null,
@@ -650,22 +672,20 @@ document.getElementById('scheduleMeetingForm').addEventListener('submit', async 
       createdAt: new Date().toISOString()
     });
     
-    // Send notifications to group members
+    // Send notifications to group members using memberUids (reliable UID list)
     const groupDoc = await db.collection('groups').doc(groupId).get();
     if (groupDoc.exists) {
       const groupData = groupDoc.data();
-      if (groupData.members) {
-        for (const memberId of groupData.members) {
-          await db.collection('notifications').add({
-            userId: memberId,
-            type: 'meeting_scheduled',
-            title: 'New Meeting Scheduled',
-            message: `Meeting "${title}" scheduled for ${new Date(scheduledDate).toLocaleDateString()} at ${time}`,
-            meetingId: '', // Will be set after getting the ID
-            createdAt: new Date().toISOString(),
-            read: false
-          });
-        }
+      const memberUids = Array.isArray(groupData.memberUids) ? groupData.memberUids : [];
+      for (const uid of memberUids) {
+        await db.collection('notifications').add({
+          userId: uid,
+          type: 'meeting_scheduled',
+          title: 'New Meeting Scheduled',
+          message: `Meeting "${title}" scheduled for ${new Date(scheduledDate).toLocaleDateString()} at ${time}`,
+          createdAt: new Date().toISOString(),
+          read: false
+        });
       }
     }
     
@@ -839,10 +859,82 @@ function formatMeetingType(type) {
   return types[type] || type;
 }
 
-function showNotifications() {
-  if (typeof showNotification !== 'undefined') {
-    showNotification('Notification center coming soon!', 'info');
+async function loadNotificationCount() {
+  try {
+    const uid = localStorage.getItem('uid');
+    if (!uid) return;
+    const snap = await db.collection('notifications')
+      .where('userId', '==', uid)
+      .where('read', '==', false)
+      .get();
+    const badge = document.getElementById('notificationCount');
+    if (badge) {
+      badge.textContent = snap.size;
+      badge.style.display = snap.size > 0 ? 'flex' : 'none';
+    }
+  } catch (e) {
+    console.warn('Could not load notification count:', e.message);
   }
+}
+
+async function showNotifications() {
+  const uid = localStorage.getItem('uid');
+  if (!uid) return;
+  try {
+    const snap = await db.collection('notifications')
+      .where('userId', '==', uid)
+      .where('read', '==', false)
+      .get();
+
+    if (snap.empty) {
+      if (typeof showNotification !== 'undefined') showNotification('No new notifications.', 'info');
+      return;
+    }
+
+    let existing = document.getElementById('notifDropdown');
+    if (existing) { existing.remove(); return; }
+
+    const dropdown = document.createElement('div');
+    dropdown.id = 'notifDropdown';
+    dropdown.style.cssText = `position:fixed;top:60px;right:20px;background:#fff;border:1px solid #e5e7eb;
+      border-radius:10px;box-shadow:0 8px 24px rgba(0,0,0,.12);width:320px;max-height:400px;
+      overflow-y:auto;z-index:9999;`;
+
+    const items = snap.docs.map(doc => {
+      const n = doc.data();
+      return `<div style="padding:12px 16px;border-bottom:1px solid #f3f4f6;cursor:pointer;"
+                   onclick="markNotifRead('${doc.id}', this)">
+        <p style="margin:0;font-weight:600;font-size:14px;">${n.title || 'Notification'}</p>
+        <p style="margin:4px 0 0;font-size:13px;color:#6b7280;">${n.message || ''}</p>
+      </div>`;
+    }).join('');
+
+    dropdown.innerHTML = `
+      <div style="padding:12px 16px;border-bottom:1px solid #e5e7eb;font-weight:700;font-size:14px;
+                  display:flex;justify-content:space-between;align-items:center;">
+        Notifications
+        <span onclick="document.getElementById('notifDropdown').remove()"
+              style="cursor:pointer;color:#9ca3af;font-size:18px;">&times;</span>
+      </div>
+      ${items}`;
+    document.body.appendChild(dropdown);
+
+    setTimeout(() => {
+      document.addEventListener('click', function handler(e) {
+        if (!dropdown.contains(e.target)) { dropdown.remove(); document.removeEventListener('click', handler); }
+      });
+    }, 100);
+  } catch (e) {
+    console.warn('Error loading notifications:', e.message);
+  }
+}
+
+async function markNotifRead(docId, el) {
+  try {
+    await db.collection('notifications').doc(docId).update({ read: true });
+    el.style.opacity = '0.5';
+    loadNotificationCount();
+  } catch (_) {}
 }
 
 // Close modals when clicking outside

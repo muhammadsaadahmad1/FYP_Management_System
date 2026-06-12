@@ -301,19 +301,39 @@
     async function getSupervisorInfo(groupId) {
       try {
         const groupDoc = await firebase.firestore().collection('groups').doc(groupId).get();
-        if (groupDoc.exists) {
-          const groupData = groupDoc.data();
-          if (groupData.supervisorId) {
-            const supervisorDoc = await firebase.firestore().collection('users').doc(groupData.supervisorId).get();
-            if (supervisorDoc.exists) {
-              return {
-                id: groupData.supervisorId,
-                ...supervisorDoc.data()
-              };
-            }
-          }
+        if (!groupDoc.exists) return null;
+
+        const groupData = groupDoc.data();
+        if (!groupData.supervisorId) return null;
+
+        // If proposal-acceptance cached the supervisor's name+email on the group doc, use it directly
+        // (avoids reading the users collection which students cannot access for supervisor docs)
+        if (groupData.supervisorName) {
+          return {
+            id: groupData.supervisorId,
+            displayName: groupData.supervisorName,
+            email: groupData.supervisorEmail || ''
+          };
         }
-        return null;
+
+        // Fall back: query the supervisors collection (students have read access)
+        try {
+          const supDoc = await firebase.firestore().collection('supervisors').doc(groupData.supervisorId).get();
+          if (supDoc.exists) {
+            const s = supDoc.data();
+            return {
+              id: groupData.supervisorId,
+              displayName: s.fullName || s.displayName || s.name || 'Supervisor',
+              email: s.email || ''
+            };
+          }
+        } catch (supErr) {
+          console.warn('Could not read supervisors collection:', supErr.message);
+        }
+
+        // Last resort: return a minimal object so the meeting can still be submitted
+        return { id: groupData.supervisorId, displayName: 'Supervisor', email: '' };
+
       } catch (error) {
         console.error('Error fetching supervisor info:', error);
         return null;
@@ -338,19 +358,34 @@
         meetingsListener = firebase.firestore()
           .collection('meetings')
           .where('groupId', '==', groupId)
-          .onSnapshot((snapshot) => {
+          .onSnapshot(async (snapshot) => {
             console.log('Meetings data updated:', snapshot.docs.length, 'documents');
             
             const meetings = [];
+            const patchPromises = [];
             snapshot.forEach(doc => {
               const meetingData = doc.data();
               console.log('Meeting data:', meetingData);
+
+              // Back-fill supervisorId on old meetings that were saved without it
+              if (!meetingData.supervisorId && supervisorInfo) {
+                patchPromises.push(
+                  firebase.firestore().collection('meetings').doc(doc.id).update({
+                    supervisorId: supervisorInfo.id,
+                    supervisor: supervisorInfo.displayName,
+                    supervisorEmail: supervisorInfo.email || ''
+                  }).catch(() => {})
+                );
+              }
+
               meetings.push({
                 id: doc.id,
                 ...meetingData,
+                supervisorId: meetingData.supervisorId || (supervisorInfo ? supervisorInfo.id : ''),
                 supervisor: meetingData.supervisor || (supervisorInfo ? supervisorInfo.displayName : 'To be assigned')
               });
             });
+            if (patchPromises.length) await Promise.all(patchPromises);
             
             console.log('Processed meetings:', meetings.length);
             
