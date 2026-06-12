@@ -354,10 +354,10 @@
             
             console.log('Processed meetings:', meetings.length);
             
-            // Split into upcoming and history
+            // Split into upcoming and history; treat pending as "upcoming" even if date passed
             const now = new Date().toISOString();
-            const upcomingMeetings = meetings.filter(m => m.date >= now);
-            const meetingsHistory = meetings.filter(m => m.date < now);
+            const upcomingMeetings = meetings.filter(m => m.status === 'pending' || m.date >= now);
+            const meetingsHistory  = meetings.filter(m => m.status !== 'pending' && m.date < now);
             
             console.log('Upcoming meetings:', upcomingMeetings.length);
             console.log('Meeting history:', meetingsHistory.length);
@@ -533,22 +533,28 @@
               <p><i class="fas fa-user"></i> ${meeting.supervisor || 'Supervisor'}</p>
             </div>
             <div class="meeting-status">
-              <span class="status ${meeting.status}">${meeting.status}</span>
+              ${meeting.status === 'pending'
+                ? '<span class="status pending" style="background:#fef3c7;color:#92400e;">Awaiting Approval</span>'
+                : `<span class="status ${meeting.status}">${meeting.status}</span>`
+              }
               ${isToday ? '<span class="today-badge">Today</span>' : ''}
               ${isTomorrow ? '<span class="tomorrow-badge">Tomorrow</span>' : ''}
             </div>
           </div>
           <div class="meeting-details">
-            <p><strong>Purpose:</strong> ${meeting.purpose || 'General discussion'}</p>
-            <p><strong>Location:</strong> ${meeting.location || 'Online'}</p>
-            <div class="meeting-actions">
-              <button class="btn btn-secondary" onclick="joinMeeting('${meeting.id}')">
-                <i class="fas fa-video"></i> Join
-              </button>
-              <button class="btn btn-secondary" onclick="rescheduleMeeting('${meeting.id}')">
-                <i class="fas fa-calendar-alt"></i> Reschedule
-              </button>
-            </div>
+            <p><strong>Purpose:</strong> ${meeting.purpose || meeting.agenda || 'General discussion'}</p>
+            <p><strong>Location:</strong> ${meeting.location || 'To be confirmed'}</p>
+            ${meeting.status === 'pending'
+              ? '<p style="color:#92400e;font-size:13px;"><i class="fas fa-info-circle"></i> Your supervisor has been notified and will approve or decline this request shortly.</p>'
+              : `<div class="meeting-actions">
+                  <button class="btn btn-secondary" onclick="joinMeeting('${meeting.id}')">
+                    <i class="fas fa-video"></i> Join
+                  </button>
+                  <button class="btn btn-secondary" onclick="rescheduleMeeting('${meeting.id}')">
+                    <i class="fas fa-calendar-alt"></i> Reschedule
+                  </button>
+                </div>`
+            }
           </div>
         `;
         
@@ -819,14 +825,29 @@
         
         showLoadingOverlay('Submitting meeting request...');
         
-        // Build meeting data object
+        // Get supervisor info before building the meeting data
+        const supervisorInfo = await getSupervisorInfo(groupId);
+        if (!supervisorInfo) {
+          throw new Error('No supervisor assigned to your group yet. Please contact the admin.');
+        }
+
+        const requestedDateTime = new Date(formData.get('date') + 'T' + formData.get('time')).toISOString();
+
+        // Build meeting data object — use scheduledDate so supervisor page can read it
         const meetingData = {
+          title: `${formData.get('type').replace(/_/g,' ')} Meeting Request`,
           type: formData.get('type'),
-          date: new Date(formData.get('date') + 'T' + formData.get('time')).toISOString(),
+          scheduledDate: requestedDateTime,
+          date: requestedDateTime,
+          time: formData.get('time'),
           duration: parseInt(formData.get('duration')),
           purpose: formData.get('purpose'),
-          location: formData.get('location'),
+          agenda: formData.get('purpose'),
+          location: formData.get('location') || 'To be confirmed',
           groupId: groupId,
+          supervisorId: supervisorInfo.id,
+          supervisor: supervisorInfo.displayName,
+          supervisorEmail: supervisorInfo.email,
           requestedBy: userId,
           requestedDate: new Date().toISOString(),
           status: 'pending',
@@ -840,16 +861,20 @@
           throw new Error(validationErrors.join(', '));
         }
         
-        // Get supervisor info
-        const supervisorInfo = await getSupervisorInfo(groupId);
-        if (supervisorInfo) {
-          meetingData.supervisorId = supervisorInfo.id;
-          meetingData.supervisor = supervisorInfo.displayName;
-          meetingData.supervisorEmail = supervisorInfo.email;
-        }
-        
         // Add meeting to Firestore
         const docRef = await firebase.firestore().collection('meetings').add(meetingData);
+
+        // Notify the supervisor
+        await firebase.firestore().collection('notifications').add({
+          userId: supervisorInfo.id,
+          type: 'meeting_request',
+          title: 'New Meeting Request',
+          message: `Your group (${groupId}) has requested a ${meetingData.type.replace(/_/g,' ')} meeting on ${new Date(requestedDateTime).toLocaleDateString()} at ${formData.get('time')}.`,
+          meetingId: docRef.id,
+          groupId,
+          createdAt: new Date().toISOString(),
+          read: false
+        });
         
         console.log('Meeting request submitted with ID:', docRef.id);
         

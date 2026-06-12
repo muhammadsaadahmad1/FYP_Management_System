@@ -66,11 +66,14 @@ async function loadSupervisorMeetingsPage() {
     const meetingsData = await loadAllSupervisorMeetings(supervisorId);
     supervisorMeetingsData = meetingsData;
     
-    // Update stats
+    // Update stats (count pending as needing attention)
     updateMeetingsStats(meetingsData);
     
-    // Display meetings
-    displayMeetingsList(meetingsData);
+    // Show pending requests at the top in a dedicated section
+    displayPendingRequests(meetingsData.filter(m => m.status === 'pending'));
+
+    // Display confirmed/other meetings
+    displayMeetingsList(meetingsData.filter(m => m.status !== 'pending'));
     
     // Load groups for meeting scheduling
     await loadGroupsForMeetingSchedule(supervisorId);
@@ -88,9 +91,9 @@ async function loadSupervisorMeetingsPage() {
 // Load all supervisor meetings with details
 async function loadAllSupervisorMeetings(supervisorId) {
   try {
+    // No orderBy to avoid needing a composite index; sort client-side
     const meetingsSnapshot = await db.collection('meetings')
       .where('supervisorId', '==', supervisorId)
-      .orderBy('scheduledDate', 'desc')
       .get();
     
     const meetings = [];
@@ -115,23 +118,28 @@ async function loadAllSupervisorMeetings(supervisorId) {
       
       meetings.push({
         id: meetingDoc.id,
-        title: meetingData.title || 'Meeting',
+        title: meetingData.title || 'Meeting Request',
         type: meetingData.type || 'general',
-        status: meetingData.status || 'scheduled',
-        scheduledDate: meetingData.scheduledDate || null,
+        status: meetingData.status || 'pending',
+        // Support both field names written by student and supervisor forms
+        scheduledDate: meetingData.scheduledDate || meetingData.date || null,
         time: meetingData.time || '',
         duration: meetingData.duration || 60,
         location: meetingData.location || '',
-        agenda: meetingData.agenda || '',
+        agenda: meetingData.agenda || meetingData.purpose || '',
+        purpose: meetingData.purpose || meetingData.agenda || '',
         groupId: meetingData.groupId,
-        groupName: groupData ? groupData.groupName : 'Unknown Group',
-        studentNames: studentNames,
+        groupName: groupData?.groupId || groupData?.groupName || meetingData.groupId || 'Unknown Group',
+        studentNames,
         supervisorId: meetingData.supervisorId,
+        requestedBy: meetingData.requestedBy || null,
+        requestedDate: meetingData.requestedDate || null,
         notes: meetingData.notes || '',
         createdAt: meetingData.createdAt || null
       });
     }
-    
+
+    meetings.sort((a, b) => new Date(b.scheduledDate || 0) - new Date(a.scheduledDate || 0));
     return meetings;
   } catch (error) {
     console.error('Error loading supervisor meetings:', error);
@@ -167,6 +175,159 @@ async function loadGroupsForMeetingSchedule(supervisorId) {
   }
 }
 
+// Render a dedicated banner for pending student meeting requests
+function displayPendingRequests(pendingMeetings) {
+  // Find or create the pending requests container
+  let container = document.getElementById('pendingRequestsSection');
+  if (!container) {
+    // Insert it before the meetings list container
+    const listContainer = document.getElementById('meetingsListContainer');
+    if (listContainer && listContainer.parentNode) {
+      container = document.createElement('div');
+      container.id = 'pendingRequestsSection';
+      listContainer.parentNode.insertBefore(container, listContainer);
+    } else {
+      return;
+    }
+  }
+
+  if (pendingMeetings.length === 0) {
+    container.innerHTML = '';
+    return;
+  }
+
+  const cards = pendingMeetings.map(m => {
+    const dt = m.scheduledDate ? new Date(m.scheduledDate) : null;
+    const dateStr = dt ? dt.toLocaleDateString() : 'N/A';
+    const timeStr = m.time || (dt ? dt.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : 'N/A');
+    return `
+      <div style="background:#fff;border:1px solid #fcd34d;border-left:4px solid #f59e0b;border-radius:8px;padding:16px;margin-bottom:12px;">
+        <div style="display:flex;justify-content:space-between;align-items:flex-start;gap:10px;flex-wrap:wrap;">
+          <div>
+            <span style="background:#fef3c7;color:#92400e;padding:2px 8px;border-radius:12px;font-size:12px;font-weight:600;">PENDING APPROVAL</span>
+            <h4 style="margin:8px 0 4px;">${m.title}</h4>
+            <p style="margin:0;color:#6b7280;font-size:14px;">
+              Group: <strong>${m.groupName}</strong> &nbsp;|&nbsp;
+              Requested: <strong>${m.requestedDate ? new Date(m.requestedDate).toLocaleDateString() : 'N/A'}</strong>
+            </p>
+            <p style="margin:4px 0 0;color:#374151;font-size:14px;">
+              Proposed date: <strong>${dateStr}</strong> at <strong>${timeStr}</strong> &nbsp;|&nbsp;
+              Duration: <strong>${m.duration} min</strong> &nbsp;|&nbsp;
+              Location: <strong>${m.location || 'TBD'}</strong>
+            </p>
+            ${m.purpose ? `<p style="margin:4px 0 0;color:#6b7280;font-size:13px;">Purpose: ${m.purpose}</p>` : ''}
+          </div>
+          <div style="display:flex;gap:8px;flex-shrink:0;">
+            <button onclick="approveMeetingRequest('${m.id}')" style="padding:8px 16px;background:#10b981;color:#fff;border:none;border-radius:6px;cursor:pointer;font-weight:600;">
+              ✓ Approve
+            </button>
+            <button onclick="rejectMeetingRequest('${m.id}')" style="padding:8px 16px;background:#ef4444;color:#fff;border:none;border-radius:6px;cursor:pointer;font-weight:600;">
+              ✗ Decline
+            </button>
+          </div>
+        </div>
+      </div>`;
+  }).join('');
+
+  container.innerHTML = `
+    <div style="margin-bottom:24px;">
+      <h3 style="margin:0 0 12px;color:#92400e;display:flex;align-items:center;gap:8px;">
+        <i class="fas fa-clock"></i> Pending Meeting Requests (${pendingMeetings.length})
+      </h3>
+      ${cards}
+    </div>`;
+}
+
+// Approve a student meeting request
+async function approveMeetingRequest(meetingId) {
+  try {
+    const meeting = supervisorMeetingsData.find(m => m.id === meetingId);
+    if (!meeting) return;
+
+    await db.collection('meetings').doc(meetingId).update({
+      status: 'scheduled',
+      approvedAt: new Date().toISOString(),
+      updatedAt: new Date().toISOString()
+    });
+
+    // Notify group members
+    if (meeting.groupId) {
+      const groupDoc = await db.collection('groups').doc(meeting.groupId).get();
+      const memberUids = groupDoc.exists
+        ? (groupDoc.data().memberUids || [])
+        : [];
+      for (const uid of memberUids) {
+        await db.collection('notifications').add({
+          userId: uid,
+          type: 'meeting_approved',
+          title: 'Meeting Request Approved',
+          message: `Your meeting request for ${new Date(meeting.scheduledDate).toLocaleDateString()} at ${meeting.time} has been approved by your supervisor.`,
+          meetingId,
+          createdAt: new Date().toISOString(),
+          read: false
+        });
+      }
+    }
+
+    if (typeof showNotification !== 'undefined') {
+      showNotification('Meeting request approved and student notified.', 'success');
+    }
+    loadSupervisorMeetingsPage();
+  } catch (err) {
+    console.error('Error approving meeting request:', err);
+    if (typeof showNotification !== 'undefined') {
+      showNotification('Error approving meeting request.', 'error');
+    }
+  }
+}
+
+// Decline a student meeting request
+async function rejectMeetingRequest(meetingId) {
+  const reason = prompt('Please enter a reason for declining this meeting request (optional):');
+  if (reason === null) return; // User cancelled the dialog
+
+  try {
+    const meeting = supervisorMeetingsData.find(m => m.id === meetingId);
+    if (!meeting) return;
+
+    await db.collection('meetings').doc(meetingId).update({
+      status: 'cancelled',
+      declineReason: reason || '',
+      declinedAt: new Date().toISOString(),
+      updatedAt: new Date().toISOString()
+    });
+
+    // Notify group members
+    if (meeting.groupId) {
+      const groupDoc = await db.collection('groups').doc(meeting.groupId).get();
+      const memberUids = groupDoc.exists
+        ? (groupDoc.data().memberUids || [])
+        : [];
+      for (const uid of memberUids) {
+        await db.collection('notifications').add({
+          userId: uid,
+          type: 'meeting_declined',
+          title: 'Meeting Request Declined',
+          message: `Your meeting request for ${new Date(meeting.scheduledDate).toLocaleDateString()} has been declined by your supervisor.${reason ? ' Reason: ' + reason : ''}`,
+          meetingId,
+          createdAt: new Date().toISOString(),
+          read: false
+        });
+      }
+    }
+
+    if (typeof showNotification !== 'undefined') {
+      showNotification('Meeting request declined and student notified.', 'info');
+    }
+    loadSupervisorMeetingsPage();
+  } catch (err) {
+    console.error('Error declining meeting request:', err);
+    if (typeof showNotification !== 'undefined') {
+      showNotification('Error declining meeting request.', 'error');
+    }
+  }
+}
+
 // Update statistics cards
 function updateMeetingsStats(meetingsData) {
   const now = new Date();
@@ -174,6 +335,8 @@ function updateMeetingsStats(meetingsData) {
   const tomorrow = new Date(today);
   tomorrow.setDate(tomorrow.getDate() + 1);
   
+  const pendingCount  = meetingsData.filter(m => m.status === 'pending').length;
+
   const upcomingCount = meetingsData.filter(m => 
     m.status === 'scheduled' && new Date(m.scheduledDate) >= today
   ).length;
@@ -185,11 +348,24 @@ function updateMeetingsStats(meetingsData) {
   
   const completedCount = meetingsData.filter(m => m.status === 'completed').length;
   const cancelledCount = meetingsData.filter(m => m.status === 'cancelled').length;
-  
-  document.getElementById('upcomingCount').textContent = upcomingCount;
-  document.getElementById('todayCount').textContent = todayCount;
-  document.getElementById('completedCount').textContent = completedCount;
-  document.getElementById('cancelledCount').textContent = cancelledCount;
+
+  const elUpcoming   = document.getElementById('upcomingCount');
+  const elToday      = document.getElementById('todayCount');
+  const elCompleted  = document.getElementById('completedCount');
+  const elCancelled  = document.getElementById('cancelledCount');
+
+  if (elUpcoming)  elUpcoming.textContent  = upcomingCount;
+  if (elToday)     elToday.textContent     = todayCount;
+  if (elCompleted) elCompleted.textContent = completedCount;
+  if (elCancelled) elCancelled.textContent = cancelledCount;
+
+  // Highlight pending count on whichever stat card is available
+  const pendingEl = document.getElementById('pendingCount');
+  if (pendingEl) {
+    pendingEl.textContent = pendingCount;
+    const card = pendingEl.closest('.stat-card');
+    if (card) card.style.borderColor = pendingCount > 0 ? '#f59e0b' : '';
+  }
 }
 
 // Display meetings list
