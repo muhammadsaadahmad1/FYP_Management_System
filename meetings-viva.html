@@ -17,6 +17,7 @@
   <script src="js/firebase-auth.js"></script>
   <script src="js/auth-guard.js"></script>
   <script src="js/ui-helpers.js"></script>
+  <script src="js/notification-service.js"></script>
   <script src="js/student.js"></script>
   
   <script>
@@ -899,17 +900,22 @@
         // Add meeting to Firestore
         const docRef = await firebase.firestore().collection('meetings').add(meetingData);
 
-        // Notify the supervisor
-        await firebase.firestore().collection('notifications').add({
-          userId: supervisorInfo.id,
-          type: 'meeting_request',
-          title: 'New Meeting Request',
-          message: `Your group (${groupId}) has requested a ${meetingData.type.replace(/_/g,' ')} meeting on ${new Date(requestedDateTime).toLocaleDateString()} at ${formData.get('time')}.`,
-          meetingId: docRef.id,
-          groupId,
-          createdAt: new Date().toISOString(),
-          read: false
-        });
+        if (typeof NotificationService !== 'undefined') {
+          await NotificationService.send(supervisorInfo.id, {
+            type: 'meeting_request',
+            title: 'New Meeting Request',
+            message: `Your group (${groupId}) requested a ${meetingData.type.replace(/_/g, ' ')} meeting on ${new Date(requestedDateTime).toLocaleDateString()} at ${formData.get('time')}.`,
+            meetingId: docRef.id,
+            link: 'supervisor-meetings.html'
+          });
+          await NotificationService.notifyAdmins({
+            type: 'meeting_request',
+            title: 'Meeting Request Submitted',
+            message: `Group ${groupId} requested a meeting with their supervisor.`,
+            meetingId: docRef.id,
+            link: 'admin-dashboard.html'
+          });
+        }
         
         console.log('Meeting request submitted with ID:', docRef.id);
         

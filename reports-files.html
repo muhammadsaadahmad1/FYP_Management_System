@@ -17,6 +17,7 @@
   <script src="js/firebase-auth.js"></script>
   <script src="js/auth-guard.js"></script>
   <script src="js/ui-helpers.js"></script>
+  <script src="js/notification-service.js"></script>
   <script src="js/student.js"></script>
 </head>
 
@@ -366,12 +367,17 @@
           <td>${new Date(report.submittedDate).toLocaleDateString()}</td>
           <td><span class="status ${report.status}">${report.status}</span></td>
           <td>
-            ${report.supervisorReview ? 
+            ${report.feedback || report.remarks ? 
               `<div class="review-info">
-                <span class="review-rating">${generateStars(report.supervisorReview.rating || 0)}</span>
-                <p class="review-comment">${report.supervisorReview.comment || 'No comment'}</p>
+                ${report.grade ? `<p><strong>Grade:</strong> ${report.grade}</p>` : ''}
+                <p class="review-comment">${report.feedback || report.remarks}</p>
               </div>` : 
-              '<span class="no-review">Pending Review</span>'
+              (report.supervisorReview ? 
+                `<div class="review-info">
+                  <span class="review-rating">${generateStars(report.supervisorReview.rating || 0)}</span>
+                  <p class="review-comment">${report.supervisorReview.comment || 'No comment'}</p>
+                </div>` : 
+                '<span class="no-review">Pending Review</span>')
             }
           </td>
           <td>
@@ -648,65 +654,122 @@
       const groupId = localStorage.getItem('groupId');
       const userId = localStorage.getItem('uid');
       const fileInput = form.querySelector('input[name="reportFile"]');
-      
-      if (!fileInput.files[0]) {
-        showNotification('Please select a report file', 'error');
-        return;
-      }
-      
+      const file = fileInput && fileInput.files[0] ? fileInput.files[0] : null;
+
       try {
         showLoadingOverlay('Submitting report...');
-        
-        const file = fileInput.files[0];
-        
-        // Upload report file to Firebase Storage
-        const storageRef = firebase.storage().ref();
-        const fileRef = storageRef.child(`groups/${groupId}/reports/${file.name}`);
-        
-        await fileRef.put(file);
-        const downloadURL = await fileRef.getDownloadURL();
-        
-        // Save report metadata to Firestore
+
+        // File upload via Firebase Storage is disabled until Storage CORS is configured.
+        // Report metadata is saved to Firestore so the workflow still works fully.
+        const STORAGE_ENABLED = false;
+        let downloadURL = null;
+        let storageSkipped = false;
+
+        if (file && STORAGE_ENABLED) {
+          try {
+            const storageRef = firebase.storage().ref();
+            const fileRef = storageRef.child(`groups/${groupId}/reports/${file.name}`);
+            await fileRef.put(file);
+            downloadURL = await fileRef.getDownloadURL();
+          } catch (storageErr) {
+            console.warn('File upload skipped (Storage unavailable):', storageErr.message);
+            storageSkipped = true;
+          }
+        } else if (file && !STORAGE_ENABLED) {
+          storageSkipped = true;
+        }
+
+        // Fetch supervisor info from the group doc so reports are routed correctly
+        let supervisorId = null;
+        let supervisorName = null;
+        try {
+          const groupDoc = await firebase.firestore().collection('groups').doc(groupId).get();
+          if (groupDoc.exists) {
+            supervisorId = groupDoc.data().supervisorId || null;
+            supervisorName = groupDoc.data().supervisorName || null;
+          }
+        } catch (_) {}
+
+        // Build report metadata — file upload is optional
+        const now = new Date().toISOString();
         const reportData = {
           title: formData.get('title'),
           type: formData.get('type'),
           summary: formData.get('summary'),
-          fileName: file.name,
-          fileSize: file.size,
+          fileName: file ? file.name : null,
+          fileSize: file ? file.size : null,
           downloadURL: downloadURL,
+          fileStorageSkipped: storageSkipped,
           groupId: groupId,
+          supervisorId: supervisorId,
+          supervisorName: supervisorName,
           submittedBy: userId,
-          submittedDate: new Date().toISOString(),
+          submittedDate: now,
+          submittedAt: now,
           status: 'pending',
           isLatest: true
         };
-        
+
         // Mark previous reports as not latest
-        await firebase.firestore()
+        const prevSnap = await firebase.firestore()
           .collection('reports')
           .where('groupId', '==', groupId)
-          .get()
-          .then(snapshot => {
-            const batch = firebase.firestore().batch();
-            snapshot.forEach(doc => {
-              batch.update(doc.ref, { isLatest: false });
+          .get();
+        const batch = firebase.firestore().batch();
+        prevSnap.forEach(doc => batch.update(doc.ref, { isLatest: false }));
+        await batch.commit();
+
+        const reportRef = await firebase.firestore().collection('reports').add(reportData);
+
+        if (typeof NotificationService !== 'undefined') {
+          if (supervisorId) {
+            await NotificationService.send(supervisorId, {
+              type: 'report_submitted',
+              title: 'New Report Submitted',
+              message: `Group ${groupId} submitted "${reportData.title}" for your review.`,
+              reportId: reportRef.id,
+              link: 'supervisor-reports.html'
             });
-            return batch.commit();
+          }
+          await NotificationService.notifyAdmins({
+            type: 'report_submitted',
+            title: 'New Student Report',
+            message: `Report "${reportData.title}" submitted by group ${groupId}.`,
+            reportId: reportRef.id,
+            link: 'admin-reports.html'
           });
-        
-        await firebase.firestore().collection('reports').add(reportData);
-        
+        }
+
         hideLoadingOverlay();
         closeReportModal();
-        showNotification('Report submitted successfully!', 'success');
-        
-        // Reload files data
+
+        if (storageSkipped) {
+          showNotification('Report submitted! (File attachment skipped — Firebase Storage not yet enabled)', 'warning');
+        } else {
+          showNotification('Report submitted successfully!', 'success');
+        }
+
         loadFilesData();
         
       } catch (error) {
         hideLoadingOverlay();
         console.error('Error submitting report:', error);
-        showNotification('Error submitting report. Please try again.', 'error');
+
+        let msg = 'Error submitting report. Please try again.';
+        const errStr = (error.message || error.code || '').toLowerCase();
+
+        if (errStr.includes('cors') || errStr.includes('err_failed') || errStr.includes('network') || errStr.includes('failed to fetch')) {
+          msg = 'Upload blocked by CORS policy. Firebase Storage CORS has not been configured yet. '
+              + 'Please ask your admin to run: gsutil cors set cors.json gs://fypmanagementsystem-29faf.firebasestorage.app';
+        } else if (errStr.includes('storage/unauthorized') || errStr.includes('permission')) {
+          msg = 'Permission denied. Please log out and log in again.';
+        } else if (errStr.includes('storage/object-not-found')) {
+          msg = 'File not found in storage.';
+        } else if (errStr.includes('storage/quota-exceeded')) {
+          msg = 'Storage quota exceeded. Contact admin.';
+        }
+
+        showNotification(msg, 'error');
       }
     }
 

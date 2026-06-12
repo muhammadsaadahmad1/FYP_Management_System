@@ -14,6 +14,8 @@ function runStudentPageInit(initName) {
 
 // Firebase auth guard — load page data only after auth is confirmed
 requireAuth('student', () => {
+  if (typeof NotificationService !== 'undefined') NotificationService.loadCount();
+
   const page = window.location.pathname.split('/').pop() || '';
 
   if (document.body.dataset.studentPage === 'dashboard' || page === 'student-dashboard.html') {
@@ -56,7 +58,7 @@ function loadAllDashboardData() {
   setupRealtimeProjectData(groupId);
   setupRealtimeProposalsData(groupId);
   setupRealtimeTasksData(groupId);
-  setupRealtimeFilesData(groupId);
+  setupRealtimeReportsData(groupId);
   setupRealtimeMeetingsData(groupId);
   setupRealtimeFeedbackData(groupId);
   setupRealtimeAnnouncementsData();
@@ -300,17 +302,19 @@ function setupRealtimeTasksData(groupId) {
   dashboardUnsubscribers.push(unsub);
 }
 
-// Real-time Files Data Listener
-function setupRealtimeFilesData(groupId) {
-  const unsub = db.collection('files')
+// Real-time Reports Data Listener (reports collection — same source as reports-files.html)
+function setupRealtimeReportsData(groupId) {
+  const unsub = db.collection('reports')
     .where('groupId', '==', groupId)
-    .onSnapshot(snapshot => {
-      const filesData = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
-      updateFilesSection(filesData);
-      console.log('🔄 Files data updated in real-time:', filesData.length, 'files');
-    }, error => {
-      console.error('❌ Real-time files error:', error);
-      updateFilesSection([]);
+    .onSnapshot((snapshot) => {
+      const reportsData = snapshot.docs
+        .map((doc) => ({ id: doc.id, ...doc.data() }))
+        .sort((a, b) => new Date(b.submittedDate || b.submittedAt || 0) - new Date(a.submittedDate || a.submittedAt || 0));
+      updateReportsSection(reportsData);
+      console.log('🔄 Reports data updated in real-time:', reportsData.length, 'reports');
+    }, (error) => {
+      console.error('❌ Real-time reports error:', error);
+      updateReportsSection([]);
     });
   dashboardUnsubscribers.push(unsub);
 }
@@ -330,20 +334,63 @@ function setupRealtimeMeetingsData(groupId) {
   dashboardUnsubscribers.push(unsub);
 }
 
-// Real-time Feedback Data Listener
+// Real-time Feedback Data Listener (feedback collection + report reviews)
 function setupRealtimeFeedbackData(groupId) {
-  const unsub = db.collection('feedback')
+  let feedbackFromCollection = [];
+  let feedbackFromReports = [];
+
+  function mergeAndRender() {
+    const seen = new Set();
+    const merged = [...feedbackFromCollection, ...feedbackFromReports]
+      .filter((item) => {
+        if (seen.has(item.id)) return false;
+        seen.add(item.id);
+        return true;
+      })
+      .sort((a, b) => new Date(b.sortDate || 0) - new Date(a.sortDate || 0))
+      .slice(0, 5);
+    updateFeedbackSection(merged);
+  }
+
+  const unsubFeedback = db.collection('feedback')
     .where('groupId', '==', groupId)
-    .limit(5)
-    .onSnapshot(snapshot => {
-      const feedbackData = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
-      updateFeedbackSection(feedbackData);
-      console.log('🔄 Feedback data updated in real-time:', feedbackData.length, 'items');
-    }, error => {
+    .onSnapshot((snapshot) => {
+      feedbackFromCollection = snapshot.docs.map((doc) => {
+        const data = doc.data();
+        return {
+          id: doc.id,
+          author: data.supervisorName || data.supervisor || 'Supervisor',
+          message: data.message || data.feedback || data.content || '',
+          sortDate: data.createdAt || data.timestamp || null
+        };
+      });
+      mergeAndRender();
+    }, (error) => {
       console.error('❌ Real-time feedback error:', error);
-      updateFeedbackSection([]);
+      feedbackFromCollection = [];
+      mergeAndRender();
     });
-  dashboardUnsubscribers.push(unsub);
+
+  const unsubReports = db.collection('reports')
+    .where('groupId', '==', groupId)
+    .onSnapshot((snapshot) => {
+      feedbackFromReports = snapshot.docs
+        .map((doc) => ({ id: doc.id, ...doc.data() }))
+        .filter((r) => r.feedback || r.remarks)
+        .map((r) => ({
+          id: 'report-fb-' + r.id,
+          author: r.reviewedByName || r.supervisorName || 'Supervisor',
+          message: `[${r.title || 'Report'}] ${r.feedback || r.remarks}`,
+          sortDate: r.reviewedDate || r.reviewedAt || r.submittedDate || null
+        }));
+      mergeAndRender();
+    }, (error) => {
+      console.error('❌ Real-time report feedback error:', error);
+      feedbackFromReports = [];
+      mergeAndRender();
+    });
+
+  dashboardUnsubscribers.push(unsubFeedback, unsubReports);
 }
 
 // Real-time Announcements Data Listener
@@ -570,30 +617,63 @@ function updateTasksSection(tasksData) {
   taskTableElement.innerHTML = tasksHtml;
 }
 
-// Update files section
-function updateFilesSection(filesData) {
+// Update reports section on dashboard (mirrors reports-files.html data)
+function updateReportsSection(reportsData) {
   const fileTableElement = document.getElementById('fileTable');
   if (!fileTableElement) return;
-  
-  if (filesData.length === 0) {
-    fileTableElement.innerHTML = '<p style="color: #6c757d; text-align: center; padding: 20px;">No files uploaded yet</p>';
+
+  if (!reportsData.length) {
+    fileTableElement.innerHTML = `
+      <p style="color: #6c757d; text-align: center; padding: 20px;">
+        No reports submitted yet.
+        <a href="reports-files.html" style="display:block;margin-top:8px;color:#2563eb;">Go to Reports &amp; Files →</a>
+      </p>`;
     return;
   }
-  
-  const filesHtml = filesData.map(file => `
-    <div class="file-item">
-      <div class="file-info">
-        <i class="fas fa-file-${getFileIcon(file.type)}"></i>
-        <div>
-          <h4>${file.name}</h4>
-          <p>Uploaded: ${new Date(file.uploadedDate).toLocaleDateString()}</p>
+
+  const reportsHtml = reportsData.slice(0, 5).map((report) => {
+    const submitted = report.submittedDate || report.submittedAt;
+    const fileUrl = report.downloadURL || report.fileLink;
+    const feedback = report.feedback || report.remarks;
+    const summary = report.summary || '';
+    const status = report.status || 'pending';
+
+    let fileLine = '';
+    if (fileUrl) {
+      fileLine = `<a href="${fileUrl}" target="_blank" rel="noopener" class="btn btn-secondary" style="font-size:12px;padding:4px 10px;text-decoration:none;">
+        <i class="fas fa-external-link-alt"></i> Open File</a>`;
+    } else if (summary) {
+      fileLine = `<p style="font-size:12px;color:#6b7280;margin:4px 0 0;">No file attached — review summary below.</p>`;
+    } else {
+      fileLine = `<p style="font-size:12px;color:#6b7280;margin:4px 0 0;">No file attached (Firebase Storage not yet enabled).</p>`;
+    }
+
+    return `
+      <div class="file-item" style="border-bottom:1px solid #e5e7eb;padding:12px 0;">
+        <div class="file-info" style="display:flex;gap:12px;align-items:flex-start;">
+          <i class="fas fa-file-pdf" style="color:#dc2626;margin-top:4px;"></i>
+          <div style="flex:1;">
+            <h4 style="margin:0 0 4px;">
+              ${report.title || 'Untitled Report'}
+              ${report.isLatest ? '<span style="background:#dbeafe;color:#1d4ed8;font-size:11px;padding:2px 6px;border-radius:4px;margin-left:6px;">Latest</span>' : ''}
+            </h4>
+            <p style="margin:2px 0;font-size:13px;"><strong>Type:</strong> ${report.type || 'Progress'}</p>
+            <p style="margin:2px 0;font-size:13px;"><strong>Submitted:</strong> ${submitted ? new Date(submitted).toLocaleDateString() : 'N/A'}</p>
+            <p style="margin:2px 0;font-size:13px;"><strong>Status:</strong> <span class="status ${status}">${status}</span></p>
+            ${summary ? `<p style="margin:4px 0 0;font-size:13px;color:#374151;"><strong>Summary:</strong> ${summary.length > 120 ? summary.substring(0, 120) + '…' : summary}</p>` : ''}
+            ${feedback ? `<p style="margin:4px 0 0;font-size:13px;color:#166534;"><strong>Supervisor feedback:</strong> ${feedback.length > 100 ? feedback.substring(0, 100) + '…' : feedback}</p>` : ''}
+            ${report.grade ? `<p style="margin:2px 0;font-size:13px;"><strong>Grade:</strong> ${report.grade}</p>` : ''}
+            ${fileLine}
+          </div>
         </div>
-      </div>
-      <button class="btn btn-secondary" onclick="downloadFile('${file.id}')">Download</button>
-    </div>
-  `).join('');
-  
-  fileTableElement.innerHTML = filesHtml;
+      </div>`;
+  }).join('');
+
+  fileTableElement.innerHTML = `
+    ${reportsHtml}
+    <p style="text-align:center;margin-top:12px;">
+      <a href="reports-files.html" style="color:#2563eb;font-weight:600;">View all reports &amp; files →</a>
+    </p>`;
 }
 
 // Update meetings section
@@ -631,17 +711,20 @@ function updateFeedbackSection(feedbackData) {
     return;
   }
   
-  const feedbackHtml = feedbackData.map(feedback => `
+  const feedbackHtml = feedbackData.map((feedback) => {
+    const dateVal = feedback.sortDate || feedback.timestamp || feedback.createdAt;
+    const dateStr = dateVal ? new Date(dateVal).toLocaleDateString() : 'N/A';
+    return `
     <div class="feedback-item">
       <div class="feedback-header">
-        <span class="feedback-author">${feedback.supervisor || 'Supervisor'}</span>
-        <span class="feedback-date">${new Date(feedback.timestamp).toLocaleDateString()}</span>
+        <span class="feedback-author">${feedback.author || feedback.supervisor || 'Supervisor'}</span>
+        <span class="feedback-date">${dateStr}</span>
       </div>
       <div class="feedback-content">
-        <p>${feedback.message}</p>
+        <p>${feedback.message || ''}</p>
       </div>
-    </div>
-  `).join('');
+    </div>`;
+  }).join('');
   
   feedbackListElement.innerHTML = feedbackHtml;
 }
@@ -700,8 +783,10 @@ function handleMeetingRequest() {
 }
 
 function showNotifications() {
-  if (typeof showNotification !== 'undefined') {
-    showNotification('Loading notifications...', 'info');
+  if (typeof NotificationService !== 'undefined') {
+    NotificationService.showPanel();
+  } else if (typeof showNotification !== 'undefined') {
+    showNotification('Notifications not available.', 'info');
   }
 }
 

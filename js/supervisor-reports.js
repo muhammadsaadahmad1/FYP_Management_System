@@ -73,7 +73,8 @@ async function loadSupervisorReportsPage() {
     displayReportsList(reportsData);
     
     console.log('Supervisor reports page loaded successfully');
-    
+    loadNotificationCount?.();
+
   } catch (error) {
     console.error('Error loading supervisor reports page:', error);
     if (typeof showNotification !== 'undefined') {
@@ -85,27 +86,54 @@ async function loadSupervisorReportsPage() {
 // Load all supervisor reports with details
 async function loadAllSupervisorReports(supervisorId) {
   try {
-    const reportsSnapshot = await db.collection('reports')
+    const bySupSnap = await db.collection('reports')
       .where('supervisorId', '==', supervisorId)
-      .orderBy('submittedDate', 'desc')
       .get();
-    
+
+    const groupsSnap = await db.collection('groups')
+      .where('supervisorId', '==', supervisorId)
+      .get();
+
+    let byGroupDocs = [];
+    for (const g of groupsSnap.docs) {
+      const rs = await db.collection('reports').where('groupId', '==', g.id).get();
+      byGroupDocs.push(...rs.docs);
+    }
+
+    const seen = new Set();
+    const allDocs = [...bySupSnap.docs, ...byGroupDocs].filter((d) => {
+      if (seen.has(d.id)) return false;
+      seen.add(d.id);
+      return true;
+    });
+
     const reports = [];
-    
-    for (const reportDoc of reportsSnapshot.docs) {
+
+    for (const reportDoc of allDocs) {
       const reportData = reportDoc.data();
-      
-      // Get group information
+
       const groupDoc = await db.collection('groups').doc(reportData.groupId).get();
       const groupData = groupDoc.exists ? groupDoc.data() : null;
-      
-      // Get student information
+
+      // members array may contain objects or UIDs — handle both
       let studentNames = [];
-      if (groupData && groupData.members) {
-        for (const memberId of groupData.members) {
-          const memberDoc = await db.collection('users').doc(memberId).get();
-          if (memberDoc.exists) {
-            studentNames.push(memberDoc.data().displayName);
+      if (groupData) {
+        const membersArr = Array.isArray(groupData.members) ? groupData.members : [];
+        const uidSet = new Set(Array.isArray(groupData.memberUids) ? groupData.memberUids : []);
+        for (const m of membersArr) {
+          if (typeof m === 'string') uidSet.add(m);
+          else if (m && typeof m === 'object') {
+            if (m.fullName) studentNames.push(m.fullName);
+            else if (m.displayName) studentNames.push(m.displayName);
+            if (m.uid) uidSet.add(m.uid);
+          }
+        }
+        if (studentNames.length === 0) {
+          for (const uid of uidSet) {
+            try {
+              const d = await db.collection('users').doc(uid).get();
+              if (d.exists) studentNames.push(d.data().displayName || uid);
+            } catch (_) {}
           }
         }
       }
@@ -115,13 +143,18 @@ async function loadAllSupervisorReports(supervisorId) {
         title: reportData.title || 'Untitled Report',
         type: reportData.type || 'other',
         status: reportData.status || 'pending',
+        summary: reportData.summary || '',
         submittedDate: reportData.submittedDate || null,
         reviewedDate: reportData.reviewedDate || null,
-        feedback: reportData.feedback || '',
+        feedback: reportData.feedback || reportData.remarks || '',
+        grade: reportData.grade || '',
         groupId: reportData.groupId,
-        groupName: groupData ? groupData.groupName : 'Unknown Group',
-        studentNames: studentNames,
-        supervisorId: reportData.supervisorId,
+        groupName: groupData ? (groupData.groupName || groupData.groupId) : 'Unknown Group',
+        studentNames,
+        supervisorId: reportData.supervisorId || supervisorId,
+        downloadURL: reportData.downloadURL || reportData.fileLink || null,
+        fileLink: reportData.fileLink || reportData.downloadURL || null,
+        fileName: reportData.fileName || null,
         attachments: reportData.attachments || [],
         fileSize: reportData.fileSize || 0,
         downloadCount: reportData.downloadCount || 0,
@@ -129,6 +162,7 @@ async function loadAllSupervisorReports(supervisorId) {
       });
     }
     
+    reports.sort((a, b) => new Date(b.submittedDate || 0) - new Date(a.submittedDate || 0));
     return reports;
   } catch (error) {
     console.error('Error loading supervisor reports:', error);
@@ -234,9 +268,16 @@ function displayReportsList(reportsData) {
         ` : '<p style="color: #9ca3af; font-size: 12px;">No attachments</p>'}
       </div>
       
+      ${report.feedback ? `
+        <div style="margin:8px 0;padding:10px;background:#f0fdf4;border-left:3px solid #16a34a;border-radius:4px;font-size:13px;">
+          <strong>Your feedback:</strong> ${report.feedback.substring(0, 150)}${report.feedback.length > 150 ? '...' : ''}
+          ${report.grade ? `<br><strong>Grade:</strong> ${report.grade}` : ''}
+        </div>
+      ` : ''}
+
       <div class="report-card-actions">
         <button class="btn btn-primary" onclick="reviewReport('${report.id}')">
-          <i class="fas fa-eye"></i> Review
+          <i class="fas fa-eye"></i> ${report.feedback ? 'View' : 'Review'}
         </button>
         <button class="btn btn-success" onclick="downloadReport('${report.id}')">
           <i class="fas fa-download"></i> Download
@@ -426,60 +467,79 @@ async function reviewReport(reportId) {
 async function submitReportReview(reportId) {
   try {
     const decision = document.getElementById('reviewDecision').value;
-    const feedback = document.getElementById('reviewFeedback').value;
+    const feedbackText = document.getElementById('reviewFeedback').value;
     const grade = document.getElementById('reviewGrade').value;
-    
+
     if (!decision) {
-      if (typeof showNotification !== 'undefined') {
-        showNotification('Please select a decision', 'error');
-      }
+      showNotification?.('Please select a decision', 'error');
       return;
     }
-    
+
     const supervisorId = localStorage.getItem('uid');
-    
+    const supervisorName = localStorage.getItem('displayName') || 'Supervisor';
+    const now = new Date().toISOString();
+    const report = supervisorReportsData.find((r) => r.id === reportId);
+
     await db.collection('reports').doc(reportId).update({
       status: decision,
-      feedback: feedback,
+      feedback: feedbackText,
+      remarks: feedbackText,
       grade: grade || '',
-      reviewedDate: new Date().toISOString(),
-      reviewedBy: supervisorId
+      reviewedDate: now,
+      reviewedAt: now,
+      reviewedBy: supervisorId,
+      reviewedByName: supervisorName
     });
-    
-    // Send notification to students
-    const report = supervisorReportsData.find(r => r.id === reportId);
-    if (report && report.groupId) {
-      const groupDoc = await db.collection('groups').doc(report.groupId).get();
-      if (groupDoc.exists) {
-        const groupData = groupDoc.data();
-        if (groupData.members) {
-          for (const memberId of groupData.members) {
-            await db.collection('notifications').add({
-              userId: memberId,
-              type: 'report_review',
-              title: `Report ${decision}`,
-              message: `Your report "${report.title}" has been ${decision}.`,
-              reportId: reportId,
-              createdAt: new Date().toISOString(),
-              read: false
-            });
-          }
-        }
-      }
+
+    // Save to feedback collection (admin + supervisor feedback pages read this)
+    if (report) {
+      await db.collection('feedback').add({
+        type: 'report',
+        decision,
+        message: feedbackText,
+        feedback: feedbackText,
+        content: feedbackText,
+        grade: grade || '',
+        reportId,
+        reportTitle: report.title,
+        groupId: report.groupId,
+        groupName: report.groupName,
+        supervisorId,
+        supervisorName,
+        fromUserId: supervisorId,
+        createdAt: now,
+        timestamp: now
+      });
     }
-    
-    if (typeof showNotification !== 'undefined') {
-      showNotification(`Report ${decision} successfully!`, 'success');
+
+    const label = decision === 'approved' ? 'Approved' : decision === 'rejected' ? 'Rejected' : 'Needs Changes';
+
+    // Notify students
+    if (report?.groupId && typeof NotificationService !== 'undefined') {
+      await NotificationService.notifyGroup(report.groupId, {
+        type: 'report_review',
+        title: `Report ${label}`,
+        message: `Your report "${report.title}" has been ${decision}.${feedbackText ? ' Feedback: ' + feedbackText.substring(0, 120) : ''}`,
+        reportId,
+        link: 'reports-files.html'
+      });
+      await NotificationService.notifyAdmins({
+        type: 'report_reviewed',
+        title: 'Report Reviewed',
+        message: `${supervisorName} reviewed "${report.title}" — ${label}.`,
+        reportId,
+        link: 'admin-reports.html'
+      });
     }
-    
+
+    showNotification?.(`Report ${label.toLowerCase()} successfully!`, 'success');
     closeReportReviewModal();
-    loadSupervisorReportsPage(); // Reload data
-    
+    loadSupervisorReportsPage();
+    loadNotificationCount?.();
+
   } catch (error) {
     console.error('Error submitting review:', error);
-    if (typeof showNotification !== 'undefined') {
-      showNotification('Error submitting review', 'error');
-    }
+    showNotification?.('Error submitting review', 'error');
   }
 }
 

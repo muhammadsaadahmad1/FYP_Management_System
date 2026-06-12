@@ -272,23 +272,20 @@ async function approveMeetingRequest(meetingId) {
       updatedAt: new Date().toISOString()
     });
 
-    // Notify group members
-    if (meeting.groupId) {
-      const groupDoc = await db.collection('groups').doc(meeting.groupId).get();
-      const memberUids = groupDoc.exists
-        ? (groupDoc.data().memberUids || [])
-        : [];
-      for (const uid of memberUids) {
-        await db.collection('notifications').add({
-          userId: uid,
-          type: 'meeting_approved',
-          title: 'Meeting Request Approved',
-          message: `Your meeting request for ${new Date(meeting.scheduledDate).toLocaleDateString()} at ${meeting.time} has been approved by your supervisor.`,
-          meetingId,
-          createdAt: new Date().toISOString(),
-          read: false
-        });
-      }
+    if (meeting.groupId && typeof NotificationService !== 'undefined') {
+      await NotificationService.notifyGroup(meeting.groupId, {
+        type: 'meeting_approved',
+        title: 'Meeting Request Approved',
+        message: `Your meeting on ${new Date(meeting.scheduledDate).toLocaleDateString()} at ${meeting.time} was approved.`,
+        meetingId,
+        link: 'meetings-viva.html'
+      });
+      await NotificationService.notifyAdmins({
+        type: 'meeting_approved',
+        title: 'Meeting Approved',
+        message: `Supervisor approved a meeting for group ${meeting.groupId}.`,
+        meetingId
+      });
     }
 
     if (typeof showNotification !== 'undefined') {
@@ -319,23 +316,20 @@ async function rejectMeetingRequest(meetingId) {
       updatedAt: new Date().toISOString()
     });
 
-    // Notify group members
-    if (meeting.groupId) {
-      const groupDoc = await db.collection('groups').doc(meeting.groupId).get();
-      const memberUids = groupDoc.exists
-        ? (groupDoc.data().memberUids || [])
-        : [];
-      for (const uid of memberUids) {
-        await db.collection('notifications').add({
-          userId: uid,
-          type: 'meeting_declined',
-          title: 'Meeting Request Declined',
-          message: `Your meeting request for ${new Date(meeting.scheduledDate).toLocaleDateString()} has been declined by your supervisor.${reason ? ' Reason: ' + reason : ''}`,
-          meetingId,
-          createdAt: new Date().toISOString(),
-          read: false
-        });
-      }
+    if (meeting.groupId && typeof NotificationService !== 'undefined') {
+      await NotificationService.notifyGroup(meeting.groupId, {
+        type: 'meeting_declined',
+        title: 'Meeting Request Declined',
+        message: `Your meeting request was declined.${reason ? ' Reason: ' + reason : ''}`,
+        meetingId,
+        link: 'meetings-viva.html'
+      });
+      await NotificationService.notifyAdmins({
+        type: 'meeting_declined',
+        title: 'Meeting Declined',
+        message: `Supervisor declined a meeting for group ${meeting.groupId}.`,
+        meetingId
+      });
     }
 
     if (typeof showNotification !== 'undefined') {

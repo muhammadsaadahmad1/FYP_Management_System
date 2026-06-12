@@ -82,7 +82,8 @@ async function loadSupervisorFeedbackPage() {
     await loadStudentsAndProjects(supervisorId);
     
     console.log('Supervisor feedback page loaded successfully');
-    
+    loadNotificationCount?.();
+
   } catch (error) {
     console.error('Error loading supervisor feedback page:', error);
     if (typeof showNotification !== 'undefined') {
@@ -94,14 +95,23 @@ async function loadSupervisorFeedbackPage() {
 // Load all feedback data
 async function loadAllFeedbackData(supervisorId) {
   try {
-    // Load given feedback
-    const givenSnapshot = await db.collection('feedback')
+    const givenByFrom = await db.collection('feedback')
       .where('fromUserId', '==', supervisorId)
-      .orderBy('createdAt', 'desc')
       .get();
+
+    const givenBySup = await db.collection('feedback')
+      .where('supervisorId', '==', supervisorId)
+      .get();
+
+    const givenSeen = new Set();
+    const givenDocs = [...givenByFrom.docs, ...givenBySup.docs].filter((d) => {
+      if (givenSeen.has(d.id)) return false;
+      givenSeen.add(d.id);
+      return true;
+    });
     
     const givenFeedback = [];
-    for (const doc of givenSnapshot.docs) {
+    for (const doc of givenDocs.sort((a, b) => new Date(b.data().createdAt || 0) - new Date(a.data().createdAt || 0))) {
       const data = doc.data();
       const studentDoc = await db.collection('users').doc(data.toUserId).get();
       const studentData = studentDoc.exists ? studentDoc.data() : null;
@@ -109,15 +119,36 @@ async function loadAllFeedbackData(supervisorId) {
       givenFeedback.push({
         id: doc.id,
         ...data,
-        studentName: studentData ? studentData.displayName : 'Unknown Student',
+        studentName: studentData ? studentData.displayName : (data.groupName ? `Group ${data.groupName}` : 'Report Review'),
         studentEmail: studentData ? studentData.email : ''
       });
     }
-    
+
+    // Report reviews not yet in feedback collection
+    const reportsSnap = await db.collection('reports')
+      .where('reviewedBy', '==', supervisorId)
+      .get();
+    const existingReportIds = new Set(givenFeedback.filter((f) => f.reportId).map((f) => f.reportId));
+    for (const doc of reportsSnap.docs) {
+      const data = doc.data();
+      if (!(data.feedback || data.remarks) || existingReportIds.has(doc.id)) continue;
+      givenFeedback.push({
+        id: 'report-' + doc.id,
+        type: 'report',
+        message: data.feedback || data.remarks,
+        rating: data.grade ? Math.min(5, Math.ceil(parseFloat(data.grade) / 20)) : 0,
+        reportId: doc.id,
+        reportTitle: data.title,
+        groupName: data.groupName || data.groupId,
+        createdAt: data.reviewedDate || data.reviewedAt,
+        studentName: data.groupName || data.groupId || 'Group'
+      });
+    }
+    givenFeedback.sort((a, b) => new Date(b.createdAt || 0) - new Date(a.createdAt || 0));
+
     // Load received feedback
     const receivedSnapshot = await db.collection('feedback')
       .where('toUserId', '==', supervisorId)
-      .orderBy('createdAt', 'desc')
       .get();
     
     const receivedFeedback = [];
@@ -137,20 +168,14 @@ async function loadAllFeedbackData(supervisorId) {
     // Load pending responses (notifications that need feedback)
     const pendingSnapshot = await db.collection('notifications')
       .where('userId', '==', supervisorId)
-      .where('type', 'in', ['proposal_review_request', 'report_review_request', 'meeting_feedback_request'])
       .where('read', '==', false)
-      .orderBy('createdAt', 'desc')
       .get();
     
-    const pendingFeedback = [];
-    for (const doc of pendingSnapshot.docs) {
-      const data = doc.data();
-      pendingFeedback.push({
-        id: doc.id,
-        ...data,
-        type: 'pending_response'
-      });
-    }
+    const pendingTypes = ['proposal_review_request', 'report_review_request', 'meeting_feedback_request', 'meeting_request', 'report_submitted'];
+    const pendingFeedback = pendingSnapshot.docs
+      .map((doc) => ({ id: doc.id, ...doc.data(), type: doc.data().type || 'pending_response' }))
+      .filter((n) => pendingTypes.includes(n.type))
+      .sort((a, b) => new Date(b.createdAt || 0) - new Date(a.createdAt || 0));
     
     return {
       given: givenFeedback,
@@ -621,17 +646,21 @@ document.getElementById('newFeedbackForm').addEventListener('submit', async (e) 
       createdAt: new Date().toISOString()
     });
     
-    // Send notification to student
-    await db.collection('notifications').add({
-      userId: studentId,
-      type: 'feedback_received',
-      title: 'New Feedback Received',
-      message: `You have received new feedback from your supervisor.`,
-      feedbackId: '', // Will be set after getting the ID
-      createdAt: new Date().toISOString(),
-      read: false
-    });
-    
+    if (typeof NotificationService !== 'undefined') {
+      await NotificationService.send(studentId, {
+        type: 'feedback_received',
+        title: 'New Feedback Received',
+        message: 'You have received new feedback from your supervisor.',
+        link: 'student-dashboard.html'
+      });
+      await NotificationService.notifyAdmins({
+        type: 'feedback_given',
+        title: 'Supervisor Feedback Sent',
+        message: `${localStorage.getItem('displayName') || 'Supervisor'} sent feedback to a student.`,
+        link: 'admin-feedback.html'
+      });
+    }
+
     if (typeof showNotification !== 'undefined') {
       showNotification('Feedback sent successfully!', 'success');
     }

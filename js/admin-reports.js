@@ -41,7 +41,8 @@ async function loadAdminReportsPage() {
     ]);
     
     console.log('✅ Admin Reports Page loaded successfully');
-    
+    if (typeof NotificationService !== 'undefined') NotificationService.loadCount();
+
   } catch (error) {
     console.error('❌ Error loading admin reports page:', error);
     showError('Failed to load reports data. Please try again.');
@@ -99,15 +100,12 @@ async function loadReports() {
       `;
     }
     
-    // Get reports from Firestore
-    const snapshot = await db.collection('reports')
-      .orderBy('submittedAt', 'desc')
-      .get();
-    
-    allReports = snapshot.docs.map(doc => ({
-      id: doc.id,
-      ...doc.data()
-    }));
+    // No orderBy to avoid composite index requirement; sort client-side
+    const snapshot = await db.collection('reports').get();
+
+    allReports = snapshot.docs
+      .map(doc => ({ id: doc.id, ...doc.data() }))
+      .sort((a, b) => new Date(b.submittedDate || b.submittedAt || 0) - new Date(a.submittedDate || a.submittedAt || 0));
     
     console.log(`✅ Loaded ${allReports.length} reports`);
     
@@ -315,36 +313,34 @@ function viewReport(reportId) {
         </p>
       </div>
       
-      <h4>Description</h4>
-      <p style="background: #f9fafb; padding: 15px; border-radius: 8px; line-height: 1.8;">
-        ${report.description || report.content || 'No description provided.'}
+      <h4>Summary / Content</h4>
+      <p style="background: #f9fafb; padding: 15px; border-radius: 8px; line-height: 1.8; white-space: pre-wrap;">
+        ${report.summary || report.description || report.content || 'No summary provided.'}
       </p>
       
       <h4>Submission Details</h4>
       <p>
-        <strong>Submitted:</strong> ${report.submittedAt ? new Date(report.submittedAt.toDate ? report.submittedAt.toDate() : report.submittedAt).toLocaleString() : 'Unknown'}<br>
-        ${report.reviewedAt ? `<strong>Reviewed:</strong> ${new Date(report.reviewedAt.toDate ? report.reviewedAt.toDate() : report.reviewedAt).toLocaleString()}<br>` : ''}
-        ${report.reviewedBy ? `<strong>Reviewed By:</strong> ${report.reviewedByName || report.reviewedBy}<br>` : ''}
+        <strong>Submitted:</strong> ${report.submittedDate || report.submittedAt ? new Date(report.submittedDate || report.submittedAt).toLocaleString() : 'Unknown'}<br>
+        ${report.reviewedDate || report.reviewedAt ? `<strong>Reviewed:</strong> ${new Date(report.reviewedDate || report.reviewedAt).toLocaleString()}<br>` : ''}
+        ${report.reviewedByName || report.reviewedBy ? `<strong>Reviewed By:</strong> ${report.reviewedByName || report.reviewedBy}<br>` : ''}
+        ${report.grade ? `<strong>Grade:</strong> ${report.grade}<br>` : ''}
       </p>
       
-      ${report.fileUrl || report.documentUrl ? `
+      ${report.downloadURL || report.fileLink || report.fileUrl || report.documentUrl ? `
         <h4>Document</h4>
         <p>
-          <a href="${report.fileUrl || report.documentUrl}" target="_blank" class="btn btn-primary" style="margin-right: 10px;">
-            <i class="fas fa-eye"></i> View Document
-          </a>
-          <a href="${report.fileUrl || report.documentUrl}" download class="btn btn-secondary">
-            <i class="fas fa-download"></i> Download
+          <a href="${report.downloadURL || report.fileLink || report.fileUrl || report.documentUrl}" target="_blank" class="btn btn-primary" style="margin-right: 10px;">
+            <i class="fas fa-external-link-alt"></i> Open File
           </a>
         </p>
       ` : ''}
       
-      ${report.remarks ? `
-        <h4>Supervisor Remarks</h4>
-        <p style="background: #fef3c7; padding: 15px; border-radius: 8px; border-left: 4px solid #f59e0b;">
-          ${report.remarks}
+      ${report.feedback || report.remarks ? `
+        <h4>Supervisor Feedback</h4>
+        <p style="background: #fef3c7; padding: 15px; border-radius: 8px; border-left: 4px solid #f59e0b; white-space: pre-wrap;">
+          ${report.feedback || report.remarks}
         </p>
-      ` : ''}
+      ` : '<p style="color:#6b7280;">No supervisor feedback yet.</p>'}
     </div>
   `;
   

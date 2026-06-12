@@ -41,7 +41,8 @@ async function loadAdminFeedbackPage() {
     ]);
     
     console.log('✅ Admin Feedback Page loaded successfully');
-    
+    if (typeof NotificationService !== 'undefined') NotificationService.loadCount();
+
   } catch (error) {
     console.error('❌ Error loading admin feedback page:', error);
     showError('Failed to load feedback data. Please try again.');
@@ -114,15 +115,38 @@ async function loadFeedback() {
       `;
     }
     
-    // Get feedback from Firestore
-    const snapshot = await db.collection('feedback')
-      .orderBy('createdAt', 'desc')
-      .get();
-    
-    allFeedback = snapshot.docs.map(doc => ({
-      id: doc.id,
-      ...doc.data()
-    }));
+    const snapshot = await db.collection('feedback').get();
+    const reportsSnap = await db.collection('reports').get();
+
+    const fromFeedback = snapshot.docs.map((doc) => ({ id: doc.id, ...doc.data() }));
+
+    // Include report reviews saved before feedback collection sync
+    const fromReports = reportsSnap.docs
+      .map((doc) => ({ id: 'report-' + doc.id, ...doc.data(), source: 'report' }))
+      .filter((r) => r.feedback || r.remarks)
+      .map((r) => ({
+        id: r.id,
+        type: 'report',
+        decision: r.status,
+        message: r.feedback || r.remarks,
+        feedback: r.feedback || r.remarks,
+        content: r.feedback || r.remarks,
+        grade: r.grade,
+        groupId: r.groupId,
+        groupName: r.groupName,
+        supervisorId: r.supervisorId,
+        supervisorName: r.supervisorName || r.reviewedByName,
+        reportId: r.id.replace('report-', ''),
+        reportTitle: r.title,
+        createdAt: r.reviewedDate || r.reviewedAt || r.submittedDate,
+        timestamp: r.reviewedDate || r.reviewedAt
+      }));
+
+    const seenReportIds = new Set(fromFeedback.filter((f) => f.reportId).map((f) => f.reportId));
+    const mergedReports = fromReports.filter((r) => !seenReportIds.has(r.reportId));
+
+    allFeedback = [...fromFeedback, ...mergedReports]
+      .sort((a, b) => new Date(b.createdAt || b.timestamp || 0) - new Date(a.createdAt || a.timestamp || 0));
     
     console.log(`✅ Loaded ${allFeedback.length} feedback entries`);
     
@@ -192,7 +216,7 @@ function renderFeedback() {
   
   allFeedback.forEach(feedback => {
     // Find supervisor info
-    const supervisor = allSupervisors.find(s => s.id === feedback.supervisorId) || {};
+    const supervisor = allSupervisors.find(s => s.id === (feedback.supervisorId || feedback.fromUserId)) || {};
     const supervisorName = supervisor.fullName || supervisor.displayName || 'Unknown Supervisor';
     const supervisorInitials = supervisorName.split(' ').map(n => n[0]).join('').toUpperCase().substring(0, 2);
     
@@ -280,7 +304,7 @@ function filterFeedback() {
     if (!feedback) return;
     
     // Search filter
-    const supervisor = allSupervisors.find(s => s.id === feedback.supervisorId) || {};
+    const supervisor = allSupervisors.find(s => s.id === (feedback.supervisorId || feedback.fromUserId)) || {};
     const group = allGroups.find(g => g.id === feedback.groupId) || {};
     const content = feedback.content || feedback.message || feedback.feedback || '';
     

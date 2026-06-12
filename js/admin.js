@@ -36,7 +36,8 @@ async function loadAdminDashboard() {
     ]);
     
     console.log('✅ Admin Dashboard loaded successfully');
-    
+    if (typeof NotificationService !== 'undefined') NotificationService.loadCount();
+
   } catch (error) {
     console.error('❌ Error loading admin dashboard:', error);
     showNotification('Error loading dashboard data', 'error');
@@ -292,26 +293,26 @@ async function loadAllFeedback() {
     const container = document.getElementById('feedbackList');
     if (!container) return;
     
-    const snapshot = await db.collection('feedback')
-      .orderBy('timestamp', 'desc')
-      .limit(50)
-      .get();
-    
-    if (snapshot.empty) {
+    const snapshot = await db.collection('feedback').get();
+
+    const entries = snapshot.docs
+      .map((doc) => ({ id: doc.id, ...doc.data() }))
+      .sort((a, b) => new Date(b.createdAt || b.timestamp || 0) - new Date(a.createdAt || a.timestamp || 0))
+      .slice(0, 50);
+
+    if (!entries.length) {
       container.innerHTML = '<p style="text-align: center; padding: 20px;">No feedback submitted yet</p>';
       return;
     }
-    
+
     let html = '';
-    
-    for (const doc of snapshot.docs) {
-      const feedback = doc.data();
-      
-      // Get supervisor name
-      let supervisorName = 'Unknown Supervisor';
+
+    for (const feedback of entries) {
+      let supervisorName = feedback.supervisorName || 'Unknown Supervisor';
+      const supId = feedback.supervisorId || feedback.fromUserId;
       try {
-        if (feedback.supervisorId) {
-          const supervisorDoc = await db.collection('users').doc(feedback.supervisorId).get();
+        if (supId && supervisorName === 'Unknown Supervisor') {
+          const supervisorDoc = await db.collection('users').doc(supId).get();
           if (supervisorDoc.exists) {
             supervisorName = supervisorDoc.data().displayName || supervisorDoc.data().fullName;
           }
@@ -319,24 +320,26 @@ async function loadAllFeedback() {
       } catch (e) {
         console.warn('Could not load supervisor name for feedback:', e);
       }
-      
-      // Get group name
-      let groupName = feedback.groupName || feedback.groupId || 'Unknown Group';
-      
+
+      const groupName = feedback.groupName || feedback.groupId || 'Unknown Group';
+      const dateStr = feedback.createdAt || feedback.timestamp;
+      const body = feedback.message || feedback.feedback || feedback.content || 'No message';
+
       html += `
         <div class="card feedback-card">
           <div class="feedback-header">
             <h4>${supervisorName}</h4>
-            <span class="feedback-date">${feedback.timestamp ? new Date(feedback.timestamp).toLocaleDateString() : 'N/A'}</span>
+            <span class="feedback-date">${dateStr ? new Date(dateStr).toLocaleDateString() : 'N/A'}</span>
           </div>
           <p><strong>Group:</strong> ${groupName}</p>
-          <p>${feedback.message || feedback.feedback || 'No message'}</p>
+          <p><strong>Type:</strong> ${feedback.type || 'general'}${feedback.decision ? ' — ' + feedback.decision : ''}</p>
+          <p>${body}</p>
         </div>
       `;
     }
-    
+
     container.innerHTML = html;
-    console.log(`✅ Loaded ${snapshot.size} feedback entries`);
+    console.log(`✅ Loaded ${entries.length} feedback entries`);
     
   } catch (error) {
     console.error('❌ Error loading feedback:', error);
@@ -355,21 +358,22 @@ async function loadAllReports() {
     const container = document.getElementById('reportList');
     if (!container) return;
     
-    const snapshot = await db.collection('reports')
-      .orderBy('submittedDate', 'desc')
-      .limit(50)
-      .get();
-    
-    if (snapshot.empty) {
+    const snapshot = await db.collection('reports').get();
+
+    const reports = snapshot.docs
+      .map((doc) => ({ id: doc.id, ...doc.data() }))
+      .sort((a, b) => new Date(b.submittedDate || b.submittedAt || 0) - new Date(a.submittedDate || a.submittedAt || 0))
+      .slice(0, 50);
+
+    if (!reports.length) {
       container.innerHTML = '<p style="text-align: center; padding: 20px;">No reports submitted yet</p>';
       return;
     }
-    
+
     let html = '';
-    
-    for (const doc of snapshot.docs) {
-      const report = doc.data();
-      
+
+    for (const report of reports) {
+      const fileUrl = report.downloadURL || report.fileLink;
       html += `
         <div class="card report-card">
           <h4>${report.title || 'Untitled Report'}</h4>
@@ -377,7 +381,9 @@ async function loadAllReports() {
           <p><strong>Type:</strong> ${report.type || 'N/A'}</p>
           <p><strong>Submitted:</strong> ${report.submittedDate ? new Date(report.submittedDate).toLocaleDateString() : 'N/A'}</p>
           <p><strong>Status:</strong> <span class="status ${report.status || 'pending'}">${report.status || 'Pending'}</span></p>
-          ${report.downloadURL ? `<a href="${report.downloadURL}" target="_blank" class="btn btn-sm btn-primary">Download</a>` : ''}
+          ${report.feedback || report.remarks ? `<p><strong>Supervisor Feedback:</strong> ${(report.feedback || report.remarks).substring(0, 120)}</p>` : ''}
+          ${report.grade ? `<p><strong>Grade:</strong> ${report.grade}</p>` : ''}
+          ${fileUrl ? `<a href="${fileUrl}" target="_blank" class="btn btn-sm btn-primary">Open File</a>` : ''}
         </div>
       `;
     }

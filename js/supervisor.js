@@ -146,13 +146,23 @@ async function loadPendingReviews(supervisorId) {
 // Load recent reports
 async function loadRecentReports(supervisorId) {
   try {
-    const reportsSnapshot = await db.collection('reports')
-      .where('supervisorId', '==', supervisorId)
-      .orderBy('submittedDate', 'desc')
-      .limit(5)
-      .get();
-    
-    return reportsSnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+    const bySup = await db.collection('reports').where('supervisorId', '==', supervisorId).get();
+    const groupsSnap = await db.collection('groups').where('supervisorId', '==', supervisorId).get();
+
+    let byGroup = [];
+    for (const g of groupsSnap.docs) {
+      const rs = await db.collection('reports').where('groupId', '==', g.id).get();
+      byGroup.push(...rs.docs);
+    }
+
+    const seen = new Set();
+    const all = [...bySup.docs, ...byGroup]
+      .filter((d) => { if (seen.has(d.id)) return false; seen.add(d.id); return true; })
+      .map((doc) => ({ id: doc.id, ...doc.data() }))
+      .sort((a, b) => new Date(b.submittedDate || 0) - new Date(a.submittedDate || 0))
+      .slice(0, 5);
+
+    return all;
   } catch (error) {
     console.error('Error loading recent reports:', error);
     return [];
@@ -334,13 +344,15 @@ function updateReportsSection(reportsData) {
           <h4>${report.title || 'Untitled Report'}</h4>
           <p>Group: ${report.groupName || report.groupId || 'Unknown'}</p>
           <p>Submitted: ${report.submittedDate ? new Date(report.submittedDate).toLocaleDateString() : 'Unknown'}</p>
+          ${report.feedback || report.remarks ? `<p style="font-size:13px;color:#374151;"><strong>Feedback:</strong> ${(report.feedback || report.remarks).substring(0, 80)}...</p>` : ''}
+          ${report.grade ? `<p style="font-size:13px;"><strong>Grade:</strong> ${report.grade}</p>` : ''}
         </div>
       </div>
       <div class="report-actions">
         <span class="report-status ${report.status}">${report.status}</span>
-        <button class="btn btn-secondary" onclick="downloadReport('${report.id}')">
-          <i class="fas fa-download"></i> Download
-        </button>
+        <a href="supervisor-reports.html" class="btn btn-secondary" style="text-decoration:none;">
+          <i class="fas fa-eye"></i> Review
+        </a>
       </div>
     </div>
   `).join('');
