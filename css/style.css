@@ -211,6 +211,17 @@ button.danger {
   border: 3px solid rgba(255, 255, 255, 0.2);
 }
 
+.logo-home-link {
+  display: inline-block;
+  cursor: pointer;
+  line-height: 0;
+  text-decoration: none;
+}
+
+.logo-home-link:hover {
+  opacity: 0.85;
+}
+
 .nav-menu {
   display: flex;
   flex-direction: column;

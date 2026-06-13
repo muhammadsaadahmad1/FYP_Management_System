@@ -32,41 +32,19 @@ try {
     console.warn('Firebase Storage SDK not loaded — storage features disabled on this page.');
   }
 
-  // Enable offline persistence for Firestore using new API with better error handling
   if (db) {
-    // Try the new cache API first (recommended)
     try {
       db.settings({
-        cacheSizeBytes: firebase.firestore.CACHE_SIZE_UNLIMITED
+        cacheSizeBytes: firebase.firestore.CACHE_SIZE_UNLIMITED,
+        merge: true
       });
-      db.enableNetwork()
-        .then(() => {
-          console.log('Firestore cache configured and network enabled');
-        })
-        .catch((err) => {
-          console.log('Network enable error:', err);
-        });
     } catch (settingsErr) {
-      // Fallback to the old persistence method if settings API fails
-      db.enablePersistence()
-        .then(() => {
-          console.log('Firestore offline persistence enabled (legacy method)');
-        })
-        .catch((err) => {
-          if (err.code === 'failed-precondition') {
-            console.log('Multiple tabs open, persistence can only be enabled in one tab at a time.');
-          } else if (err.code === 'unimplemented') {
-            console.log('The current browser does not support persistence.');
-          } else {
-            console.log('Persistence error:', err);
-          }
-        });
+      console.log('Firestore settings skipped:', settingsErr.message);
     }
   }
 
 } catch (error) {
   console.error('Firebase initialization error:', error);
-  // Only alert if core services failed — don't block the page for optional features
   if (!auth || !db) {
     console.error('Critical Firebase services unavailable:', error.message);
   }
@@ -79,5 +57,58 @@ window.firebaseServices = {
   storage: storage,
   app: firebaseApp
 };
+
+// Global aliases used across dashboard scripts (student.js, admin.js, etc.)
+window.db = db;
+window.auth = auth;
+window.storage = storage;
+
+async function verifyFirebaseConnection() {
+  if (!db) {
+    console.error('Firebase Firestore is not available');
+    return false;
+  }
+
+  try {
+    await db.collection('login_lookup').limit(1).get();
+    console.log('Firebase connected — Firestore is reachable');
+    return true;
+  } catch (error) {
+    if (error.code === 'permission-denied') {
+      console.log('Firebase connected — sign in to access protected data');
+      return true;
+    }
+    console.error('Firebase connection check failed:', error.code || error.message);
+    return false;
+  }
+}
+
+verifyFirebaseConnection();
+
+function initLogoHomeLinks() {
+  const selectors = [
+    '.sidebar .logo img',
+    '.login-header img',
+    '.register-header img',
+    '.landing-header .brand > img'
+  ];
+
+  document.querySelectorAll(selectors.join(', ')).forEach((img) => {
+    if (!img || img.closest('a.logo-home-link')) return;
+
+    const link = document.createElement('a');
+    link.href = 'index.html';
+    link.className = 'logo-home-link';
+    link.setAttribute('aria-label', 'Go to home page');
+    img.parentNode.insertBefore(link, img);
+    link.appendChild(img);
+  });
+}
+
+if (document.readyState === 'loading') {
+  document.addEventListener('DOMContentLoaded', initLogoHomeLinks);
+} else {
+  initLogoHomeLinks();
+}
 
 console.log('Firebase configuration loaded successfully!');

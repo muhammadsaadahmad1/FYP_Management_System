@@ -20,31 +20,6 @@
   <script src="js/notification-service.js"></script>
   <script src="js/student.js"></script>
   
-  <!-- Initialize Dashboard Data Loading -->
-  <script>
-    // Ensure dashboard data loads after Firebase is fully initialized
-    document.addEventListener('DOMContentLoaded', function() {
-      console.log('� Student Dashboard Loaded');
-      
-      // Wait for Firebase to be ready, then load data
-      const waitForFirebase = () => {
-        if (typeof db !== 'undefined' && typeof auth !== 'undefined') {
-          console.log('✅ Firebase is ready, loading dashboard data...');
-          if (typeof loadAllDashboardData === 'function') {
-            loadAllDashboardData();
-          } else {
-            console.log('⚠️ loadAllDashboardData function not found');
-          }
-        } else {
-          console.log('⏳ Waiting for Firebase to initialize...');
-          setTimeout(waitForFirebase, 500);
-        }
-      };
-      
-      // Start waiting for Firebase
-      setTimeout(waitForFirebase, 1000);
-    });
-  </script>
 </head>
 
 <body data-student-page="dashboard">

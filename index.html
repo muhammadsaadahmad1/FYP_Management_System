@@ -752,11 +752,18 @@
 
   // ===== Realtime Stats Data =====
   function loadRealtimeStats() {
+    const auth = window.firebaseServices?.auth;
     const db = window.firebaseServices?.db;
-    if (!db) {
-      console.error('Firestore not initialized');
+    if (!auth || !db) {
+      console.error('Firebase not initialized');
       return;
     }
+
+    auth.onAuthStateChanged((user) => {
+      if (!user) {
+        // Security rules require sign-in; keep static stats on the public homepage
+        return;
+      }
 
     // Active Projects - Count from proposals collection
     db.collection('proposals').onSnapshot((snapshot) => {
@@ -790,6 +797,7 @@
 
     // System Availability - Keep static as 24/7
     // This is a system metric that doesn't change based on database data
+    });
   }
 
   // Load stats when Firebase is ready
