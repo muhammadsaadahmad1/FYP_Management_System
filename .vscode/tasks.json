@@ -8,9 +8,9 @@
             "args": [
                 "live-server",
                 "--port=5500",
-                "--host=localhost",
-                "--open=/index.html",
-                "--quiet"
+                "--host=0.0.0.0",
+                "--no-browser",
+                "--open=/index.html"
             ],
             "group": "build",
             "presentation": {
@@ -21,7 +21,20 @@
                 "clear": true
             },
             "isBackground": true,
-            "problemMatcher": []
+            "problemMatcher": {
+                "owner": "live-server",
+                "pattern": {
+                    "regexp": ".",
+                    "file": 1,
+                    "location": 2,
+                    "message": 3
+                },
+                "background": {
+                    "activeOnStart": true,
+                    "beginsPattern": ".",
+                    "endsPattern": "Serving"
+                }
+            }
         },
         {
             "label": "Stop Live Server",
