@@ -65,6 +65,10 @@ async function loadSupervisorReportsPage() {
     // Load reports data
     const reportsData = await loadAllSupervisorReports(supervisorId);
     supervisorReportsData = reportsData;
+
+    if (typeof ReportFileStore !== 'undefined') {
+      ReportFileStore.registerReportLookup(reportsData);
+    }
     
     // Update stats
     updateReportsStats(reportsData);
@@ -155,8 +159,13 @@ async function loadAllSupervisorReports(supervisorId) {
         downloadURL: reportData.downloadURL || reportData.fileLink || null,
         fileLink: reportData.fileLink || reportData.downloadURL || null,
         fileName: reportData.fileName || null,
+        fileBase64: reportData.fileBase64 || null,
+        fileEncoding: reportData.fileEncoding || null,
+        fileMimeType: reportData.fileMimeType || null,
+        originalFileSize: reportData.originalFileSize || reportData.fileSize || 0,
+        storedFileSize: reportData.storedFileSize || 0,
         attachments: reportData.attachments || [],
-        fileSize: reportData.fileSize || 0,
+        fileSize: reportData.fileSize || reportData.originalFileSize || 0,
         downloadCount: reportData.downloadCount || 0,
         lastDownloaded: reportData.lastDownloaded || null
       });
@@ -264,6 +273,11 @@ function displayReportsList(reportsData) {
           <div class="attachment-preview">
             <i class="fas fa-file-pdf"></i>
             <span>${report.attachments[0].name}</span>
+          </div>
+        ` : (typeof ReportFileStore !== 'undefined' && ReportFileStore.hasStoredFile(report)) ? `
+          <div class="attachment-preview">
+            <i class="fas fa-file-pdf"></i>
+            <span>${report.fileName || 'Report PDF'}</span>
           </div>
         ` : '<p style="color: #9ca3af; font-size: 12px;">No attachments</p>'}
       </div>
@@ -416,6 +430,10 @@ async function reviewReport(reportId) {
               `).join('')}
             </div>
           </div>
+        ` : (typeof ReportFileStore !== 'undefined' && ReportFileStore.hasStoredFile(report)) ? `
+          <div class="review-section">
+            ${ReportFileStore.getDocumentActionsHtml(report, report.id)}
+          </div>
         ` : ''}
         
         <div class="review-section">
@@ -547,7 +565,10 @@ async function submitReportReview(reportId) {
 async function downloadReport(reportId) {
   try {
     const report = supervisorReportsData.find(r => r.id === reportId);
-    if (!report || !report.attachments || report.attachments.length === 0) {
+    const hasLegacyAttachment = report && report.attachments && report.attachments.length > 0;
+    const hasStoredFile = typeof ReportFileStore !== 'undefined' && report && ReportFileStore.hasStoredFile(report);
+
+    if (!report || (!hasLegacyAttachment && !hasStoredFile)) {
       if (typeof showNotification !== 'undefined') {
         showNotification('No file available for download', 'error');
       }
@@ -560,14 +581,17 @@ async function downloadReport(reportId) {
       lastDownloaded: new Date().toISOString()
     });
     
-    // Download the first attachment
-    const attachment = report.attachments[0];
-    const link = document.createElement('a');
-    link.href = attachment.url;
-    link.download = attachment.name;
-    document.body.appendChild(link);
-    link.click();
-    document.body.removeChild(link);
+    if (hasLegacyAttachment) {
+      const attachment = report.attachments[0];
+      const link = document.createElement('a');
+      link.href = attachment.url;
+      link.download = attachment.name;
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+    } else {
+      ReportFileStore.downloadReportFile(report);
+    }
     
     if (typeof showNotification !== 'undefined') {
       showNotification('Report downloaded successfully!', 'success');
@@ -579,7 +603,7 @@ async function downloadReport(reportId) {
   } catch (error) {
     console.error('Error downloading report:', error);
     if (typeof showNotification !== 'undefined') {
-      showNotification('Error downloading report', 'error');
+      showNotification(error.message || 'Error downloading report', 'error');
     }
   }
 }

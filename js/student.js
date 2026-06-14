@@ -310,6 +310,9 @@ function setupRealtimeReportsData(groupId) {
       const reportsData = snapshot.docs
         .map((doc) => ({ id: doc.id, ...doc.data() }))
         .sort((a, b) => new Date(b.submittedDate || b.submittedAt || 0) - new Date(a.submittedDate || a.submittedAt || 0));
+      if (typeof ReportFileStore !== 'undefined') {
+        ReportFileStore.registerReportLookup(reportsData);
+      }
       updateReportsSection(reportsData);
       console.log('🔄 Reports data updated in real-time:', reportsData.length, 'reports');
     }, (error) => {
@@ -633,19 +636,26 @@ function updateReportsSection(reportsData) {
 
   const reportsHtml = reportsData.slice(0, 5).map((report) => {
     const submitted = report.submittedDate || report.submittedAt;
-    const fileUrl = report.downloadURL || report.fileLink;
     const feedback = report.feedback || report.remarks;
     const summary = report.summary || '';
     const status = report.status || 'pending';
+    const hasFile = typeof ReportFileStore !== 'undefined' && ReportFileStore.hasStoredFile(report);
 
     let fileLine = '';
-    if (fileUrl) {
-      fileLine = `<a href="${fileUrl}" target="_blank" rel="noopener" class="btn btn-secondary" style="font-size:12px;padding:4px 10px;text-decoration:none;">
-        <i class="fas fa-external-link-alt"></i> Open File</a>`;
+    if (hasFile) {
+      fileLine = `
+        <button type="button" class="btn btn-secondary" style="font-size:12px;padding:4px 10px;margin-right:6px;"
+          onclick="ReportFileStore.openReportFile(window.__reportFileLookup && window.__reportFileLookup['${report.id}'])">
+          <i class="fas fa-external-link-alt"></i> Open PDF
+        </button>
+        <button type="button" class="btn btn-secondary" style="font-size:12px;padding:4px 10px;"
+          onclick="ReportFileStore.downloadReportFile(window.__reportFileLookup && window.__reportFileLookup['${report.id}'])">
+          <i class="fas fa-download"></i> Download
+        </button>`;
     } else if (summary) {
       fileLine = `<p style="font-size:12px;color:#6b7280;margin:4px 0 0;">No file attached — review summary below.</p>`;
     } else {
-      fileLine = `<p style="font-size:12px;color:#6b7280;margin:4px 0 0;">No file attached (Firebase Storage not yet enabled).</p>`;
+      fileLine = `<p style="font-size:12px;color:#6b7280;margin:4px 0 0;">No file attached.</p>`;
     }
 
     return `

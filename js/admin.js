@@ -370,10 +370,14 @@ async function loadAllReports() {
       return;
     }
 
+    if (typeof ReportFileStore !== 'undefined') {
+      ReportFileStore.registerReportLookup(reports);
+    }
+
     let html = '';
 
     for (const report of reports) {
-      const fileUrl = report.downloadURL || report.fileLink;
+      const hasFile = typeof ReportFileStore !== 'undefined' && ReportFileStore.hasStoredFile(report);
       html += `
         <div class="card report-card">
           <h4>${report.title || 'Untitled Report'}</h4>
@@ -383,7 +387,15 @@ async function loadAllReports() {
           <p><strong>Status:</strong> <span class="status ${report.status || 'pending'}">${report.status || 'Pending'}</span></p>
           ${report.feedback || report.remarks ? `<p><strong>Supervisor Feedback:</strong> ${(report.feedback || report.remarks).substring(0, 120)}</p>` : ''}
           ${report.grade ? `<p><strong>Grade:</strong> ${report.grade}</p>` : ''}
-          ${fileUrl ? `<a href="${fileUrl}" target="_blank" class="btn btn-sm btn-primary">Open File</a>` : ''}
+          ${hasFile ? `
+            <button type="button" class="btn btn-sm btn-primary" style="margin-right:8px;"
+              onclick="ReportFileStore.openReportFile(window.__reportFileLookup && window.__reportFileLookup['${report.id}'])">
+              Open PDF
+            </button>
+            <button type="button" class="btn btn-sm btn-secondary"
+              onclick="ReportFileStore.downloadReportFile(window.__reportFileLookup && window.__reportFileLookup['${report.id}'])">
+              Download
+            </button>` : ''}
         </div>
       `;
     }

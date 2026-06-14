@@ -17,6 +17,8 @@
   <script src="js/firebase-auth.js"></script>
   <script src="js/auth-guard.js"></script>
   <script src="js/ui-helpers.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/pako/2.1.0/pako.min.js"></script>
+  <script src="js/report-file-store.js"></script>
   <script src="js/notification-service.js"></script>
   <script src="js/student.js"></script>
 </head>
@@ -203,6 +205,8 @@
 
   <!-- Main JavaScript -->
   <script>
+    let studentReportsCache = [];
+
     // Load files and reports data when page loads
     document.addEventListener('DOMContentLoaded', function() {
       loadFilesData();
@@ -284,6 +288,9 @@
           fileCategories[category].size += file.size || 0;
         });
         
+        studentReportsCache = reports;
+        ReportFileStore.registerReportLookup(reports);
+
         // Update all sections
         updateRecentFiles(recentFiles);
         updateReportsTable(reports);
@@ -656,28 +663,15 @@
       const fileInput = form.querySelector('input[name="reportFile"]');
       const file = fileInput && fileInput.files[0] ? fileInput.files[0] : null;
 
+      if (!file) {
+        showNotification('Please attach a PDF report file.', 'error');
+        return;
+      }
+
       try {
-        showLoadingOverlay('Submitting report...');
+        showLoadingOverlay('Compressing and submitting report...');
 
-        // File upload via Firebase Storage is disabled until Storage CORS is configured.
-        // Report metadata is saved to Firestore so the workflow still works fully.
-        const STORAGE_ENABLED = false;
-        let downloadURL = null;
-        let storageSkipped = false;
-
-        if (file && STORAGE_ENABLED) {
-          try {
-            const storageRef = firebase.storage().ref();
-            const fileRef = storageRef.child(`groups/${groupId}/reports/${file.name}`);
-            await fileRef.put(file);
-            downloadURL = await fileRef.getDownloadURL();
-          } catch (storageErr) {
-            console.warn('File upload skipped (Storage unavailable):', storageErr.message);
-            storageSkipped = true;
-          }
-        } else if (file && !STORAGE_ENABLED) {
-          storageSkipped = true;
-        }
+        const filePayload = await ReportFileStore.preparePdfForFirestore(file);
 
         // Fetch supervisor info from the group doc so reports are routed correctly
         let supervisorId = null;
@@ -690,16 +684,20 @@
           }
         } catch (_) {}
 
-        // Build report metadata — file upload is optional
         const now = new Date().toISOString();
         const reportData = {
           title: formData.get('title'),
           type: formData.get('type'),
           summary: formData.get('summary'),
-          fileName: file ? file.name : null,
-          fileSize: file ? file.size : null,
-          downloadURL: downloadURL,
-          fileStorageSkipped: storageSkipped,
+          fileName: filePayload.fileName,
+          fileSize: filePayload.originalFileSize,
+          originalFileSize: filePayload.originalFileSize,
+          storedFileSize: filePayload.storedFileSize,
+          fileBase64: filePayload.fileBase64,
+          fileEncoding: filePayload.fileEncoding,
+          fileMimeType: filePayload.fileMimeType,
+          downloadURL: null,
+          fileStorageSkipped: false,
           groupId: groupId,
           supervisorId: supervisorId,
           supervisorName: supervisorName,
@@ -742,31 +740,16 @@
 
         hideLoadingOverlay();
         closeReportModal();
-
-        if (storageSkipped) {
-          showNotification('Report submitted! (File attachment skipped — Firebase Storage not yet enabled)', 'warning');
-        } else {
-          showNotification('Report submitted successfully!', 'success');
-        }
-
+        showNotification('Report submitted successfully!', 'success');
         loadFilesData();
         
       } catch (error) {
         hideLoadingOverlay();
         console.error('Error submitting report:', error);
 
-        let msg = 'Error submitting report. Please try again.';
-        const errStr = (error.message || error.code || '').toLowerCase();
-
-        if (errStr.includes('cors') || errStr.includes('err_failed') || errStr.includes('network') || errStr.includes('failed to fetch')) {
-          msg = 'Upload blocked by CORS policy. Firebase Storage CORS has not been configured yet. '
-              + 'Please ask your admin to run: gsutil cors set cors.json gs://fypmanagementsystem-29faf.firebasestorage.app';
-        } else if (errStr.includes('storage/unauthorized') || errStr.includes('permission')) {
+        let msg = error.message || 'Error submitting report. Please try again.';
+        if (msg.toLowerCase().includes('permission')) {
           msg = 'Permission denied. Please log out and log in again.';
-        } else if (errStr.includes('storage/object-not-found')) {
-          msg = 'File not found in storage.';
-        } else if (errStr.includes('storage/quota-exceeded')) {
-          msg = 'Storage quota exceeded. Contact admin.';
         }
 
         showNotification(msg, 'error');
@@ -856,13 +839,29 @@
     }
 
     function viewReport(reportId) {
-      showNotification('Opening report viewer...', 'info');
-      // Implementation for viewing report
+      const report = studentReportsCache.find((r) => r.id === reportId);
+      if (!report) {
+        showNotification('Report not found.', 'error');
+        return;
+      }
+      try {
+        ReportFileStore.openReportFile(report);
+      } catch (error) {
+        showNotification(error.message, 'error');
+      }
     }
 
     function downloadReport(reportId) {
-      showNotification('Downloading report...', 'info');
-      // Implementation for downloading report
+      const report = studentReportsCache.find((r) => r.id === reportId);
+      if (!report) {
+        showNotification('Report not found.', 'error');
+        return;
+      }
+      try {
+        ReportFileStore.downloadReportFile(report);
+      } catch (error) {
+        showNotification(error.message, 'error');
+      }
     }
 
     function editReport(reportId) {

@@ -106,6 +106,10 @@ async function loadReports() {
     allReports = snapshot.docs
       .map(doc => ({ id: doc.id, ...doc.data() }))
       .sort((a, b) => new Date(b.submittedDate || b.submittedAt || 0) - new Date(a.submittedDate || a.submittedAt || 0));
+
+    if (typeof ReportFileStore !== 'undefined') {
+      ReportFileStore.registerReportLookup(allReports);
+    }
     
     console.log(`✅ Loaded ${allReports.length} reports`);
     
@@ -229,7 +233,7 @@ function renderReportsTable() {
           <button class="action-btn btn-view" onclick="viewReport('${report.id}')">
             <i class="fas fa-eye"></i>
           </button>
-          ${report.fileUrl || report.documentUrl ? `
+          ${typeof ReportFileStore !== 'undefined' && ReportFileStore.hasStoredFile(report) ? `
             <button class="action-btn btn-download" onclick="downloadReport('${report.id}')">
               <i class="fas fa-download"></i>
             </button>
@@ -326,14 +330,7 @@ function viewReport(reportId) {
         ${report.grade ? `<strong>Grade:</strong> ${report.grade}<br>` : ''}
       </p>
       
-      ${report.downloadURL || report.fileLink || report.fileUrl || report.documentUrl ? `
-        <h4>Document</h4>
-        <p>
-          <a href="${report.downloadURL || report.fileLink || report.fileUrl || report.documentUrl}" target="_blank" class="btn btn-primary" style="margin-right: 10px;">
-            <i class="fas fa-external-link-alt"></i> Open File
-          </a>
-        </p>
-      ` : ''}
+      ${typeof ReportFileStore !== 'undefined' ? ReportFileStore.getDocumentActionsHtml(report, report.id) : ''}
       
       ${report.feedback || report.remarks ? `
         <h4>Supervisor Feedback</h4>
@@ -355,17 +352,16 @@ function closeReportModal() {
 // Download report
 function downloadReport(reportId) {
   const report = allReports.find(r => r.id === reportId);
-  if (!report || (!report.fileUrl && !report.documentUrl)) {
+  if (!report || typeof ReportFileStore === 'undefined' || !ReportFileStore.hasStoredFile(report)) {
     alert('No document available for download');
     return;
   }
-  
-  const url = report.fileUrl || report.documentUrl;
-  const a = document.createElement('a');
-  a.href = url;
-  a.download = report.title || 'report';
-  a.target = '_blank';
-  a.click();
+
+  try {
+    ReportFileStore.downloadReportFile(report);
+  } catch (error) {
+    alert(error.message || 'Unable to download report');
+  }
 }
 
 // Export reports to CSV
