@@ -73,6 +73,14 @@ service cloud.firestore {
       allow read, write: if signedIn();
     }
 
+    match /proposalFiles/{proposalId} {
+      allow read, write: if signedIn();
+
+      match /chunks/{chunkId} {
+        allow read, write: if signedIn();
+      }
+    }
+
     match /projects/{docId} {
       allow read, write: if signedIn();
     }

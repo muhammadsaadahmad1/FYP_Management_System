@@ -250,6 +250,8 @@
   <script src="js/auth-guard.js"></script>
   <script src="js/ui-helpers.js"></script>
   <script src="js/notification-service.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/pako/2.1.0/pako.min.js"></script>
+  <script src="js/proposal-pdf-store.js"></script>
   <script src="js/proposal-workflow.js"></script>
   <script src="js/student.js"></script>
 </head>
@@ -422,7 +424,7 @@
         let currentProposal = null;
         const proposalsHistory = [];
         proposalsSnapshot.forEach((doc) => {
-          const proposalData = { id: doc.id, ...doc.data() };
+          const proposalData = { ...doc.data(), id: doc.id };
           proposalsHistory.push(proposalData);
           if (proposalData.isCurrent === true) {
             currentProposal = proposalData;
@@ -465,6 +467,11 @@
         updateCurrentProposalStatus(currentProposal);
         updateProposalsTable(proposalsHistory);
         updateSupervisorFeedback(feedbacks);
+
+        window.studentProposalsHistory = proposalsHistory;
+        if (typeof ProposalPdfStore !== 'undefined') {
+          ProposalPdfStore.registerLookup(proposalsHistory);
+        }
 
         hideLoadingOverlay();
       } catch (error) {
@@ -515,25 +522,16 @@
             <p><strong>Requested Supervisor:</strong> ${proposal.requestedSupervisorName || proposal.supervisorName || 'Not Assigned'}</p>
             ${proposal.responseDeadline && proposal.assignmentStatus === 'pending_supervisor' ?
               `<p><strong>Supervisor must respond by:</strong> ${new Date(proposal.responseDeadline).toLocaleDateString()}</p>` : ''}
-            ${proposal.rejectionReport ?
-              `<p><strong>Rejection Report:</strong> ${proposal.rejectionReport}</p>` : ''}
-          </div>
-          <div class="proposal-progress">
-            <p><strong>Progress:</strong></p>
-            <div class="progress-bar">
-              <div class="progress" style="width: ${proposal.progress || 0}%"></div>
-            </div>
-            <span class="progress-text">${proposal.progress || 0}%</span>
+            ${proposal.rejectionReport || proposal.reviewComment ?
+              `<p><strong>Supervisor feedback:</strong> ${proposal.rejectionReport || proposal.reviewComment}</p>` : ''}
           </div>
           <div class="proposal-actions">
-            <button class="btn btn-secondary" onclick="viewProposal('${proposal.id}')">
-              <i class="fas fa-eye"></i> View
-            </button>
-            <button class="btn btn-secondary" onclick="editProposal('${proposal.id}')">
-              <i class="fas fa-edit"></i> Edit
-            </button>
-            <button class="btn btn-primary" onclick="downloadProposal('${proposal.id}')">
-              <i class="fas fa-download"></i> Download
+            ${typeof ProposalPdfStore !== 'undefined' && ProposalPdfStore.hasProposalPdf(proposal) ? `
+            <button class="btn btn-primary" onclick="ProposalPdfStore.viewProposalById('${proposal.id}').catch(function(e){ showNotification(e.message, 'error'); })">
+              <i class="fas fa-file-pdf"></i> View Proposal PDF
+            </button>` : ''}
+            <button class="btn btn-secondary" onclick="downloadProposal('${proposal.id}')">
+              <i class="fas fa-download"></i> Download PDF
             </button>
           </div>
         </div>
@@ -918,9 +916,9 @@
                   <input type="number" name="timeline" min="1" max="12" required placeholder="Expected duration in months">
                 </div>
                 <div class="form-group">
-                  <label>Proposal Document *</label>
-                  <input type="file" name="document" accept=".pdf,.doc,.docx" required>
-                  <small>Upload your detailed proposal document (PDF, DOC, or DOCX)</small>
+                  <label>Proposal PDF *</label>
+                  <input type="file" name="document" accept=".pdf,application/pdf" required>
+                  <small>Upload your proposal as a PDF (max 5 MB). The file is compressed and stored securely.</small>
                 </div>
                 <div class="form-actions">
                   <button type="button" class="btn btn-secondary" onclick="closeProposalModal()">Cancel</button>
@@ -978,6 +976,18 @@
         const groupLabel = groupId;
         const now = new Date().toISOString();
 
+        const documentInput = form.querySelector('input[name="document"]');
+        const documentFile = documentInput?.files?.[0];
+        if (!documentFile) {
+          hideLoadingOverlay();
+          showNotification('Please attach your proposal PDF.', 'error');
+          return;
+        }
+
+        showLoadingOverlay('Compressing proposal PDF...');
+        const preparedPdf = await ProposalPdfStore.prepareProposalPdfUpload(documentFile);
+        const pdfFields = ProposalPdfStore.buildProposalDocumentFields(preparedPdf, now);
+
         const proposalData = {
           title: formData.get('title'),
           category: formData.get('category'),
@@ -997,12 +1007,12 @@
           submittedDate: now,
           submittedAt: now,
           lastUpdated: now,
-          status: 'pending',
           assignmentStatus: 'pending_supervisor',
           responseDeadline: ProposalWorkflow.getResponseDeadline(),
           adminOverdueNotified: false,
           isCurrent: true,
-          progress: 0
+          progress: 0,
+          ...pdfFields
         };
 
         const priorSnapshot = await firebase.firestore()
@@ -1017,6 +1027,7 @@
         await batch.commit();
 
         const proposalRef = await firebase.firestore().collection('proposals').add(proposalData);
+        await ProposalPdfStore.savePreparedPdf(firebase.firestore(), proposalRef.id, preparedPdf);
 
         await ProposalWorkflow.notifyProposalSubmitted({
           proposalId: proposalRef.id,
@@ -1040,7 +1051,7 @@
         console.error('Error message:', error.message);
 
         // Show specific error message based on error type
-        let errorMsg = 'Error submitting proposal. Please try again.';
+        let errorMsg = error.message || 'Error submitting proposal. Please try again.';
         if (error.code === 'permission-denied') {
           errorMsg = 'Permission denied. Check Firebase rules.';
         } else if (error.code === 'not-found') {
@@ -1059,22 +1070,18 @@
       }
     }
 
-    // View proposal
     function viewProposal(proposalId) {
-      showNotification('Opening proposal viewer...', 'info');
-      // Implementation for viewing proposal
+      ProposalPdfStore.viewProposalById(proposalId).catch(function(e) {
+        showNotification(e.message, 'error');
+      });
     }
 
-    // Edit proposal
-    function editProposal(proposalId) {
-      showNotification('Opening proposal editor...', 'info');
-      // Implementation for editing proposal
-    }
-
-    // Download proposal
-    function downloadProposal(proposalId) {
-      showNotification('Downloading proposal...', 'info');
-      // Implementation for downloading proposal
+    async function downloadProposal(proposalId) {
+      try {
+        await ProposalPdfStore.downloadPdfById(proposalId);
+      } catch (error) {
+        showNotification(error.message || 'Error downloading proposal PDF.', 'error');
+      }
     }
 
     // View feedback

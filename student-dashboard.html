@@ -19,6 +19,7 @@
   <script src="js/ui-helpers.js"></script>
   <script src="js/notification-service.js"></script>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/pako/2.1.0/pako.min.js"></script>
+  <script src="js/proposal-pdf-store.js"></script>
   <script src="js/report-file-store.js"></script>
   <script src="js/student.js"></script>
   
@@ -207,9 +208,9 @@
           </div>
           
           <div class="form-group">
-            <label for="proposalFile">Attach File (Optional)</label>
-            <input type="file" id="proposalFile" accept=".pdf,.doc,.docx" onchange="handleFileSelect(event)">
-            <small id="fileInfo" style="color: #6b7280;">Supported formats: PDF, DOC, DOCX (Max 10MB)</small>
+            <label for="proposalFile">Proposal PDF *</label>
+            <input type="file" id="proposalFile" accept=".pdf,application/pdf" required onchange="handleFileSelect(event)">
+            <small id="fileInfo" style="color: #6b7280;">PDF only (Max 5 MB)</small>
           </div>
           
           <div class="form-actions">

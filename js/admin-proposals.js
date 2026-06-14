@@ -123,8 +123,8 @@ async function loadProposals() {
     const snapshot = await db.collection('proposals').get();
 
     allProposals = snapshot.docs.map(doc => ({
-      id: doc.id,
-      ...doc.data()
+      ...doc.data(),
+      id: doc.id
     }));
 
     allProposals.sort((a, b) => {
@@ -134,6 +134,10 @@ async function loadProposals() {
     });
     
     console.log(`✅ Loaded ${allProposals.length} proposals`);
+    
+    if (typeof ProposalPdfStore !== 'undefined') {
+      ProposalPdfStore.registerLookup(allProposals);
+    }
     
     // Update stats
     updateProposalStats();
@@ -250,6 +254,10 @@ function renderProposalsTable() {
           <button class="action-btn btn-view" onclick="viewProposal('${proposal.id}')">
             <i class="fas fa-eye"></i> View
           </button>
+          ${typeof ProposalPdfStore !== 'undefined' && ProposalPdfStore.hasProposalPdf(proposal) ? `
+          <button class="action-btn btn-view" onclick="viewProposalPdf('${proposal.id}')">
+            <i class="fas fa-file-pdf"></i> View Proposal
+          </button>` : ''}
           ${overdue ? `
             <button class="action-btn btn-approve" onclick="adminPermanentlyAssignProposal('${proposal.id}', '${proposal.groupId}')">
               <i class="fas fa-gavel"></i> Force Assign
@@ -344,7 +352,15 @@ function viewProposal(proposalId) {
       <h4>Assignment Status</h4>
       <p>${proposal.assignmentStatus || proposal.status || 'pending'}${overdue ? ' (OVERDUE — 7+ days)' : ''}</p>
       ${proposal.responseDeadline ? `<p><strong>Supervisor deadline:</strong> ${new Date(proposal.responseDeadline).toLocaleString()}</p>` : ''}
-      ${proposal.rejectionReport ? `<p><strong>Rejection report:</strong> ${proposal.rejectionReport}</p>` : ''}
+      ${proposal.rejectionReport || proposal.reviewComment ? `<p><strong>Review comment:</strong> ${proposal.rejectionReport || proposal.reviewComment}</p>` : ''}
+
+      ${typeof ProposalPdfStore !== 'undefined' && ProposalPdfStore.hasProposalPdf(proposal) ? `
+        <div style="margin-top:16px;">
+          <button type="button" class="action-btn btn-view" onclick="viewProposalPdf('${proposal.id}')">
+            <i class="fas fa-file-pdf"></i> View Proposal PDF
+          </button>
+        </div>
+      ` : ''}
 
       ${overdue ? `
         <div class="assign-section">
@@ -379,6 +395,13 @@ function viewProposal(proposalId) {
 // Close proposal modal
 function closeProposalModal() {
   document.getElementById('proposalModal').classList.remove('active');
+}
+
+function viewProposalPdf(proposalId) {
+  const normalizedId = String(proposalId || '').trim();
+  ProposalPdfStore.viewProposalById(normalizedId).catch((error) => {
+    alert(error.message || 'Unable to open proposal PDF.');
+  });
 }
 
 // Show assign modal (simplified version)

@@ -66,6 +66,10 @@ async function loadSupervisorProposalsPage() {
     const proposalsData = await loadAllSupervisorProposals(supervisorId);
     supervisorProposalsData = proposalsData;
     
+    if (typeof ProposalPdfStore !== 'undefined') {
+      ProposalPdfStore.registerLookup(proposalsData);
+    }
+    
     // Update stats
     updateProposalsStats(proposalsData);
     
@@ -85,21 +89,26 @@ async function loadSupervisorProposalsPage() {
 // Load all supervisor proposals with details
 async function loadAllSupervisorProposals(supervisorId) {
   try {
-    const proposalsSnapshot = await db.collection('proposals')
-      .where('supervisorId', '==', supervisorId)
-      .get();
+    const [assignedSnapshot, requestedSnapshot] = await Promise.all([
+      db.collection('proposals').where('supervisorId', '==', supervisorId).get(),
+      db.collection('proposals').where('requestedSupervisorId', '==', supervisorId).get()
+    ]);
+
+    const proposalDocs = new Map();
+    assignedSnapshot.docs.forEach((doc) => proposalDocs.set(doc.id, doc));
+    requestedSnapshot.docs.forEach((doc) => proposalDocs.set(doc.id, doc));
 
     const proposals = [];
 
-    for (const proposalDoc of proposalsSnapshot.docs) {
+    for (const proposalDoc of proposalDocs.values()) {
       const proposalData = proposalDoc.data();
       const groupDoc = await db.collection('groups').doc(proposalData.groupId).get();
       const groupData = groupDoc.exists ? groupDoc.data() : null;
       const studentNames = await ProposalWorkflow.getStudentNames(proposalData.groupId, groupData);
 
       proposals.push({
-        id: proposalDoc.id,
         ...proposalData,
+        id: proposalDoc.id,
         title: proposalData.title || 'Untitled Proposal',
         description: ProposalWorkflow.getDescription(proposalData),
         category: proposalData.category || 'other',
@@ -218,11 +227,15 @@ function displayProposalsList(proposalsData) {
       </div>
       
       <div class="proposal-card-actions">
+        ${typeof ProposalPdfStore !== 'undefined' && ProposalPdfStore.hasProposalPdf(proposal) ? `
+        <button class="btn btn-primary" onclick="ProposalPdfStore.viewProposalById('${proposal.id}').catch(function(e){ showNotification(e.message, 'error'); })">
+          <i class="fas fa-file-pdf"></i> View Proposal
+        </button>` : ''}
         <button class="btn btn-primary" onclick="reviewProposal('${proposal.id}')">
           <i class="fas fa-eye"></i> Review
         </button>
         <button class="btn btn-secondary" onclick="downloadProposal('${proposal.id}')">
-          <i class="fas fa-download"></i> Download
+          <i class="fas fa-download"></i> Download PDF
         </button>
         <button class="btn btn-info" onclick="viewProposalHistory('${proposal.id}')">
           <i class="fas fa-history"></i> History
@@ -281,7 +294,7 @@ function sortProposals() {
 // Review proposal
 async function reviewProposal(proposalId) {
   try {
-    const proposal = supervisorProposalsData.find(p => p.id === proposalId);
+    const proposal = await findSupervisorProposal(proposalId);
     if (!proposal) {
       if (typeof showNotification !== 'undefined') {
         showNotification('Proposal not found', 'error');
@@ -362,6 +375,15 @@ async function reviewProposal(proposalId) {
           </div>
         ` : ''}
 
+        ${typeof ProposalPdfStore !== 'undefined' && ProposalPdfStore.hasProposalPdf(proposal) ? `
+          <div class="review-section">
+            <h4>Proposal PDF</h4>
+            <button type="button" class="btn btn-primary" onclick="ProposalPdfStore.viewProposalById('${proposal.id}').catch(function(e){ showNotification(e.message, 'error'); })">
+              <i class="fas fa-file-pdf"></i> View Proposal
+            </button>
+          </div>
+        ` : ''}
+
         ${isPending ? `
         <div class="review-section">
           <h4>Your Decision</h4>
@@ -370,8 +392,8 @@ async function reviewProposal(proposalId) {
               <label for="reviewDecision">Decision *</label>
               <select id="reviewDecision" required>
                 <option value="">Select decision</option>
-                <option value="accepted">Accept proposal & supervise group</option>
-                <option value="rejected">Reject proposal</option>
+                <option value="accepted">✅ Approve proposal</option>
+                <option value="rejected">❌ Reject proposal</option>
               </select>
             </div>
             <div class="form-group" id="feedbackGroup">
@@ -439,7 +461,7 @@ async function submitProposalReview(proposalId) {
       return;
     }
 
-    const proposal = supervisorProposalsData.find((p) => p.id === proposalId);
+    const proposal = await findSupervisorProposal(proposalId);
     if (!proposal) {
       showNotification?.('Proposal not found', 'error');
       return;
@@ -489,40 +511,35 @@ function formatAssignmentStatus(proposal) {
   return formatStatus(proposal.status || 'pending');
 }
 
-// Download proposal
-function downloadProposal(proposalId) {
-  const proposal = supervisorProposalsData.find(p => p.id === proposalId);
-  if (!proposal) return;
-  
-  // Create a simple text file with proposal details
-  const content = `
-PROPOSAL DETAILS
-================
-Title: ${proposal.title}
-Group: ${proposal.groupName}
-Students: ${proposal.studentNames.join(', ')}
-Category: ${formatCategory(proposal.category)}
-Submitted: ${proposal.submittedDate ? new Date(proposal.submittedDate).toLocaleDateString() : 'N/A'}
-Status: ${formatStatus(proposal.status)}
+// Download proposal PDF
+async function downloadProposal(proposalId) {
+  try {
+    await ProposalPdfStore.downloadPdfById(proposalId);
+  } catch (error) {
+    showNotification?.(error.message || 'Error downloading proposal PDF', 'error');
+  }
+}
 
-DESCRIPTION
------------
-${proposal.description}
+async function findSupervisorProposal(proposalId) {
+  const normalizedId = String(proposalId || '').trim();
+  if (!normalizedId) return null;
 
-${proposal.feedback ? `FEEDBACK
---------
-${proposal.feedback}` : ''}
-  `.trim();
-  
-  const blob = new Blob([content], { type: 'text/plain' });
-  const url = window.URL.createObjectURL(blob);
-  const a = document.createElement('a');
-  a.href = url;
-  a.download = `proposal_${proposal.title.replace(/[^a-z0-9]/gi, '_')}.txt`;
-  document.body.appendChild(a);
-  a.click();
-  document.body.removeChild(a);
-  window.URL.revokeObjectURL(url);
+  const cached = supervisorProposalsData.find((p) => p.id === normalizedId);
+  if (cached) return cached;
+
+  if (typeof ProposalPdfStore !== 'undefined' && ProposalPdfStore.fetchProposalById) {
+    const fetched = await ProposalPdfStore.fetchProposalById(normalizedId);
+    if (fetched) {
+      fetched.id = normalizedId;
+      supervisorProposalsData.push(fetched);
+      if (ProposalPdfStore.registerLookup) {
+        ProposalPdfStore.registerLookup([fetched]);
+      }
+      return fetched;
+    }
+  }
+
+  return null;
 }
 
 // View proposal history

@@ -91,12 +91,13 @@ async function loadProposalsData(groupId) {
       });
       
       if (currentProposal) {
-        const proposalData = currentProposal.data();
+        const proposalData = { ...currentProposal.data(), id: currentProposal.id };
         console.log('✅ Current proposal data found:', proposalData);
         return proposalData;
       } else {
         console.log('⚠️ No current proposal (isCurrent: true) found, returning first proposal');
-        const proposalData = proposalsSnapshot.docs[0].data();
+        const firstDoc = proposalsSnapshot.docs[0];
+        const proposalData = { ...firstDoc.data(), id: firstDoc.id };
         console.log('✅ First proposal data found:', proposalData);
         return proposalData;
       }
@@ -276,7 +277,8 @@ function setupRealtimeProposalsData(groupId) {
       let proposalData = null;
       if (!snapshot.empty) {
         const currentProposal = snapshot.docs.find(doc => doc.data().isCurrent === true);
-        proposalData = currentProposal ? currentProposal.data() : snapshot.docs[0].data();
+        const doc = currentProposal || snapshot.docs[0];
+        proposalData = { ...doc.data(), id: doc.id };
       }
       updateProposalStatus(proposalData);
       console.log('🔄 Proposals data updated in real-time:', snapshot.size, 'proposals');
@@ -550,6 +552,11 @@ function updateProposalStatus(proposalData) {
   
   const statusClass = proposalData.status ? proposalData.status.toLowerCase() : 'pending';
   const statusDisplay = getStatusDisplay(proposalData.status);
+  const reviewNote = proposalData.reviewComment || proposalData.rejectionReport || proposalData.feedback || '';
+  const hasPdf = typeof ProposalPdfStore !== 'undefined' && ProposalPdfStore.hasProposalPdf(proposalData);
+  if (proposalData.id && hasPdf && typeof ProposalPdfStore !== 'undefined') {
+    ProposalPdfStore.registerLookup([proposalData]);
+  }
   
   proposalStatusElement.innerHTML = `
     <div class="proposal-status-details">
@@ -558,18 +565,13 @@ function updateProposalStatus(proposalData) {
         <span class="status-badge ${statusClass}">${statusDisplay}</span>
       </div>
       <div class="status-info">
-        <p><strong>Submitted:</strong> ${new Date(proposalData.submittedDate).toLocaleDateString()}</p>
-        <p><strong>Last Updated:</strong> ${new Date(proposalData.lastUpdated).toLocaleDateString()}</p>
-        ${proposalData.supervisor ? `<p><strong>Supervisor:</strong> ${proposalData.supervisor}</p>` : ''}
-      </div>
-      <div class="status-progress">
-        <p><strong>Review Progress:</strong></p>
-        <div class="progress-bar">
-          <div class="progress" style="width: ${proposalData.progress || 0}%"></div>
-        </div>
-        <span class="progress-text">${proposalData.progress || 0}%</span>
+        <p><strong>Submitted:</strong> ${new Date(proposalData.submittedDate || proposalData.uploadedAt).toLocaleDateString()}</p>
+        ${proposalData.uploadedAt ? `<p><strong>PDF uploaded:</strong> ${new Date(proposalData.uploadedAt).toLocaleString()}</p>` : ''}
+        ${proposalData.supervisorName || proposalData.supervisor ? `<p><strong>Supervisor:</strong> ${proposalData.supervisorName || proposalData.supervisor}</p>` : ''}
+        ${reviewNote ? `<p><strong>Supervisor feedback:</strong> ${reviewNote}</p>` : ''}
       </div>
       <div class="status-actions">
+        ${hasPdf && proposalData.id ? `<button class="btn btn-primary" style="margin-right:8px;" onclick="ProposalPdfStore.viewProposalById('${proposalData.id}').catch(function(e){ alert(e.message); })"><i class="fas fa-file-pdf"></i> View Proposal PDF</button>` : ''}
         <button class="btn btn-secondary" onclick="window.location.href='proposals.html'">
           <i class="fas fa-eye"></i> View Details
         </button>
@@ -833,7 +835,7 @@ function openSubmitProposalModal() {
   if (form) form.reset();
   selectedProposalFile = null;
   if (fileInfo) {
-    fileInfo.textContent = 'Supported formats: PDF, DOC, DOCX (Max 10MB)';
+    fileInfo.textContent = 'PDF only (Max 5 MB)';
     fileInfo.style.color = '#6b7280';
   }
 }
@@ -855,19 +857,18 @@ function handleFileSelect(event) {
   if (!fileInfo) return;
   
   if (file) {
-    // Check file size (10MB limit)
-    if (file.size > 10 * 1024 * 1024) {
-      fileInfo.textContent = 'Error: File size exceeds 10MB limit';
+    // Check file size (5MB limit)
+    if (file.size > 5 * 1024 * 1024) {
+      fileInfo.textContent = 'Error: File size exceeds 5 MB limit';
       fileInfo.style.color = '#dc2626';
       event.target.value = '';
       selectedProposalFile = null;
       return;
     }
     
-    // Check file type
-    const allowedTypes = ['application/pdf', 'application/msword', 'application/vnd.openxmlformats-officedocument.wordprocessingml.document'];
-    if (!allowedTypes.includes(file.type)) {
-      fileInfo.textContent = 'Error: Invalid file type. Please use PDF, DOC, or DOCX';
+    const isPdf = file.type === 'application/pdf' || /\.pdf$/i.test(file.name || '');
+    if (!isPdf) {
+      fileInfo.textContent = 'Error: Only PDF files are supported';
       fileInfo.style.color = '#dc2626';
       event.target.value = '';
       selectedProposalFile = null;
@@ -879,7 +880,7 @@ function handleFileSelect(event) {
     fileInfo.style.color = '#059669';
   } else {
     selectedProposalFile = null;
-    fileInfo.textContent = 'Supported formats: PDF, DOC, DOCX (Max 10MB)';
+    fileInfo.textContent = 'PDF only (Max 5 MB)';
     fileInfo.style.color = '#6b7280';
   }
 }
@@ -937,31 +938,36 @@ if (submitProposalForm) {
     const originalText = submitBtn.textContent;
     submitBtn.textContent = 'Submitting...';
     submitBtn.disabled = true;
-    
-    // Upload file if selected
-    let attachmentUrl = '';
-    let attachmentName = '';
-    
-    if (selectedProposalFile) {
-      try {
-        const storageRef = storage.ref();
-        const fileRef = storageRef.child(`proposals/${groupId}/${Date.now()}_${selectedProposalFile.name}`);
-        
-        await fileRef.put(selectedProposalFile);
-        attachmentUrl = await fileRef.getDownloadURL();
-        attachmentName = selectedProposalFile.name;
-        
-        console.log('File uploaded successfully:', attachmentName);
-      } catch (uploadError) {
-        console.error('Error uploading file:', uploadError);
-        if (typeof showNotification !== 'undefined') {
-          showNotification('Error uploading file. Please try again.', 'error');
-        }
-        submitBtn.textContent = originalText;
-        submitBtn.disabled = false;
-        return;
-      }
+
+    if (!selectedProposalFile) {
+      showNotification?.('Please attach your proposal PDF.', 'error');
+      submitBtn.textContent = originalText;
+      submitBtn.disabled = false;
+      return;
     }
+
+    let preparedPdf = null;
+    try {
+      if (typeof showLoadingOverlay === 'function') {
+        showLoadingOverlay('Compressing proposal PDF...');
+      }
+      preparedPdf = await ProposalPdfStore.prepareProposalPdfUpload(selectedProposalFile);
+    } catch (uploadError) {
+      console.error('Error preparing proposal PDF:', uploadError);
+      if (typeof hideLoadingOverlay === 'function') hideLoadingOverlay();
+      showNotification?.(uploadError.message || 'Error preparing PDF. Please try again.', 'error');
+      submitBtn.textContent = originalText;
+      submitBtn.disabled = false;
+      return;
+    }
+
+    const uploadedAt = new Date().toISOString();
+    const pdfFields = ProposalPdfStore.buildProposalDocumentFields(preparedPdf, uploadedAt);
+
+    const priorSnapshot = await db.collection('proposals').where('groupId', '==', groupId).get();
+    const batch = db.batch();
+    priorSnapshot.forEach((doc) => batch.update(doc.ref, { isCurrent: false }));
+    await batch.commit();
     
     // Create proposal document
     const proposalData = {
@@ -975,20 +981,21 @@ if (submitProposalForm) {
       groupId: groupId,
       groupName: groupData.groupName || groupId,
       supervisorId: supervisorId,
+      supervisorName: groupData.supervisorName || '',
       submittedBy: studentId,
-      submittedDate: new Date().toISOString(),
-      status: 'pending',
-      attachments: attachmentUrl ? [{
-        name: attachmentName,
-        url: attachmentUrl,
-        type: selectedProposalFile ? selectedProposalFile.type : 'document'
-      }] : [],
-      createdAt: new Date().toISOString()
+      submittedDate: uploadedAt,
+      lastUpdated: uploadedAt,
+      isCurrent: true,
+      assignmentStatus: 'pending_supervisor',
+      createdAt: uploadedAt,
+      ...pdfFields
     };
     
     // Save proposal to Firestore
     const proposalRef = await db.collection('proposals').add(proposalData);
+    await ProposalPdfStore.savePreparedPdf(db, proposalRef.id, preparedPdf);
     console.log('Proposal submitted successfully with ID:', proposalRef.id);
+    if (typeof hideLoadingOverlay === 'function') hideLoadingOverlay();
     
     // Send notification to supervisor (only if supervisor is assigned)
     if (supervisorId) {
@@ -1030,8 +1037,9 @@ if (submitProposalForm) {
     
   } catch (error) {
     console.error('Error submitting proposal:', error);
+    if (typeof hideLoadingOverlay === 'function') hideLoadingOverlay();
     if (typeof showNotification !== 'undefined') {
-      showNotification('Error submitting proposal. Please try again.', 'error');
+      showNotification(error.message || 'Error submitting proposal. Please try again.', 'error');
     }
   } finally {
     // Reset button state

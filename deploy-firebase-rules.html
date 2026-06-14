@@ -186,14 +186,16 @@ service cloud.firestore {
     
     // Proposals collection rules
     match /proposals/{proposalId} {
-      // Allow read/write if user is authenticated
       allow read, write: if request.auth != null;
-      // Allow create if user is authenticated
-      allow create: if request.auth != null;
-      // Allow update if user is authenticated
-      allow update: if request.auth != null;
-      // Allow delete if user is authenticated
-      allow delete: if request.auth != null;
+    }
+
+    // Proposal PDF files (gzip-base64, no Firebase Storage)
+    match /proposalFiles/{proposalId} {
+      allow read, write: if request.auth != null;
+
+      match /chunks/{chunkId} {
+        allow read, write: if request.auth != null;
+      }
     }
     
     // Reports collection rules

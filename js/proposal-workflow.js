@@ -238,6 +238,7 @@ const ProposalWorkflow = (function () {
       supervisorName,
       supervisorEmail,
       feedback: feedback || '',
+      reviewComment: feedback || '',
       reviewedDate: now,
       reviewedBy: supervisorId
     });
@@ -263,6 +264,7 @@ const ProposalWorkflow = (function () {
       assignmentStatus: 'rejected',
       rejectionReport,
       feedback: rejectionReport,
+      reviewComment: rejectionReport,
       reviewedDate: now,
       reviewedBy: supervisorId
     });
