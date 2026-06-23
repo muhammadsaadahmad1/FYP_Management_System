@@ -71,6 +71,34 @@ function validatePasswordFields() {
   return true;
 }
 
+function updateStudentRegistrationLabels(size) {
+  const member1Title = document.querySelector('#member1 h4');
+  const passwordSection = document.getElementById('passwordSectionTitle');
+  const infoBox = document.getElementById('passwordInfoBox');
+  const registerBtn = document.getElementById('registerBtn');
+  const passwordInput = document.getElementById('password');
+  const confirmPasswordInput = document.getElementById('confirmPassword');
+  const subtitle = document.querySelector('.register-subtitle');
+
+  if (size === 1) {
+    if (member1Title) member1Title.textContent = 'Student Details';
+    if (passwordSection) passwordSection.textContent = 'Account Password';
+    if (infoBox) infoBox.textContent = 'Log in with your registration number and this password.';
+    if (registerBtn) registerBtn.textContent = 'Register';
+    if (passwordInput) passwordInput.placeholder = 'Password (min 6 characters)';
+    if (confirmPasswordInput) confirmPasswordInput.placeholder = 'Confirm Password';
+    if (subtitle) subtitle.textContent = 'Register as a single student for your FYP.';
+  } else {
+    if (member1Title) member1Title.textContent = 'Student 1 (Group Leader)';
+    if (passwordSection) passwordSection.textContent = 'Group Account Password';
+    if (infoBox) infoBox.textContent = 'All group members log in with their own registration number and this shared group password.';
+    if (registerBtn) registerBtn.textContent = 'Register Group';
+    if (passwordInput) passwordInput.placeholder = 'Group Password (min 6 characters)';
+    if (confirmPasswordInput) confirmPasswordInput.placeholder = 'Confirm Group Password';
+    if (subtitle) subtitle.textContent = `Register your FYP group (${size} members) with one shared group password.`;
+  }
+}
+
 function setStudentGroupSize(size) {
   const groupSizeInput = document.getElementById('groupSize');
   if (groupSizeInput) groupSizeInput.value = size;
@@ -83,6 +111,8 @@ function setStudentGroupSize(size) {
   const member3 = document.getElementById('member3');
   if (member2) member2.style.display = size >= 2 ? 'block' : 'none';
   if (member3) member3.style.display = size >= 3 ? 'block' : 'none';
+
+  updateStudentRegistrationLabels(size);
 
   const studentFormFields = document.getElementById('studentFormFields');
   if (studentFormFields) studentFormFields.style.display = 'block';
@@ -192,8 +222,8 @@ async function registerStudentGroup() {
   await waitForFirebase();
 
   const groupSize = parseInt(document.getElementById('groupSize')?.value, 10);
-  if (!groupSize || (groupSize !== 2 && groupSize !== 3)) {
-    alert('Please select a group size (2 or 3 students).');
+  if (!groupSize || groupSize < 1 || groupSize > 3) {
+    alert('Please select a registration type (1, 2, or 3 students).');
     return;
   }
 
@@ -227,6 +257,7 @@ async function registerStudentGroup() {
     const groupId = await generateGroupId();
     await firebase.firestore().collection('groups').doc(groupId).set({
       groupId,
+      groupName: groupSize === 1 ? leader.fullName : groupId,
       groupSize,
       members,
       createdAt: firebase.firestore.FieldValue.serverTimestamp(),
@@ -253,11 +284,15 @@ async function registerStudentGroup() {
 
     await firebase.auth().signOut();
 
-    let message = `Group Registration Successful!\n\nGROUP ID: ${groupId}\n\nMembers:\n`;
-    createdUsers.forEach((user, index) => {
-      message += `\n${index + 1}. ${user.fullName}${user.isGroupLeader ? ' (Leader)' : ''}\n   Login ID: ${user.loginId}`;
-    });
-    message += '\n\nAll members share the same group password.\n\nRedirecting to login...';
+    let message = groupSize === 1
+      ? `Registration Successful!\n\nGROUP ID: ${groupId}\n\nStudent: ${leader.fullName}\nLogin ID: ${leader.loginId}\n\nRedirecting to login...`
+      : `Group Registration Successful!\n\nGROUP ID: ${groupId}\n\nMembers:\n`;
+    if (groupSize > 1) {
+      createdUsers.forEach((user, index) => {
+        message += `\n${index + 1}. ${user.fullName}${user.isGroupLeader ? ' (Leader)' : ''}\n   Login ID: ${user.loginId}`;
+      });
+      message += '\n\nAll members share the same group password.\n\nRedirecting to login...';
+    }
     alert(message);
     window.location.href = 'login.html?role=student';
   } catch (error) {
@@ -270,7 +305,8 @@ async function registerStudentGroup() {
     alert(message);
   } finally {
     registerBtn.disabled = false;
-    registerBtn.textContent = 'Register Group';
+    const size = parseInt(document.getElementById('groupSize')?.value, 10);
+    registerBtn.textContent = size === 1 ? 'Register' : 'Register Group';
   }
 }
 

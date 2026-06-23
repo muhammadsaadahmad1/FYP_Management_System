@@ -13,7 +13,7 @@
     <img src="assets/images/university-logo.png" alt="University Logo">
     <div class="title">
       FYP Management System
-      <small>Student Group Registration</small>
+      <small>Student Registration</small>
     </div>
   </header>
 
@@ -21,12 +21,13 @@
     <div class="register-box wide">
       <img class="logo" src="assets/images/university-logo.png" alt="University Logo">
       <h2>Student Registration</h2>
-      <p class="register-subtitle">Register your FYP group (2 or 3 members) with one shared group password.</p>
+      <p class="register-subtitle">Register as a single student or as an FYP group (2 or 3 members) with one shared group password.</p>
 
       <input type="hidden" id="groupSize" value="">
 
-      <p style="font-size:13px;font-weight:700;color:#0f2e7a;margin-bottom:10px;">Select Group Size</p>
+      <p style="font-size:13px;font-weight:700;color:#0f2e7a;margin-bottom:10px;">Select Registration Type</p>
       <div class="group-size-selector">
+        <button type="button" class="group-size-btn" data-size="1" onclick="setStudentGroupSize(1)">1 Student</button>
         <button type="button" class="group-size-btn" data-size="2" onclick="setStudentGroupSize(2)">2 Students</button>
         <button type="button" class="group-size-btn" data-size="3" onclick="setStudentGroupSize(3)">3 Students</button>
       </div>
@@ -134,17 +135,17 @@
           </div>
         </div>
 
-        <p class="form-section-title">Group Account Password</p>
-        <div class="info-box">All group members log in with their own registration number and this shared group password.</div>
+        <p class="form-section-title" id="passwordSectionTitle">Group Account Password</p>
+        <div class="info-box" id="passwordInfoBox">All group members log in with their own registration number and this shared group password.</div>
 
         <div class="password-container">
-          <input type="password" id="password" placeholder="Group Password (min 6 characters)" oninput="checkPasswordStrength(this.value)">
+          <input type="password" id="password" placeholder="Password (min 6 characters)" oninput="checkPasswordStrength(this.value)">
           <div class="password-strength">
             <div class="strength-bar" id="strengthBar"></div>
             <span class="strength-text" id="strengthText">Enter password</span>
           </div>
         </div>
-        <input type="password" id="confirmPassword" placeholder="Confirm Group Password">
+        <input type="password" id="confirmPassword" placeholder="Confirm Password">
 
         <div class="terms-section">
           <label class="checkbox-container">
@@ -154,7 +155,7 @@
           </label>
         </div>
 
-        <button type="button" class="register-btn" id="registerBtn" onclick="registerStudentGroup()">Register Group</button>
+        <button type="button" class="register-btn" id="registerBtn" onclick="registerStudentGroup()">Register</button>
       </div>
 
       <p class="register-note">

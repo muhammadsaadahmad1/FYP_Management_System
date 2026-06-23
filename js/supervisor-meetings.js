@@ -198,6 +198,30 @@ async function loadGroupsForMeetingSchedule(supervisorId) {
 }
 
 // Render a dedicated banner for pending student meeting requests
+function toDateInputValue(scheduledDate) {
+  if (!scheduledDate) return '';
+  const d = new Date(scheduledDate);
+  if (Number.isNaN(d.getTime())) return '';
+  const year = d.getFullYear();
+  const month = String(d.getMonth() + 1).padStart(2, '0');
+  const day = String(d.getDate()).padStart(2, '0');
+  return `${year}-${month}-${day}`;
+}
+
+function toTimeInputValue(time, scheduledDate) {
+  if (time && /^\d{1,2}:\d{2}/.test(time)) {
+    const parts = time.split(':');
+    return `${parts[0].padStart(2, '0')}:${parts[1].padStart(2, '0')}`;
+  }
+  if (scheduledDate) {
+    const d = new Date(scheduledDate);
+    if (!Number.isNaN(d.getTime())) {
+      return `${String(d.getHours()).padStart(2, '0')}:${String(d.getMinutes()).padStart(2, '0')}`;
+    }
+  }
+  return '';
+}
+
 function displayPendingRequests(pendingMeetings) {
   // Find or create the pending requests container
   let container = document.getElementById('pendingRequestsSection');
@@ -222,10 +246,12 @@ function displayPendingRequests(pendingMeetings) {
     const dt = m.scheduledDate ? new Date(m.scheduledDate) : null;
     const dateStr = dt ? dt.toLocaleDateString() : 'N/A';
     const timeStr = m.time || (dt ? dt.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : 'N/A');
+    const dateInputValue = toDateInputValue(m.scheduledDate);
+    const timeInputValue = toTimeInputValue(m.time, m.scheduledDate);
     return `
       <div style="background:#fff;border:1px solid #fcd34d;border-left:4px solid #f59e0b;border-radius:8px;padding:16px;margin-bottom:12px;">
         <div style="display:flex;justify-content:space-between;align-items:flex-start;gap:10px;flex-wrap:wrap;">
-          <div>
+          <div style="flex:1;min-width:260px;">
             <span style="background:#fef3c7;color:#92400e;padding:2px 8px;border-radius:12px;font-size:12px;font-weight:600;">PENDING APPROVAL</span>
             <h4 style="margin:8px 0 4px;">${m.title}</h4>
             <p style="margin:0;color:#6b7280;font-size:14px;">
@@ -233,13 +259,29 @@ function displayPendingRequests(pendingMeetings) {
               Requested: <strong>${m.requestedDate ? new Date(m.requestedDate).toLocaleDateString() : 'N/A'}</strong>
             </p>
             <p style="margin:4px 0 0;color:#374151;font-size:14px;">
-              Proposed date: <strong>${dateStr}</strong> at <strong>${timeStr}</strong> &nbsp;|&nbsp;
-              Duration: <strong>${m.duration} min</strong> &nbsp;|&nbsp;
-              Location: <strong>${m.location || 'TBD'}</strong>
+              Student proposed: <strong>${dateStr}</strong> at <strong>${timeStr}</strong> &nbsp;|&nbsp;
+              Duration: <strong>${m.duration} min</strong>
             </p>
             ${m.purpose ? `<p style="margin:4px 0 0;color:#6b7280;font-size:13px;">Purpose: ${m.purpose}</p>` : ''}
+            <div style="margin-top:12px;padding:12px;background:#f8fafc;border:1px solid #e2e8f0;border-radius:8px;">
+              <p style="margin:0 0 8px;font-size:13px;font-weight:700;color:#0f2e7a;">Set meeting time (adjust if needed, then approve)</p>
+              <div style="display:flex;flex-wrap:wrap;gap:10px;align-items:flex-end;">
+                <label style="font-size:12px;color:#475569;display:flex;flex-direction:column;gap:4px;">
+                  Date
+                  <input type="date" id="pending-date-${m.id}" value="${dateInputValue}" style="padding:8px;border:1px solid #cbd5e1;border-radius:6px;">
+                </label>
+                <label style="font-size:12px;color:#475569;display:flex;flex-direction:column;gap:4px;">
+                  Time
+                  <input type="time" id="pending-time-${m.id}" value="${timeInputValue}" style="padding:8px;border:1px solid #cbd5e1;border-radius:6px;">
+                </label>
+                <label style="font-size:12px;color:#475569;display:flex;flex-direction:column;gap:4px;flex:1;min-width:180px;">
+                  Location / Platform
+                  <input type="text" id="pending-location-${m.id}" value="${m.location || ''}" placeholder="Room, Zoom, Teams..." style="padding:8px;border:1px solid #cbd5e1;border-radius:6px;width:100%;">
+                </label>
+              </div>
+            </div>
           </div>
-          <div style="display:flex;gap:8px;flex-shrink:0;">
+          <div style="display:flex;gap:8px;flex-shrink:0;align-items:flex-start;">
             <button onclick="approveMeetingRequest('${m.id}')" style="padding:8px 16px;background:#10b981;color:#fff;border:none;border-radius:6px;cursor:pointer;font-weight:600;">
               ✓ Approve
             </button>
@@ -260,23 +302,64 @@ function displayPendingRequests(pendingMeetings) {
     </div>`;
 }
 
-// Approve a student meeting request
+// Approve a student meeting request (supervisor may adjust date/time first)
 async function approveMeetingRequest(meetingId) {
   try {
     const meeting = supervisorMeetingsData.find(m => m.id === meetingId);
     if (!meeting) return;
 
-    await db.collection('meetings').doc(meetingId).update({
+    const dateVal = document.getElementById(`pending-date-${meetingId}`)?.value;
+    const timeVal = document.getElementById(`pending-time-${meetingId}`)?.value;
+    const locationVal = document.getElementById(`pending-location-${meetingId}`)?.value?.trim();
+
+    if (!dateVal || !timeVal) {
+      if (typeof showNotification !== 'undefined') {
+        showNotification('Please set the meeting date and time before approving.', 'error');
+      } else {
+        alert('Please set the meeting date and time before approving.');
+      }
+      return;
+    }
+
+    const scheduledDate = new Date(`${dateVal}T${timeVal}`).toISOString();
+    if (Number.isNaN(new Date(scheduledDate).getTime())) {
+      if (typeof showNotification !== 'undefined') {
+        showNotification('Invalid date or time. Please check your inputs.', 'error');
+      }
+      return;
+    }
+
+    const originalDate = meeting.scheduledDate ? new Date(meeting.scheduledDate).toISOString() : null;
+    const supervisorAdjusted = originalDate !== scheduledDate || (meeting.time || '') !== timeVal;
+
+    const updateData = {
       status: 'scheduled',
+      scheduledDate,
+      date: scheduledDate,
+      time: timeVal,
+      location: locationVal || meeting.location || 'To be confirmed',
       approvedAt: new Date().toISOString(),
-      updatedAt: new Date().toISOString()
-    });
+      updatedAt: new Date().toISOString(),
+      supervisorAdjustedSchedule: supervisorAdjusted
+    };
+
+    if (supervisorAdjusted && meeting.scheduledDate) {
+      updateData.originalScheduledDate = meeting.scheduledDate;
+      updateData.originalTime = meeting.time || '';
+    }
+
+    await db.collection('meetings').doc(meetingId).update(updateData);
+
+    const approvedDateLabel = new Date(scheduledDate).toLocaleDateString();
+    const scheduleNote = supervisorAdjusted
+      ? `Your meeting was approved for ${approvedDateLabel} at ${timeVal} (time updated by supervisor).`
+      : `Your meeting on ${approvedDateLabel} at ${timeVal} was approved.`;
 
     if (meeting.groupId && typeof NotificationService !== 'undefined') {
       await NotificationService.notifyGroup(meeting.groupId, {
         type: 'meeting_approved',
-        title: 'Meeting Request Approved',
-        message: `Your meeting on ${new Date(meeting.scheduledDate).toLocaleDateString()} at ${meeting.time} was approved.`,
+        title: supervisorAdjusted ? 'Meeting Approved (Rescheduled)' : 'Meeting Request Approved',
+        message: scheduleNote,
         meetingId,
         link: 'meetings-viva.html'
       });
@@ -289,7 +372,10 @@ async function approveMeetingRequest(meetingId) {
     }
 
     if (typeof showNotification !== 'undefined') {
-      showNotification('Meeting request approved and student notified.', 'success');
+      showNotification(
+        supervisorAdjusted ? 'Meeting approved with updated date/time. Student notified.' : 'Meeting request approved and student notified.',
+        'success'
+      );
     }
     loadSupervisorMeetingsPage();
   } catch (err) {
